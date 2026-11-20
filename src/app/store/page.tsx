@@ -4,7 +4,9 @@ import { getStorefrontSettings } from "@/lib/storefront/settings";
 import { StoreClient } from "@/features/store3d/StoreClient";
 
 export const metadata: Metadata = { title: "Store" };
-export const revalidate = 60;
+// Rendered per request, never prerendered at build: the build must not depend on the live database
+// (a missing/unmigrated Supabase project otherwise fails the whole deploy). Errors go to ./error.tsx.
+export const dynamic = "force-dynamic";
 // Game viewport: edge-to-edge (notches handled with safe-area insets), no pinch/double-tap zoom while playing.
 export const viewport: Viewport = {
   themeColor: "#111513",

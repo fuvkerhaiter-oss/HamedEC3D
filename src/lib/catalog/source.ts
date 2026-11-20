@@ -45,8 +45,12 @@ export async function getCatalog(): Promise<CatalogData> {
     sb.from("categories").select("id,slug,name,sort_order").eq("is_active", true).order("sort_order"),
     sb.from("products").select(PRODUCT_SELECT).eq("status", "published").is("deleted_at", null).order("name"),
   ]);
-  if (cats.error) throw new Error(`Failed to load categories: ${cats.error.message}`);
-  if (prods.error) throw new Error(`Failed to load products: ${prods.error.message}`);
+  const hint = (msg: string) =>
+    /schema cache|does not exist/i.test(msg)
+      ? `${msg}. The Supabase project at NEXT_PUBLIC_SUPABASE_URL has no catalog schema: apply supabase/migrations to it (supabase db push), or point the env vars at the migrated project.`
+      : msg;
+  if (cats.error) throw new Error(`Failed to load categories: ${hint(cats.error.message)}`);
+  if (prods.error) throw new Error(`Failed to load products: ${hint(prods.error.message)}`);
 
   const categories: Category[] = ((cats.data ?? []) as { id: unknown; slug: unknown; name: unknown }[]).map((c) => ({ id: String(c.id), slug: String(c.slug), name: String(c.name) }));
   const products = ((prods.data ?? []) as unknown as ProductRow[]).map((r) => mapProductRow(r, cfg.url));
