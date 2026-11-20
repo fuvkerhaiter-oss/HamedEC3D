@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+next-env.d.ts
+.env*
+!.env.example
+.DS_Store
+.vercel
+
+# Local-only
+CCHA.md
+supabase/.temp/
+3D models/
+skills_install/

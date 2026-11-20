@@ -1,0 +1,51 @@
+{
+  "name": "virtual-shopping-world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "test:integration": "tsx --test \"tests/integration/**/*.test.ts\"",
+    "test:db": "tsx tools/db/run-sql-tests.ts",
+    "db:local": "tsx tools/db/local-db.ts",
+    "admin:create": "tsx tools/admin/create-admin.ts",
+    "db:seed-test-orders": "tsx tools/db/seed-test-orders.ts",
+    "db:migrate": "tsx tools/db/migrate.ts"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/rapier": "^2.2.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.2",
+    "next": "^16.4.6",
+    "postgres": "^3.4.9",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sharp": "^0.35.5",
+    "three": "^0.187.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
+    "embedded-postgres": "^18.7.0-beta.19",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}

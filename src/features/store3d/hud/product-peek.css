@@ -1,0 +1,474 @@
+/* 3D store: "look to preview" product callout (ProductPeek.tsx). */
+
+.vsw-peek-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9; /* under the crosshair/HUD (z-10+) and every dialog */
+  pointer-events: none;
+}
+
+/* Leader line + anchor pin on the product */
+.vsw-peek-wire {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 160ms;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+}
+.vsw-peek-line {
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: vsw-peek-draw 420ms 80ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.vsw-peek-tip {
+  fill: #fff;
+  opacity: 0;
+  animation: vsw-peek-fade 200ms 420ms forwards;
+}
+.vsw-peek-dot {
+  fill: var(--color-amber);
+  stroke: #fff;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vsw-peek-pin 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.vsw-peek-ring {
+  fill: none;
+  stroke: var(--color-amber);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vsw-peek-pulse 1.8s ease-out infinite;
+}
+.vsw-peek-ring-2 {
+  animation-delay: 0.9s;
+}
+
+/* Card placement: desktop/tablet → right of the crosshair, vertically centered */
+.vsw-peek-place {
+  position: absolute;
+  top: 50%;
+  left: min(calc(50% + 7vw), calc(100% - 372px));
+  width: 340px;
+  translate: 0 -56%;
+}
+.vsw-peek-flip {
+  perspective: 1100px;
+  transform-style: preserve-3d;
+  transform-origin: 0% 50%;
+  --peek-from: translate3d(-40px, 16px, -240px) rotateY(-58deg) rotateX(8deg) scale(0.8);
+  --peek-to: translate3d(-24px, 8px, -140px) rotateY(-28deg) scale(0.9);
+  animation: vsw-peek-in 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.vsw-peek-root[data-state="out"] .vsw-peek-flip {
+  animation: vsw-peek-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.vsw-peek-root[data-state="out"] .vsw-peek-wire {
+  opacity: 0 !important;
+}
+.vsw-peek-tilt {
+  transform-style: preserve-3d;
+  transform: rotateY(var(--ry, 0deg)) rotateX(var(--rx, 0deg));
+  transition: transform 140ms linear;
+  animation: vsw-peek-float 4.5s 700ms ease-in-out infinite;
+}
+
+/* Card. No overflow/backdrop on the 3D chain (they flatten preserve-3d): the glass lives on a leaf layer. */
+.vsw-peek {
+  position: relative;
+  transform-style: preserve-3d;
+  border-radius: 24px;
+  color: var(--color-ink);
+  padding: 10px;
+}
+.vsw-peek-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.96), rgb(247 244 238 / 0.9) 55%, rgb(235 229 217 / 0.9));
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow:
+    0 30px 60px -12px rgb(17 21 19 / 0.45),
+    0 12px 24px -8px rgb(17 21 19 / 0.25),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  overflow: hidden;
+}
+/* One-time light sweep across the glass after it lands */
+.vsw-peek-bg::after {
+  content: "";
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.75) 50%, transparent 58%);
+  translate: -70% 0;
+  animation: vsw-peek-sheen 1100ms 380ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.vsw-peek-media {
+  position: relative;
+  height: 170px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 30% 20%, rgb(255 255 255 / 0.55), transparent 60%),
+    linear-gradient(145deg, color-mix(in srgb, var(--peek-accent, #e5a93d) 55%, white), var(--peek-accent, #e5a93d));
+  box-shadow: 0 14px 28px -12px rgb(0 0 0 / 0.45);
+  transform: translateZ(34px);
+  animation: vsw-peek-pop 720ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.vsw-peek-initial {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 84px;
+  color: rgb(255 255 255 / 0.9);
+  text-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+.vsw-peek-badges {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vsw-peek-badge {
+  border-radius: 999px;
+  background: rgb(17 21 19 / 0.82);
+  color: var(--color-cream);
+  padding: 3px 9px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.vsw-peek-badge-soft {
+  background: rgb(247 244 238 / 0.88);
+  color: var(--color-ink);
+}
+
+.vsw-peek-body {
+  position: relative;
+  padding: 14px 8px 4px;
+  transform: translateZ(16px);
+}
+.vsw-peek-body > * {
+  animation: vsw-peek-rise 480ms calc(200ms + var(--i, 0) * 55ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.vsw-peek-eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--peek-accent, #e5a93d) 65%, black);
+  font-weight: 600;
+}
+.vsw-peek-title {
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  line-height: 1.1;
+}
+.vsw-peek-price-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.vsw-peek-price {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.vsw-peek-price small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-soft);
+}
+.vsw-peek-tax {
+  font-size: 11px;
+  color: var(--color-ink-soft);
+}
+.vsw-peek-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.vsw-peek-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.vsw-peek-stock::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+.vsw-peek-stock-ok {
+  color: var(--color-brand);
+}
+.vsw-peek-stock-low {
+  color: #b45309;
+}
+.vsw-peek-stock-out {
+  color: #b91c1c;
+}
+.vsw-peek-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.vsw-peek-chip {
+  border: 1px solid rgb(17 21 19 / 0.15);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--color-ink-soft);
+}
+.vsw-peek-desc {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vsw-peek-hint {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgb(17 21 19 / 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.vsw-peek-key {
+  border-radius: 6px;
+  background: var(--color-ink);
+  color: var(--color-cream);
+  padding: 1px 7px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+/* Phones (portrait): compact horizontal card at the top, flipping down from above. */
+@media (max-width: 640px) {
+  .vsw-peek-place {
+    top: calc(env(safe-area-inset-top, 0px) + 68px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: 440px;
+    margin: 0 auto;
+    translate: none;
+  }
+  .vsw-peek-flip {
+    transform-origin: 50% 0%;
+    --peek-from: translate3d(0, -24px, -200px) rotateX(62deg) scale(0.85);
+    --peek-to: translate3d(0, -12px, -120px) rotateX(30deg) scale(0.92);
+  }
+  .vsw-peek {
+    display: grid;
+    grid-template-columns: 104px 1fr;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 20px;
+  }
+  .vsw-peek-media {
+    height: auto;
+    min-height: 112px;
+    border-radius: 14px;
+  }
+  .vsw-peek-initial {
+    font-size: 52px;
+  }
+  .vsw-peek-badges {
+    left: 6px;
+    top: 6px;
+    right: 6px;
+  }
+  .vsw-peek-badge-soft,
+  .vsw-peek-options {
+    display: none;
+  }
+  .vsw-peek-badge {
+    font-size: 7.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 2px 5px;
+  }
+  .vsw-peek-body {
+    padding: 2px 4px 2px 0;
+  }
+  .vsw-peek-title,
+  .vsw-peek-price {
+    font-size: 18px;
+  }
+  .vsw-peek-price-row,
+  .vsw-peek-meta {
+    margin-top: 4px;
+  }
+  .vsw-peek-desc {
+    -webkit-line-clamp: 2;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .vsw-peek-hint {
+    margin-top: 6px;
+    padding-top: 6px;
+    font-size: 11px;
+  }
+}
+
+/* Phones (landscape): compact card top-right of the crosshair, above the touch buttons. */
+@media (max-height: 520px) and (min-width: 641px) {
+  .vsw-peek-place {
+    top: 12px;
+    left: min(calc(50% + 48px), calc(100% - 392px));
+    width: 376px;
+    translate: none;
+  }
+  .vsw-peek {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 20px;
+  }
+  .vsw-peek-media {
+    height: auto;
+    min-height: 104px;
+  }
+  .vsw-peek-initial {
+    font-size: 54px;
+  }
+  .vsw-peek-badge {
+    font-size: 7.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 2px 5px;
+  }
+  .vsw-peek-badge-soft,
+  .vsw-peek-options {
+    display: none;
+  }
+  .vsw-peek-body {
+    padding: 2px 4px 2px 0;
+  }
+  .vsw-peek-title,
+  .vsw-peek-price {
+    font-size: 19px;
+  }
+  .vsw-peek-desc {
+    -webkit-line-clamp: 1;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .vsw-peek-price-row,
+  .vsw-peek-meta {
+    margin-top: 4px;
+  }
+  .vsw-peek-hint {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+}
+
+@keyframes vsw-peek-in {
+  0% {
+    opacity: 0;
+    transform: var(--peek-from);
+    filter: blur(8px);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes vsw-peek-out {
+  to {
+    opacity: 0;
+    transform: var(--peek-to);
+    filter: blur(4px);
+  }
+}
+@keyframes vsw-peek-pop {
+  0% {
+    opacity: 0;
+    transform: translateZ(-40px) scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(34px) scale(1);
+  }
+}
+@keyframes vsw-peek-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes vsw-peek-sheen {
+  to {
+    translate: 70% 0;
+  }
+}
+@keyframes vsw-peek-float {
+  50% {
+    translate: 0 -5px;
+  }
+}
+@keyframes vsw-peek-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes vsw-peek-fade {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes vsw-peek-pin {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes vsw-peek-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
