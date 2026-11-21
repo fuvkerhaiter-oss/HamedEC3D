@@ -17,7 +17,7 @@ export default async function ContentPage() {
   const email = emailStatus();
   return (
     <>
-      <PageHeader eyebrow="Storefront" title="Website Content" description="Homepage copy and content pages. Empty homepage fields keep the built-in copy. Pages are drafts until you publish them." />
+      <PageHeader title="Website text" description="The homepage banner and pages like Terms or Returns. Leave a homepage field empty to keep the default text. Pages stay hidden until you publish them." />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Homepage">
           <ActionForm action={homeContentAction} submitLabel="Publish homepage content">

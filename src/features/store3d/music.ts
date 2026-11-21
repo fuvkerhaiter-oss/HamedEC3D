@@ -7,8 +7,8 @@
  */
 
 const SRC = "/audio/store-music.mp3";
-const VOLUME_PLAYING = 0.08; // soft background level so shoppers can hear each other in voice chat
-const VOLUME_DUCKED = 0.04;
+const VOLUME_PLAYING = 0.035; // very soft background level so shoppers clearly hear each other in voice chat
+const VOLUME_DUCKED = 0.018;
 const MUTE_KEY = "mm.musicMuted";
 
 let audio: HTMLAudioElement | null = null;

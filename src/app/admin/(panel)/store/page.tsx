@@ -20,9 +20,8 @@ export default async function StoreAdminPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Virtual store"
-        title="Store (3D shelves)"
-        description="This is exactly what the 3D store renders: published products on the measured gondola faces. Pin a product to a face, set its priority, or hide it from the shelves on the product page."
+        title="3D store shelves"
+        description="A map of the 3D store: which product is on which shelf. To move or hide a product, open it and use the “3D shelf” section."
         actions={<><Link className="btn-ghost" href="/admin/settings">Stock all aisles: {stockAll ? "on" : "off"}</Link><Link className="btn-primary" href="/store" target="_blank">Open 3D store ↗</Link></>}
       />
       <div className="mb-4"><Notice>{stockAll ? "Every gondola face is stocked." : `Only the benchmark aisle (${STORE_CONFIG.benchmarkFaces.join(", ")}) is stocked automatically; faces with pinned products are stocked too. Turn on “stock all aisles” in Settings once the benchmark aisle is approved.`} Storefront pages refresh within a minute of a change.</Notice></div>

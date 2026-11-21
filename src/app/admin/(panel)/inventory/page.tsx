@@ -22,9 +22,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader
-        eyebrow="Stock"
-        title="Inventory"
-        description="Available = on hand − reserved. Orders reserve stock atomically at checkout (no overselling); a failed or cancelled payment releases it, shipping commits it. Every change is logged."
+        title="Stock (Inventory)"
+        description="How many of each item you have. “Available” = in stock minus items kept aside for unpaid orders. Every change is saved in the history."
         actions={<CsvLink href="/api/admin/export/inventory" className="btn-ghost">Export CSV</CsvLink>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">

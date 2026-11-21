@@ -42,7 +42,7 @@ test("support role is limited server-side (pages, nav and exports)", async ({ pa
   await signIn(page, SUPPORT);
   const nav = page.getByRole("navigation", { name: "Admin" });
   await expect(nav.getByRole("link", { name: "Orders" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Admin Users" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Team & logins" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Settings" })).toHaveCount(0);
   await page.goto("/admin/settings");
   await expect(page).toHaveURL(/\/admin\/forbidden\?p=settings\.manage/);
@@ -69,11 +69,11 @@ test("super admin creates and publishes a product; it appears in the storefront 
   await variant.getByLabel("Price USD (pre-tax)").fill("5.49");
   await variant.getByLabel("Initial stock").fill("12");
   await variant.getByRole("button", { name: "Add variant" }).click();
-  await expect(page.getByRole("heading", { name: "Variants (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sizes & prices (1)" })).toBeVisible();
   await expect(page.getByText("E2E-DOG-1", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Publish" }).click();
-  await expect(page.getByText("published", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Live in shop", { exact: true }).first()).toBeVisible();
 
   await expect(async () => {
     await page.goto("/catalog?category=snacks");
@@ -82,7 +82,7 @@ test("super admin creates and publishes a product; it appears in the storefront 
 
   // Stock adjustment is logged with the reason.
   await page.goto("/admin/inventory?q=E2E-DOG-1");
-  await page.getByText("Change…").click();
+  await page.getByText("Change…", { exact: true }).click();
   await page.getByLabel("New on-hand quantity").fill("3");
   await page.getByLabel("Reason").fill("E2E recount");
   await page.getByRole("button", { name: "Set on-hand" }).click();

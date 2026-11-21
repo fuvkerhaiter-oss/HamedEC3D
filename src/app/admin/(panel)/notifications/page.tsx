@@ -15,9 +15,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   return (
     <>
       <PageHeader
-        eyebrow="Inbox"
-        title="Notifications"
-        description="Raised by real events: paid orders, low stock, supplier problems, failed refunds."
+        title="Alerts"
+        description="Messages from your shop: new paid orders, items running low, supplier problems, failed refunds."
         actions={<>
           <Link className="btn-ghost" href={sp.unread === "1" ? "?" : "?unread=1"}>{sp.unread === "1" ? "Show all" : "Unread only"}</Link>
           <ActionForm action={markReadAction} inline hideMessage><input type="hidden" name="id" value="all" /><button className="btn-primary">Mark all read</button></ActionForm>

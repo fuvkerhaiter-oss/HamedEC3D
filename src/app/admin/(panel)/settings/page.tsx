@@ -19,7 +19,7 @@ export default async function SettingsPage() {
   const str = (k: string) => (typeof s[k] === "string" ? (s[k] as string) : "");
   return (
     <>
-      <PageHeader eyebrow="Configuration" title="Settings" description="Store-wide business configuration. Every change is recorded in the activity log." />
+      <PageHeader title="Shop settings" description="Your business details, taxes and password. Every change is saved in the change history." />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Store">
           <ActionForm action={settingsAction} submitLabel="Save settings">

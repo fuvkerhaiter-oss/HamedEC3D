@@ -13,7 +13,7 @@ export default async function AdminsPage() {
   const admins = await listAdmins(getSql());
   return (
     <>
-      <PageHeader eyebrow="Access" title="Admin Users & Permissions" description="Admin accounts are separate from customer accounts. Roles give a default permission set; individual permissions can be granted or revoked. Only super admins manage admins." />
+      <PageHeader title="Team & logins" description="People who can sign in to this admin. Their role decides what they can see and change." />
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-3 xl:col-span-2">
           {admins.map((a) => {

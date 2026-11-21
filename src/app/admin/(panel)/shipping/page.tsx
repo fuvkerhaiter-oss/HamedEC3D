@@ -51,7 +51,7 @@ export default async function ShippingPage() {
   const zones = await loadShippingZones(getSql(), { includeInactive: true });
   return (
     <>
-      <PageHeader eyebrow="Logistics" title="Shipping & Delivery" description="Zones → methods → rates. Checkout offers only the methods of the destination&apos;s zone in the order currency. Tracking numbers are always entered from the real carrier/supplier." />
+      <PageHeader title="Shipping prices" description="Where you deliver and what delivery costs. Make an area (countries) → add a delivery option → set its price." />
       {zones.length === 0 && <div className="mb-4"><Notice tone="warn" title="No shipping configured">Orders can&apos;t be placed until at least one zone and method exist for the destination.</Notice></div>}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">

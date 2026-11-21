@@ -15,7 +15,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
   const reviews = await listReviews(getSql(), status);
   return (
     <>
-      <PageHeader eyebrow="Community" title="Reviews" description="Only approved reviews are public. “Verified purchase” is set automatically, and only when the review is linked to a delivered order containing the product — admins can't set it." />
+      <PageHeader title="Reviews" description="Reviews written by customers. Only the ones you approve are shown in the shop." />
       <nav className="mb-4 flex gap-1">{["pending", "approved", "rejected", "hidden", "all"].map((s) => <Link key={s} href={`?status=${s}`} className={`rounded-full px-3 py-1.5 text-sm ${(status ?? "all") === s ? "bg-ink text-cream" : "text-ink-soft hover:bg-sand/60"}`}>{s}</Link>)}</nav>
       {reviews.length === 0 ? <EmptyState title="No reviews here">Customer review submission arrives with storefront accounts; reviews will queue here for moderation.</EmptyState> : (
         <div className="space-y-3">

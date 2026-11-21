@@ -15,7 +15,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
   const canManage = session.permissions.has("suppliers.manage");
   return (
     <>
-      <PageHeader eyebrow="Dropshipping" title="Suppliers" description="Paid orders are split into one supplier order per supplier. Manual suppliers: place the order yourself, then record the supplier reference on the order." />
+      <PageHeader title="Suppliers" description="Companies that send your products to customers. When an order is paid, each supplier gets only their items. Place the order with them, then type their order number on the order page." />
       <div className="mb-4"><Notice tone="warn" title="No live supplier integrations yet">Only manual fulfillment is real. API mode needs an adapter written against the supplier&apos;s documented API plus credentials (stored in Supabase Vault, never here). The mock adapter exists for development tests only.</Notice></div>
       <div className="grid gap-4 xl:grid-cols-3">
         <Card title={`Suppliers (${suppliers.length})`} pad={false} className="xl:col-span-2">

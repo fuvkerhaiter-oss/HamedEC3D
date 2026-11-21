@@ -19,7 +19,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://your-domain";
   return (
     <>
-      <PageHeader eyebrow="Money" title="Payments" description="Payment truth comes only from verified provider webhooks. Nothing here can mark an order paid by hand." />
+      <PageHeader title="Payments" description="Money customers paid and refunds you gave back. Orders become “Paid” only when the payment company confirms it." />
       <div className="grid gap-3 md:grid-cols-2">
         {providers.map((p) => (
           <div key={p.id} className="rounded-2xl border border-line bg-white p-4">

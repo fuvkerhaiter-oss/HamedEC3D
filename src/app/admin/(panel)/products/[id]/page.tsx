@@ -44,7 +44,7 @@ function VariantForm({ productId, v, suppliers, showCosts }: { productId: string
         <div className="grid gap-3 rounded-xl bg-cream p-3 sm:grid-cols-4">
           <Field label="Supplier">
             <select name="supplierId" defaultValue={v?.supplier_id ?? ""} className="admin-input">
-              <option value="">— none —</option>
+              <option value="">— choose a category —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}{s.is_mock ? " (mock)" : ""}</option>)}
             </select>
           </Field>
@@ -77,7 +77,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <PageHeader
-        eyebrow={isNew ? "New product" : p!.slug}
         title={isNew ? "New product" : p!.name}
         description={
           !isNew && (
@@ -85,50 +84,63 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <StatusBadge status={p!.deleted_at ? "deleted" : p!.status} />
               {p!.is_mock && <SampleBadge />}
               <span>Updated {fmtDate(p!.updated_at)}</span>
-              {detail!.orderCount > 0 && <Badge tone="blue">{detail!.orderCount} order(s)</Badge>}
-              {p!.status === "published" && <Link className="text-brand underline" href={`/catalog`} target="_blank">View in catalog ↗</Link>}
+              {detail!.orderCount > 0 && <Badge tone="blue">Bought in {detail!.orderCount} order(s)</Badge>}
+              {p!.status === "published" && <Link className="text-brand underline" href={`/catalog`} target="_blank">See it in the shop ↗</Link>}
             </span>
           )
         }
-        actions={<Link href="/admin/products" className="btn-ghost">← Products</Link>}
+        actions={<Link href="/admin/products" className="btn-ghost">← Back to products</Link>}
       />
-      {p?.is_mock && <div className="mb-4"><Notice tone="warn" title="Sample product">This is development seed data (labelled “Sample” in the store). Replace it with real products before going live.</Notice></div>}
+      {(isNew || (p && p.status !== "published" && !p.deleted_at)) && (
+        <div className="mb-4">
+          <Notice tone="info" title="How to put a product in your shop">
+            <ol className="mt-1 list-inside list-decimal space-y-0.5">
+              <li className={isNew ? "font-semibold" : "text-ink-soft line-through"}>Type a name, pick a category and press “Create product”.</li>
+              <li className={!isNew && detail!.variants.length === 0 ? "font-semibold" : ""}>Under “Sizes & prices”, add at least one size or option with its price and how many you have.</li>
+              <li>Add photos (optional but recommended).</li>
+              <li>Press “Publish” on the right. Customers can now see and buy it.</li>
+            </ol>
+          </Notice>
+        </div>
+      )}
+      {p?.is_mock && <div className="mb-4"><Notice tone="warn" title="Sample product">This is an example product (customers see a “Sample” label). Replace it with your real products before opening the shop.</Notice></div>}
       {p?.deleted_at && (
-        <div className="mb-4"><Notice tone="bad" title="Deleted">This product was deleted on {fmtDate(p.deleted_at)} and is kept only for order history.
+        <div className="mb-4"><Notice tone="bad" title="Deleted">This product was deleted on {fmtDate(p.deleted_at)} and is only kept so old orders still show it.
           {can("products.delete") && <ActionForm action={restoreProductAction} inline className="mt-2"><input type="hidden" name="id" value={p.id} /><button className="btn-ghost">Restore as draft</button></ActionForm>}
         </Notice></div>
       )}
 
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
-          <Card title="Details">
+          <Card title="Product information">
             <fieldset disabled={!can("products.edit")}>
               <ActionForm action={saveProductAction} submitLabel={isNew ? "Create product" : "Save details"}>
                 {p && <input type="hidden" name="id" value={p.id} />}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Name"><input name="name" defaultValue={p?.name} required maxLength={200} className="admin-input" /></Field>
-                  <Field label="Slug" hint="URL name; generated from the name when empty"><input name="slug" defaultValue={p?.slug} className="admin-input font-mono" /></Field>
+                  <Field label="Web address name" hint="Part of the page link, e.g. olive-oil. Leave empty and it's made from the name."><input name="slug" defaultValue={p?.slug} className="admin-input font-mono" /></Field>
                   <Field label="Category">
                     <select name="categoryId" defaultValue={p?.category_id ?? ""} className="admin-input">
-                      <option value="">— none —</option>
+                      <option value="">— choose a category —</option>
                       {categoryTree(cats).map((c) => <option key={c.id} value={c.id}>{"  ".repeat(c.depth)}{c.name}{c.is_active ? "" : " (inactive)"}</option>)}
                     </select>
                   </Field>
-                  <Field label="Brand"><input name="brand" defaultValue={p?.brand ?? ""} className="admin-input" /></Field>
+                  <Field label="Brand" hint="Optional"><input name="brand" defaultValue={p?.brand ?? ""} className="admin-input" /></Field>
                 </div>
-                <Field label="Description"><textarea name="description" defaultValue={p?.description} rows={5} className="admin-input" /></Field>
+                <Field label="Description" hint="What customers read on the product page"><textarea name="description" defaultValue={p?.description} rows={5} className="admin-input" /></Field>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Tags" hint="Comma separated"><input name="tags" defaultValue={p?.tags.join(", ")} className="admin-input" /></Field>
-                  <Field label="SEO title"><input name="seoTitle" defaultValue={p?.seo_title ?? ""} className="admin-input" /></Field>
+                  <Field label="Search words (tags)" hint="Optional. Separate with commas, e.g. vegan, organic"><input name="tags" defaultValue={p?.tags.join(", ")} className="admin-input" /></Field>
+                  <Field label="Google title" hint="Optional. The title shown in Google results"><input name="seoTitle" defaultValue={p?.seo_title ?? ""} className="admin-input" /></Field>
                 </div>
-                <Field label="SEO description"><textarea name="seoDescription" defaultValue={p?.seo_description ?? ""} rows={2} className="admin-input" /></Field>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isFeatured" defaultChecked={p?.is_featured} className="h-4 w-4" /> Featured</label>
+                <Field label="Google description" hint="Optional. The short text shown under the title in Google"><textarea name="seoDescription" defaultValue={p?.seo_description ?? ""} rows={2} className="admin-input" /></Field>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isFeatured" defaultChecked={p?.is_featured} className="h-4 w-4" /> Show on the homepage (featured)</label>
               </ActionForm>
             </fieldset>
           </Card>
 
           {p && (
-            <Card title={`Variants (${detail!.variants.length})`}>
+            <Card title={`Sizes & prices (${detail!.variants.length})`}>
+              <p className="-mt-1 mb-3 text-sm text-ink-soft">Each size or option (for example “500 g” and “1 kg”) has its own price and stock. A product needs at least one.</p>
               <div className="space-y-3">
                 {detail!.variants.map((v) => {
                   const m = v.price_eur !== null && v.cost_amount !== null && v.cost_currency === "EUR" ? marginBps(v.price_eur, v.cost_amount) : v.price_usd !== null && v.cost_amount !== null && v.cost_currency === "USD" ? marginBps(v.price_usd, v.cost_amount) : null;
@@ -137,20 +149,20 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3 text-sm">
                         <span className="font-mono text-xs">{v.sku}</span>
                         <span className="font-medium">{v.name}</span>
-                        {!v.is_active && <Badge>inactive</Badge>}
+                        {!v.is_active && <Badge>turned off</Badge>}
                         <span className="ml-auto flex flex-wrap items-center gap-3 font-mono text-xs text-ink-soft">
                           <span>{fmtMoney(v.price_eur, "EUR")}</span><span>{fmtMoney(v.price_usd, "USD")}</span>
-                          <span className={v.quantity - v.reserved <= 0 ? "text-red-700" : ""}>{v.quantity - v.reserved} avail · {v.reserved} reserved</span>
-                          {showCosts && m !== null && <span title="Margin on listed price (EUR prices include VAT)">{(m / 100).toFixed(1)}% margin</span>}
+                          <span className={v.quantity - v.reserved <= 0 ? "text-red-700" : ""}>{v.quantity - v.reserved} available{v.reserved ? ` · ${v.reserved} kept for unpaid orders` : ""}</span>
+                          {showCosts && m !== null && <span title="Margin on listed price (EUR prices include VAT)">{(m / 100).toFixed(1)}% profit</span>}
                         </span>
                       </summary>
                       <div className="border-t border-line p-4">
                         <fieldset disabled={!can("products.edit")}><VariantForm productId={p.id} v={v} suppliers={suppliers} showCosts={showCosts} /></fieldset>
-                        <p className="mt-3 text-xs text-ink-soft">Stock is changed from <Link className="underline" href={`/admin/inventory?q=${encodeURIComponent(v.sku)}`}>Inventory</Link> (with a reason, logged).</p>
+                        <p className="mt-3 text-xs text-ink-soft">To change how many you have, go to <Link className="underline" href={`/admin/inventory?q=${encodeURIComponent(v.sku)}`}>Stock (Inventory)</Link>.</p>
                         {can("products.edit") && (
-                          <ActionForm action={removeVariantAction} inline className="mt-3" confirm={`Remove variant ${v.sku}?`}>
+                          <ActionForm action={removeVariantAction} inline className="mt-3" confirm={`Remove ${v.name} (${v.sku})?`}>
                             <input type="hidden" name="productId" value={p.id} /><input type="hidden" name="variantId" value={v.id} />
-                            <button className="btn-danger">{v.ordered ? "Deactivate (has orders)" : "Delete variant"}</button>
+                            <button className="btn-danger">{v.ordered ? "Turn off (it has orders)" : "Delete this size/option"}</button>
                           </ActionForm>
                         )}
                       </div>
@@ -159,7 +171,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 })}
                 {can("products.edit") && !p.deleted_at && (
                   <details className="rounded-xl border border-dashed border-line" open={detail!.variants.length === 0}>
-                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium">+ Add variant</summary>
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium">+ Add a size / option with price</summary>
                     <div className="border-t border-line p-4"><VariantForm productId={p.id} suppliers={suppliers} showCosts={showCosts} /></div>
                   </details>
                 )}
@@ -168,7 +180,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           )}
 
           {p && (
-            <div id="images" className="scroll-mt-20"><Card title={`Images (${images.length})`} actions={<Link href="/admin/products/images" className="text-sm text-brand">Image Manager →</Link>}>
+            <div id="images" className="scroll-mt-20"><Card title={`Images (${images.length})`} actions={<Link href="/admin/products/images" className="text-sm text-brand">All product photos →</Link>}>
               <ProductImageManager productId={p.id} productName={p.name} images={images.map((im) => toView(im))} canEdit={can("products.edit") && !p.deleted_at} storageNote={mediaStatus()} />
             </Card></div>
           )}
@@ -176,16 +188,17 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
         {p && (
           <div className="space-y-4">
-            <Card title="Visibility">
-              <p className="text-sm">Status: <StatusBadge status={p.status} /></p>
-              {problems.length > 0 && <ul className="mt-3 list-inside list-disc text-sm text-amber-800">{problems.map((x) => <li key={x}>{x}</li>)}</ul>}
+            <Card title="Can customers see it?">
+              <p className="text-sm">Right now: <StatusBadge status={p.status} /></p>
+              {problems.length > 0 && <p className="mt-3 text-sm font-medium text-amber-900">Before you can publish:</p>}
+              {problems.length > 0 && <ul className="mt-1 list-inside list-disc text-sm text-amber-800">{problems.map((x) => <li key={x}>{x}</li>)}</ul>}
               {can("products.publish") && !p.deleted_at && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {(["published", "draft", "archived"] as const).filter((s) => s !== p.status).map((s) => (
                     <ActionForm key={s} action={setStatusAction} inline>
                       <input type="hidden" name="ids" value={p.id} /><input type="hidden" name="status" value={s} />
                       <button className={s === "published" ? "btn-primary" : "btn-ghost"} disabled={s === "published" && problems.length > 0}>
-                        {s === "published" ? "Publish" : s === "draft" ? "Unpublish (draft)" : "Archive"}
+                        {s === "published" ? "Publish" : s === "draft" ? "Hide (back to draft)" : "Archive"}
                       </button>
                     </ActionForm>
                   ))}
@@ -193,26 +206,26 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               )}
             </Card>
 
-            <Card title="3D store shelf">
-              <ActionForm action={placementAction} submitLabel="Save placement">
+            <Card title="3D shelf">
+              <ActionForm action={placementAction} submitLabel="Save shelf">
                 <fieldset disabled={!can("store.manage")} className="space-y-3">
                   <input type="hidden" name="productId" value={p.id} />
-                  <Field label="Shelf face" hint={`Automatic = placed with its category on the stocked aisle (${STORE_CONFIG.benchmarkFaces.join(", ")}). Pinning to another face stocks that face too.`}>
+                  <Field label="Which shelf" hint="“Automatic” puts it next to the other products of its category. Most of the time, keep Automatic.">
                     <select name="faceId" defaultValue={detail!.placement?.face_id ?? ""} className="admin-input">
-                      <option value="">Automatic (by category)</option>
+                      <option value="">Automatic (recommended)</option>
                       {SUPERMARKET.faces.map((f) => <option key={f.id} value={f.id}>{f.id}{(STORE_CONFIG.benchmarkFaces as readonly string[]).includes(f.id) ? " (benchmark aisle)" : ""}</option>)}
                     </select>
                   </Field>
-                  <Field label="Priority" hint="Higher = earlier on the shelf"><input name="priority" type="number" min={-1000} max={1000} defaultValue={detail!.placement?.priority ?? 0} className="admin-input font-mono" /></Field>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="hiddenInStore" defaultChecked={detail!.placement?.hidden_in_store} className="h-4 w-4" /> Hide from 3D shelves (still sold in catalog)</label>
+                  <Field label="Position on the shelf" hint="Bigger number = shown earlier. Leave 0 if unsure."><input name="priority" type="number" min={-1000} max={1000} defaultValue={detail!.placement?.priority ?? 0} className="admin-input font-mono" /></Field>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="hiddenInStore" defaultChecked={detail!.placement?.hidden_in_store} className="h-4 w-4" /> Don&apos;t show it on the 3D shelves (still sold in the online shop)</label>
                 </fieldset>
               </ActionForm>
-              <p className="mt-3 text-xs text-ink-soft">3D model: {detail!.assets.find((a) => a.is_primary) ? `GLB attached (${detail!.assets[0]!.height_m} m)` : "none yet — a labelled placeholder is shown on the shelf."}</p>
+              <p className="mt-3 text-xs text-ink-soft">3D model: {detail!.assets.find((a) => a.is_primary) ? `added (${detail!.assets[0]!.height_m} m tall)` : "none yet — a box with the product photo is shown on the shelf."}</p>
             </Card>
 
             {can("products.delete") && !p.deleted_at && (
-              <Card title="Danger zone">
-                <p className="text-sm text-ink-soft">{detail!.orderCount > 0 ? "This product has orders, so it will be soft-deleted (hidden everywhere, kept for order history)." : "This product has never been ordered and will be permanently deleted."}</p>
+              <Card title="Delete">
+                <p className="text-sm text-ink-soft">{detail!.orderCount > 0 ? "Customers already bought this product, so it will be hidden everywhere but kept for old orders." : "Nobody has bought this product yet, so it will be removed for good."}</p>
                 <ActionForm action={deleteProductsAction} inline className="mt-3" confirm="Delete this product?">
                   <input type="hidden" name="ids" value={p.id} /><input type="hidden" name="redirectTo" value="list" />
                   <button className="btn-danger">Delete product</button>

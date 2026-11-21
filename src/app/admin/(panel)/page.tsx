@@ -1,80 +1,164 @@
 import Link from "next/link";
 import { DateRangeForm } from "@/features/admin/DateRangeForm";
-import { BarChart, Card, EmptyState, fmtDate, fmtMoney, HBars, PageHeader, Stat, StatusBadge, Table, TestBadge } from "@/features/admin/ui";
+import { Icon, type IconName } from "@/features/admin/icons";
+import { BarChart, Card, EmptyState, fmtDate, fmtMoney, HBars, PageHeader, Stat, StatusBadge, statusLabel, Table, TestBadge } from "@/features/admin/ui";
 import { resolveRange } from "@/lib/admin/date-range";
 import { requirePage } from "@/lib/admin/guard";
+import type { Permission } from "@/lib/admin/permissions";
 import { dailySeries, ordersByStatus, overviewKpis, recentOrders, topProducts } from "@/lib/admin/services/finance";
+import { unreadCount } from "@/lib/admin/services/notifications";
 import { lowStockDefault } from "@/lib/admin/services/settings";
 import { getSql } from "@/lib/db/client";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: "Home" };
 
 const money = (byCur: Record<string, number>) => {
   const entries = Object.entries(byCur).filter(([, v]) => v);
   return entries.length ? entries.map(([c, v]) => fmtMoney(v, c)).join(" · ") : fmtMoney(0, "EUR");
 };
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
+interface Todo {
+  tone: "urgent" | "todo" | "info";
+  text: string;
+  detail: string;
+  href: string;
+  button: string;
+}
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
   const session = await requirePage("dashboard.view");
+  const can = (p: Permission) => session.permissions.has(p);
   const sp = await searchParams;
   const range = resolveRange(sp);
   const sql = getSql();
-  const [k, series, statuses, top, recent] = await Promise.all([
+  const [k, series, statuses, top, recent, unread] = await Promise.all([
     overviewKpis(sql, range, await lowStockDefault(sql)),
     dailySeries(sql, range),
     ordersByStatus(sql, range),
     topProducts(sql, range, 6),
-    session.permissions.has("orders.view") ? recentOrders(sql) : Promise.resolve([]),
+    can("orders.view") ? recentOrders(sql) : Promise.resolve([]),
+    can("notifications.view") ? unreadCount(sql, session.user.id) : Promise.resolve(0),
   ]);
   const currencies = [...new Set(["EUR", ...Object.keys(k.revenueByCurrency)])];
+
+  const todos: Todo[] = [];
+  if (k.toFulfill && can("orders.view"))
+    todos.push({ tone: "urgent", text: `${plural(k.toFulfill, "order is", "orders are")} paid and waiting to be sent`, detail: "The customers paid. Send these orders to your supplier.", href: "/admin/orders?status=paid", button: "Send orders" });
+  if (k.failedSupplierOrders && can("suppliers.view"))
+    todos.push({ tone: "urgent", text: `${plural(k.failedSupplierOrders, "supplier order needs", "supplier orders need")} your help`, detail: "A supplier order failed or must be placed by hand.", href: "/admin/suppliers", button: "Fix it" });
+  if (k.outOfStock && can("inventory.view"))
+    todos.push({ tone: "urgent", text: `${plural(k.outOfStock, "item is", "items are")} sold out`, detail: "Customers can't buy these. Add stock or hide them.", href: "/admin/inventory?filter=out", button: "Add stock" });
+  if (k.lowStock && can("inventory.view"))
+    todos.push({ tone: "todo", text: `${plural(k.lowStock, "item is", "items are")} running low`, detail: "Order more soon so they don't sell out.", href: "/admin/inventory?filter=low", button: "See items" });
+  if (unread)
+    todos.push({ tone: "todo", text: `${plural(unread, "new alert", "new alerts")}`, detail: "Things that happened in your shop.", href: "/admin/notifications", button: "Read alerts" });
+  if (k.draftProducts && can("products.view"))
+    todos.push({ tone: "info", text: `${plural(k.draftProducts, "product is a draft", "products are drafts")}`, detail: "Customers can't see drafts until you publish them.", href: "/admin/products?status=draft", button: "Review drafts" });
+  if (k.pendingPayment && can("orders.view"))
+    todos.push({ tone: "info", text: `${plural(k.pendingPayment, "order is", "orders are")} waiting for the customer to pay`, detail: "Nothing to do — they cancel themselves after 25 hours if unpaid.", href: "/admin/orders?status=pending_payment", button: "Look" });
+
+  const quick: { href: string; label: string; icon: IconName; show: boolean }[] = [
+    { href: "/admin/products/new", label: "Add a product", icon: "plus", show: can("products.edit") },
+    { href: "/admin/orders", label: "See all orders", icon: "orders", show: can("orders.view") },
+    { href: "/admin/inventory", label: "Change stock", icon: "stock", show: can("inventory.view") },
+    { href: "/admin/products/images", label: "Upload photos", icon: "photo", show: can("products.view") },
+    { href: "/admin/discounts", label: "Make a discount code", icon: "tag", show: can("discounts.manage") },
+    { href: "/admin/analytics", label: "See reports", icon: "chart", show: can("analytics.view") },
+  ];
+
+  const toneCls = { urgent: "border-l-red-500", todo: "border-l-amber", info: "border-l-sky-400" };
+  const toneIcon: Record<Todo["tone"], IconName> = { urgent: "alert", todo: "bell", info: "info" };
 
   return (
     <>
       <PageHeader
-        eyebrow={range.label}
         title={`Hello${session.user.fullName ? `, ${session.user.fullName.split(" ")[0]}` : ""}`}
-        description="Live numbers from the store database. Revenue counts paid orders only (TEST orders excluded); EUR and USD are kept separate (no silent conversion)."
-        actions={<DateRangeForm range={range.preset} from={sp.from} to={sp.to} />}
+        description="Here is what needs your attention, and how your shop is doing."
       />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Revenue" value={money(k.revenueByCurrency)} hint={`${k.paidOrders} paid order${k.paidOrders === 1 ? "" : "s"}`} />
-        <Stat label="Avg. order" value={money(k.avgOrderByCurrency)} hint={`${k.unitsSold} units sold`} />
-        <Stat label="Orders" value={k.allOrders} hint={`${k.pendingPayment} awaiting payment`} href="/admin/orders" />
-        <Stat label="New customers" value={k.newCustomers} hint="First paid order in period" href="/admin/customers" />
-        <Stat label="To fulfill" value={k.toFulfill} tone={k.toFulfill ? "warn" : "default"} hint="Paid → not yet shipped" href="/admin/orders?status=paid" />
-        <Stat label="Supplier issues" value={k.failedSupplierOrders} tone={k.failedSupplierOrders ? "bad" : "default"} hint="Failed / manual action" href="/admin/suppliers" />
-        <Stat label="Low / out of stock" value={`${k.lowStock} / ${k.outOfStock}`} tone={k.outOfStock ? "bad" : k.lowStock ? "warn" : "default"} hint="Published variants" href="/admin/inventory?filter=low" />
-        <Stat label="Refunds" value={money(k.refundsByCurrency)} hint={`${k.publishedProducts} live · ${k.draftProducts} draft products`} />
+
+      <section aria-labelledby="todo-h" className="rounded-2xl border border-line bg-white">
+        <header className="flex items-center justify-between gap-2 border-b border-line px-5 py-3">
+          <h2 id="todo-h" className="text-lg font-semibold">To do now</h2>
+          {todos.length > 0 && <span className="text-sm text-ink-soft">{plural(todos.length, "thing", "things")}</span>}
+        </header>
+        {todos.length === 0 ? (
+          <div className="flex items-center gap-3 px-5 py-6 text-emerald-800">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-100"><Icon name="check" /></span>
+            <div><p className="font-semibold">All done!</p><p className="text-sm text-ink-soft">Nothing needs your attention right now.</p></div>
+          </div>
+        ) : (
+          <ul className="divide-y divide-line">
+            {todos.map((t) => (
+              <li key={t.text} className={`flex flex-wrap items-center gap-3 border-l-4 px-5 py-3.5 ${toneCls[t.tone]}`}>
+                <Icon name={toneIcon[t.tone]} className={`h-5 w-5 ${t.tone === "urgent" ? "text-red-600" : t.tone === "todo" ? "text-amber-700" : "text-sky-600"}`} />
+                <div className="min-w-[13rem] flex-1">
+                  <p className="font-medium">{t.text}</p>
+                  <p className="text-sm text-ink-soft">{t.detail}</p>
+                </div>
+                <Link href={t.href} className={t.tone === "info" ? "btn-ghost" : "btn-primary"}>{t.button} →</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <h2 className="mt-8 text-lg font-semibold">Quick actions</h2>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {quick.filter((q) => q.show).map((q) => (
+          <Link key={q.href} href={q.href} className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-white px-3 py-4 text-center text-sm font-medium transition hover:border-ink/30 hover:bg-sand/30">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-amber/30 text-ink"><Icon name={q.icon} /></span>
+            {q.label}
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">How your shop is doing</h2>
+          <p className="text-sm text-ink-soft">{range.label}. Only real, paid orders are counted (practice “TEST” orders are left out).</p>
+        </div>
+        <DateRangeForm range={range.preset} from={sp.from} to={sp.to} />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Money earned" value={money(k.revenueByCurrency)} hint={`From ${plural(k.paidOrders, "paid order", "paid orders")}`} />
+        <Stat label="Orders" value={k.allOrders} hint={`${k.unitsSold} items sold`} href="/admin/orders" />
+        <Stat label="Average order" value={money(k.avgOrderByCurrency)} hint="What a customer spends on average" />
+        <Stat label="New customers" value={k.newCustomers} hint="Bought for the first time" href="/admin/customers" />
+        <Stat label="Waiting to be sent" value={k.toFulfill} tone={k.toFulfill ? "warn" : "default"} hint="Paid, not shipped yet" href="/admin/orders?status=paid" />
+        <Stat label="Running low / sold out" value={`${k.lowStock} / ${k.outOfStock}`} tone={k.outOfStock ? "bad" : k.lowStock ? "warn" : "default"} hint="Items in your shop" href="/admin/inventory?filter=low" />
+        <Stat label="Products in shop" value={k.publishedProducts} hint={`${k.draftProducts} hidden drafts`} href="/admin/products" />
+        <Stat label="Money refunded" value={money(k.refundsByCurrency)} hint="Given back to customers" />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           {currencies.map((c) => (
-            <Card key={c} title={`Daily revenue (${c})`}>
-              <BarChart label={`Daily revenue ${c}`} data={series.map((d) => ({ key: d.day, value: d.revenue[c] ?? 0 }))} format={(n) => fmtMoney(n, c)} />
+            <Card key={c} title={`Money earned per day (${c === "EUR" ? "euro" : c === "USD" ? "US dollar" : c})`}>
+              <BarChart label={`Money earned per day ${c}`} data={series.map((d) => ({ key: d.day, value: d.revenue[c] ?? 0 }))} format={(n) => fmtMoney(n, c)} />
             </Card>
           ))}
         </div>
         <div className="space-y-4">
-          <Card title="Orders by status">
-            {statuses.length ? <HBars rows={statuses.map((s) => ({ label: s.status.replace(/_/g, " "), value: s.n }))} /> : <p className="text-sm text-ink-soft">No orders in this period.</p>}
+          <Card title="Orders by step">
+            {statuses.length ? <HBars rows={statuses.map((s) => ({ label: statusLabel(s.status), value: s.n }))} /> : <p className="text-sm text-ink-soft">No orders in this period.</p>}
           </Card>
-          <Card title="Top products (units)">
-            {top.length ? <HBars rows={top.map((t) => ({ label: `${t.product_name} (${t.currency})`, value: t.units }))} /> : <p className="text-sm text-ink-soft">No sales in this period.</p>}
+          <Card title="Best sellers (items sold)">
+            {top.length ? <HBars rows={top.map((t) => ({ label: t.product_name, value: t.units }))} /> : <p className="text-sm text-ink-soft">No sales in this period.</p>}
           </Card>
         </div>
       </div>
 
-      {session.permissions.has("orders.view") && (
+      {can("orders.view") && (
         <div className="mt-6">
-          <Card title="Recent orders" actions={<Link href="/admin/orders" className="text-sm font-medium text-brand">All orders →</Link>} pad={false}>
+          <Card title="Latest orders" actions={<Link href="/admin/orders" className="text-sm font-medium text-brand">See all orders →</Link>} pad={false}>
             {recent.length === 0 ? (
-              <div className="p-5"><EmptyState title="No orders yet">Orders appear here as soon as checkout creates them. Nothing is simulated.</EmptyState></div>
+              <div className="p-5"><EmptyState title="No orders yet">When a customer buys something, the order shows up here.</EmptyState></div>
             ) : (
-              <Table head={["Order", "Customer", "Status", "Total", "Placed"]}>
+              <Table head={["Order", "Customer", "Step", "Total", "Date"]}>
                 {recent.map((o) => (
                   <tr key={o.id}>
-                    <td><Link className="font-medium hover:underline" href={`/admin/orders/${o.id}`}>#{o.order_number}</Link> {o.is_test && <TestBadge />}</td>
+                    <td><Link className="font-medium text-brand hover:underline" href={`/admin/orders/${o.id}`}>#{o.order_number}</Link> {o.is_test && <TestBadge />}</td>
                     <td className="text-ink-soft">{o.email}</td>
                     <td><StatusBadge status={o.status} /></td>
                     <td className="font-mono">{fmtMoney(o.total, o.currency)}</td>

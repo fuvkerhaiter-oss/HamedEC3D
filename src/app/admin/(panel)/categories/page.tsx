@@ -33,7 +33,7 @@ export default async function CategoriesPage() {
   const tree = categoryTree(rows);
   return (
     <>
-      <PageHeader eyebrow="Catalog" title="Categories" description="Drive the catalog filter chips, the home ribbon and the 3D aisle signs. Order here = order in the store." />
+      <PageHeader title="Categories" description="Groups of products (for example Food, Toys). They appear as filters in the shop and as aisle signs in the 3D store. The order here is the order in the shop." />
       <div className="grid gap-4 xl:grid-cols-3">
         <Card title={`All categories (${rows.length})`} className="xl:col-span-2" pad={false}>
           {tree.length === 0 ? <div className="p-5"><EmptyState title="No categories yet" /></div> : (

@@ -1,5 +1,15 @@
 # Project Status
 
+## Admin made easy to understand (2026-11-21)
+Owner found the admin confusing. Plain-language UX pass (no logic changes):
+- **Menu** (`features/admin/nav.ts`): groups "Every day / Products / Money & delivery / Setup", plain names (Home, Alerts, Stock (Inventory), Discount codes, Reports, Shipping prices, Website text, Shop settings, Team & logins, Change history), new "Product photos" item, real SVG icons (`features/admin/icons.tsx`), hover hints.
+- **"How this page works"** box on every main page (`PAGE_GUIDES` in nav.ts, shown by `AdminShell`); "Got it, hide" per page (localStorage), "Help" button brings it back.
+- **Home** (`(panel)/page.tsx`): "To do now" list (orders to send, supplier problems, sold out, running low, alerts, drafts, unpaid) with action buttons, quick actions, then numbers in plain words.
+- **Statuses** in plain words everywhere (`STATUS_LABEL`/`statusLabel` in `ui.tsx`, e.g. paid → "Paid – ready to send", published → "Live in shop"); hover explains order steps.
+- **Orders**: tabs (Ready to send, Waiting for payment, Waiting for tracking, On the way, Refund asked); order page has a "What to do next" box per step and plain card/field names. **Product page**: 4-step "how to put a product in your shop" box, "Sizes & prices" (= variants), plain field hints.
+- Verified in the browser (desktop + 375 px), typecheck/lint clean, unit 85/85, e2e admin 6/6 (prod build). E2E expectations updated for the new names.
+- Not reworded yet (still somewhat technical inside the forms): inventory, shipping, discounts, settings, suppliers, payments, analytics page bodies — page guides explain them.
+
 ## Production readiness pass 1 (2026-11-21): checkout, emails, legal, help, SEO, voice mute
 - **Checkout** `/checkout` → `POST /api/checkout` (`lib/checkout/service.ts` `startCheckout`): `createOrder` (server prices, atomic stock reservation, idempotent per cart key) → payment session (Stripe, or the labelled dev simulator) → redirect. Paid ONLY via verified webhook. `POST /api/checkout/quote` = live preview (shipping options, tax, coupon) via new shared `priceOrder` (createOrder now uses it). Rate-limited (`lib/rate-limit.ts`, in-memory). Unpaid orders auto-cancel after 25 h (stock released). Cart drawer "Checkout" button is live.
 - **Order page** `/order?id=…&t=…` (guest, HMAC-signed link, `lib/checkout/order-link.ts`; forged token → 404): status, items, totals, tracking; auto-refreshes while the webhook arrives; empties the cart.

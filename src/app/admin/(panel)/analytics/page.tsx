@@ -24,7 +24,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader eyebrow={range.label} title="Analytics & Reports" description="Everything is computed from stored orders, refunds, supplier costs and expenses." actions={<DateRangeForm range={range.preset} from={sp.from} to={sp.to} />} />
+      <PageHeader eyebrow={range.label} title="Reports" description="Your sales, costs and profit for the chosen period." actions={<DateRangeForm range={range.preset} from={sp.from} to={sp.to} />} />
 
       {profit && (
         <>

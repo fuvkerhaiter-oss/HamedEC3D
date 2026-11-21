@@ -15,7 +15,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const rows = await listActivity(getSql(), { q: sp.q, entity: sp.entity || undefined, page });
   return (
     <>
-      <PageHeader eyebrow="Audit" title="Activity Log" description="Append-only record of every admin change, with before/after values. It cannot be edited or deleted — not even by a super admin." />
+      <PageHeader title="Change history" description="Every change made in the admin: who did it, when, and what it was before and after. It can't be edited or deleted." />
       <form className="mb-4 flex flex-wrap gap-2">
         <input name="q" defaultValue={sp.q} placeholder="Search summary, action or id" className="admin-input !w-64 !py-1.5" aria-label="Search activity" />
         <select name="entity" defaultValue={sp.entity ?? ""} className="admin-input !w-auto !py-1.5" aria-label="Entity">

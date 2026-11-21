@@ -35,9 +35,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        eyebrow="Catalog"
         title="Products"
-        description="The same products the catalog page and the 3D store show. Only published products are visible to shoppers."
+        description="Everything you sell — in the online shop and on the 3D shelves. Customers only see products that are “Live in shop”."
         actions={
           <>
             {can("products.import") && <CsvLink href="/api/admin/export/products" className="btn-ghost">Export CSV</CsvLink>}

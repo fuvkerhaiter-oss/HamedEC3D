@@ -53,7 +53,7 @@ export default async function DiscountsPage() {
   const now = new Date();
   return (
     <>
-      <PageHeader eyebrow="Marketing" title="Discounts & Coupons" description="Codes are validated on the server at checkout (dates, limits, currency, targets). The discount can never exceed the eligible subtotal." />
+      <PageHeader title="Discount codes" description="Codes customers type at checkout to get money off. The shop checks dates and limits for you." />
       <div className="grid gap-4 xl:grid-cols-3">
         <Card title={`Codes (${coupons.length})`} pad={false} className="xl:col-span-2">
           {coupons.length === 0 ? <div className="p-5"><EmptyState title="No discount codes yet" /></div> : (

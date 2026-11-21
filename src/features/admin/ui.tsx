@@ -17,7 +17,7 @@ export function PageHeader({ title, eyebrow, description, actions }: { title: st
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow && <p className="eyebrow text-brand">{eyebrow}</p>}
+        {eyebrow && <p className="text-sm font-medium text-brand">{eyebrow}</p>}
         <h1 className="mt-1 font-display text-3xl leading-tight sm:text-4xl">{title}</h1>
         {description && <div className="mt-2 max-w-2xl text-sm text-ink-soft">{description}</div>}
       </div>
@@ -43,7 +43,7 @@ export function Card({ title, actions, children, className = "", pad = true }: {
 export function Stat({ label, value, hint, tone = "default", href }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "default" | "warn" | "bad"; href?: string }) {
   const body = (
     <>
-      <p className="eyebrow text-ink-soft">{label}</p>
+      <p className="text-sm font-medium text-ink-soft">{label}</p>
       <p className={`mt-2 font-display text-2xl leading-none sm:text-3xl ${tone === "bad" ? "text-red-700" : tone === "warn" ? "text-amber-700" : ""}`}>{value}</p>
       {hint && <p className="mt-2 text-xs text-ink-soft">{hint}</p>}
     </>
@@ -75,8 +75,49 @@ export function Badge({ children, tone = "gray" }: { children: React.ReactNode; 
   return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${TONES[tone]}`}>{children}</span>;
 }
 
+/** Plain-language names for stored status codes (orders, products, payments, shipments…). */
+export const STATUS_LABEL: Record<string, string> = {
+  // orders
+  pending_payment: "Waiting for payment", paid: "Paid – ready to send", processing: "Being prepared",
+  submitted_to_supplier: "Sent to supplier", supplier_accepted: "Supplier confirmed", shipped: "Shipped",
+  delivered: "Delivered", cancelled: "Cancelled", refund_requested: "Refund asked", refunded: "Refunded", failed: "Failed",
+  // products / pages
+  published: "Live in shop", draft: "Draft (hidden)", archived: "Archived (hidden)", deleted: "Deleted", unpublished: "Hidden",
+  // payments, refunds, supplier orders, emails
+  pending: "Pending", succeeded: "Received", partially_refunded: "Partly refunded", manual: "Done by hand",
+  submitting: "Sending…", submitted: "Placed with supplier", manual_required: "You must place it",
+  not_configured: "Not set up", sent: "Sent", queued: "Waiting to send",
+  // reviews
+  approved: "Approved", rejected: "Rejected", hidden: "Hidden",
+  // shipments
+  label_created: "Label created", in_transit: "On the way", out_for_delivery: "Out for delivery", exception: "Delivery problem",
+  // alerts
+  info: "Info", warning: "Warning", critical: "Urgent",
+};
+
+/** One-sentence explanation shown when hovering an order status. */
+export const ORDER_STATUS_HELP: Record<string, string> = {
+  pending_payment: "The customer has not paid yet. Unpaid orders cancel themselves after 25 hours.",
+  paid: "The customer paid. You now need to send the order to your supplier.",
+  processing: "You are preparing this order.",
+  submitted_to_supplier: "The order was sent to the supplier. Waiting for them to confirm.",
+  supplier_accepted: "The supplier confirmed. Add the tracking number when it ships.",
+  shipped: "The parcel is on its way to the customer.",
+  delivered: "The customer received the parcel. Nothing more to do.",
+  cancelled: "This order was cancelled. Nothing more to do.",
+  refund_requested: "The customer asked for their money back.",
+  refunded: "The money was given back to the customer.",
+  failed: "The payment did not go through.",
+};
+
+export const statusLabel = (status: string) => STATUS_LABEL[status] ?? status.replace(/_/g, " ");
+
 export function StatusBadge({ status }: { status: string }) {
-  return <Badge tone={STATUS_TONE[status] ?? "gray"}>{status.replace(/_/g, " ")}</Badge>;
+  return (
+    <span title={ORDER_STATUS_HELP[status]}>
+      <Badge tone={STATUS_TONE[status] ?? "gray"}>{statusLabel(status)}</Badge>
+    </span>
+  );
 }
 
 export function TestBadge() {
@@ -115,7 +156,7 @@ export function Table({ head, children, empty }: { head: React.ReactNode[]; chil
         <thead>
           <tr className="border-b border-line text-left">
             {head.map((h, i) => (
-              <th key={i} scope="col" className="whitespace-nowrap px-4 py-2.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-ink-soft">{h}</th>
+              <th key={i} scope="col" className="whitespace-nowrap px-4 py-2.5 text-xs font-semibold text-ink-soft">{h}</th>
             ))}
           </tr>
         </thead>
@@ -128,14 +169,14 @@ export function Table({ head, children, empty }: { head: React.ReactNode[]; chil
 
 export function Pagination({ page, total, pageSize, params }: { page: number; total: number; pageSize: number; params: Record<string, string | undefined> }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return <p className="px-4 py-3 font-mono text-xs text-ink-soft">{total} result{total === 1 ? "" : "s"}</p>;
+  if (pages <= 1) return <p className="px-4 py-3 text-sm text-ink-soft">{total} result{total === 1 ? "" : "s"}</p>;
   const href = (p: number) => "?" + new URLSearchParams(Object.entries({ ...params, page: String(p) }).filter((e): e is [string, string] => !!e[1])).toString();
   return (
     <nav className="flex items-center justify-between gap-2 px-4 py-3 text-sm" aria-label="Pagination">
-      <span className="font-mono text-xs text-ink-soft">{total} results · page {page}/{pages}</span>
+      <span className="text-sm text-ink-soft">{total} results · page {page} of {pages}</span>
       <span className="flex gap-2">
-        {page > 1 && <Link className="btn-ghost" href={href(page - 1)}>← Prev</Link>}
-        {page < pages && <Link className="btn-ghost" href={href(page + 1)}>Next →</Link>}
+        {page > 1 && <Link className="btn-ghost" href={href(page - 1)}>← Previous page</Link>}
+        {page < pages && <Link className="btn-ghost" href={href(page + 1)}>Next page →</Link>}
       </span>
     </nav>
   );
@@ -190,7 +231,7 @@ export function BarChart({ data, format, label }: { data: { key: string; value: 
         <text x={w} y={10} fontSize="10" fill="var(--color-ink-soft)" fontFamily="var(--font-mono)" textAnchor="end">max {format(max)}</text>
       </svg>
       <details className="mt-1 text-xs text-ink-soft">
-        <summary className="cursor-pointer">Table view</summary>
+        <summary className="cursor-pointer">Show the numbers</summary>
         <div className="mt-2 max-h-48 overflow-auto font-mono">
           {data.filter((d) => d.value).map((d) => <div key={d.key} className="flex justify-between gap-4"><span>{d.key}</span><span>{format(d.value)}</span></div>)}
           {total === 0 && <p>No data in this period.</p>}
