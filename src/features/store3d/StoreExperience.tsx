@@ -17,6 +17,8 @@ import { Interactor } from "./Interactor";
 import { PeekTracker } from "./peek/PeekTracker";
 import { buildStoreLayout } from "./layout";
 import { Player } from "./Player";
+import { RemotePlayers } from "./multiplayer/RemotePlayers";
+import { RoomHud } from "./multiplayer/RoomHud";
 import { StoreScene, type StoreCatalog } from "./StoreScene";
 import { FlightLayer } from "./trolley/FlightLayer";
 import { Trolley } from "./trolley/Trolley";
@@ -167,6 +169,7 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
               <StoreScene env={SUPERMARKET} layout={layout} catalog={catalog} lowPower={lowPower} />
               <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} trolley={<Trolley tc={trolleyCatalog} />} />
             </Physics>
+            <RemotePlayers />
             <FlightLayer tc={trolleyCatalog} />
             <Interactor />
             <PeekTracker />
@@ -179,6 +182,7 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
         </Canvas>
       </KeyboardControls>
       <Hud catalog={catalog} />
+      <RoomHud />
       <LoadingScreen />
       {contextLost && <ContextLostNotice />}
     </div>

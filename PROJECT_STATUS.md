@@ -1,5 +1,13 @@
 # Project Status
 
+## Multiplayer rooms + voice chat in the 3D store (2026-11-21)
+`src/features/store3d/multiplayer/` — shoppers are auto-matched into rooms of up to 10 (`rooms.ts`, first come first served; the 11th moves to the next room, ties broken by id so every client agrees). Everyone in a room sees the others as avatars (colored body, name tag, green ring while speaking, mic badge) and can talk.
+- **Transport**: Supabase Realtime public channels `mm-store-room-<n>` (presence = members, broadcast = WebRTC signaling) with the publishable key; no tables/secrets. Voice + positions over a P2P WebRTC mesh (audio transceiver + unreliable data channel at 10 Hz; Realtime broadcast ≤2.5 Hz fallback while a data channel isn't open).
+- **Voice**: mic off by default; V key or the mic button (top-left) toggles it (echo cancel/noise suppression). Spatial audio (HRTF panner per peer; closer = louder). Audio unlocked on "Click to enter". Join toasts; editable display name (random "Happy Panda" style, saved locally).
+- **Dev without Supabase keys** (this machine): `local-channel.ts` = same-browser test room over BroadcastChannel, labelled "Local test room"; never used in production (prod without keys → "Solo shopping").
+- Verified: typecheck, lint, unit 85/85 (+`store-rooms.test.ts`), build. Two local tabs joined the same room, WebRTC connected, data channels open, poses delivered. **Not verified**: avatars on screen (browser pane was hidden), real voice between two devices, Supabase Realtime path (no keys here).
+- **Limits**: STUN only; ~10–20% of users behind strict NAT/mobile carriers need TURN → set `NEXT_PUBLIC_TURN_URL/USERNAME/CREDENTIAL` (e.g. a managed TURN service). Channels are public: anyone with the publishable key can join a room (names are sanitized; no moderation/report/kick yet). Needs HTTPS for the mic.
+
 ## iPhone / iOS compatibility pass (2026-11-21)
 Reported: 3D store doesn't work for iPhone users (works on Android). No iOS device on this machine, so the fixes target the usual WebKit failure modes:
 - `input/device.ts` `isIOS()` (incl. iPadOS-as-Mac). iOS always uses the low-power budget, DPR cap 1.25 (Android 1.5, desktop 1.75).

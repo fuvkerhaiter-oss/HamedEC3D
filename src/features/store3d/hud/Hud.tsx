@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { unlockVoiceAudio } from "../multiplayer/net";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
@@ -95,7 +96,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
 
       {locked && !touchMode && (
         <p className="pointer-events-none fixed bottom-4 left-4 z-10 text-xs text-ink/60">
-          WASD move · Shift run · E interact · C cart · M music · Esc pause
+          WASD move · Shift run · E interact · C cart · M music · V mic · Esc pause
         </p>
       )}
 
@@ -149,6 +150,7 @@ function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => 
 
   const enter = () => {
     resetTouchInput();
+    unlockVoiceAudio();
     startStoreMusic(); // inside the click: browsers only allow audio after a user gesture
     if (touchMode) {
       // Immersive on Android/iPad; unsupported (iPhone) or refused → stays in the browser UI.
@@ -200,6 +202,7 @@ function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => 
             <dt className="font-medium">E</dt><dd className="text-ink-soft">Pick up a product</dd>
             <dt className="font-medium">C</dt><dd className="text-ink-soft">Open cart</dd>
             <dt className="font-medium">M</dt><dd className="text-ink-soft">Music on / off</dd>
+            <dt className="font-medium">V</dt><dd className="text-ink-soft">Mic on / off (talk)</dd>
             <dt className="font-medium">Esc</dt><dd className="text-ink-soft">Pause</dd>
           </dl>
         )}
