@@ -155,7 +155,13 @@ function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => 
     if (touchMode) {
       // Immersive on Android/iPad; unsupported (iPhone) or refused → stays in the browser UI.
       const root = document.documentElement;
-      if (!document.fullscreenElement && root.requestFullscreen) root.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+      if (!document.fullscreenElement && root.requestFullscreen) {
+        root
+          .requestFullscreen({ navigationUI: "hide" })
+          // Android phones: hold landscape while in the store (needs fullscreen; iPhone ignores it → RotateHint).
+          .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape"))
+          .catch(() => {});
+      }
     }
     onEnter();
   };

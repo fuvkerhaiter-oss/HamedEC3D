@@ -10,6 +10,7 @@ import { KEYMAP } from "./controls";
 import { STORE_CONFIG, SUPERMARKET } from "./env/supermarket";
 import { Hud } from "./hud/Hud";
 import { LoadingScreen } from "./hud/LoadingScreen";
+import { RotateHint } from "./hud/RotateHint";
 import { isCoarsePrimaryPointer, isIOS, prefersTouchControls } from "./input/device";
 import { TouchLook } from "./input/TouchLook";
 import { interactionRegistry } from "./interactables";
@@ -184,6 +185,7 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
       <Hud catalog={catalog} />
       <RoomHud />
       <LoadingScreen />
+      <RotateHint />
       {contextLost && <ContextLostNotice />}
     </div>
   );
