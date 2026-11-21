@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useStoreUi } from "../ui-store";
 import { ROOM_CAPACITY } from "./rooms";
-import { setMyName, startMultiplayer, stopMultiplayer, toggleMic, useNet } from "./net";
+import { setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, useNet } from "./net";
 
 function MicIcon({ off }: { off: boolean }) {
   return (
@@ -17,7 +17,7 @@ function MicIcon({ off }: { off: boolean }) {
 
 /** Room badge (top-left): who's here, mic toggle (V), my display name. Also owns the connection lifecycle. */
 export function RoomHud() {
-  const { status, message, room, me, members, micOn, micError, local } = useNet();
+  const { status, message, room, me, members, micOn, micError, local, muted } = useNet();
   const locked = useStoreUi((s) => s.locked);
   const inspect = useStoreUi((s) => s.inspect);
   const [draft, setDraft] = useState<string | null>(null);
@@ -101,7 +101,18 @@ export function RoomHud() {
                 <li key={m.id} className="flex items-center gap-2">
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: m.color }} />
                   <span className="truncate">{m.name}</span>
-                  {m.mic && <span className="ml-auto text-emerald-300"><MicIcon off={false} /></span>}
+                  <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                    {m.mic && !muted.includes(m.id) && <span className="text-emerald-300"><MicIcon off={false} /></span>}
+                    <button
+                      type="button"
+                      onClick={() => setPeerMuted(m.id, !muted.includes(m.id))}
+                      aria-pressed={muted.includes(m.id)}
+                      aria-label={muted.includes(m.id) ? `Unmute ${m.name}` : `Mute ${m.name} for me`}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 transition ${muted.includes(m.id) ? "bg-red-500/80 text-cream ring-red-300" : "text-cream/80 ring-cream/30 hover:bg-cream/10"}`}
+                    >
+                      {muted.includes(m.id) ? "Muted" : "Mute"}
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>

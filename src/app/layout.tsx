@@ -12,6 +12,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: { default: "Mega Market · Happy Family, Happy Animals", template: "%s · Mega Market" },
   description: "Mega Market — Happy Family, Happy Animals. Walk a beautiful 3D supermarket in your browser and shop real products, delivered across Europe and the USA.",
+  applicationName: "Mega Market",
+  openGraph: {
+    type: "website",
+    siteName: "Mega Market",
+    title: "Mega Market · Happy Family, Happy Animals",
+    description: "Walk a 3D supermarket in your browser, shop with friends and get it delivered across Europe and the USA.",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = { themeColor: "#111513" };

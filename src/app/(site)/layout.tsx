@@ -19,6 +19,7 @@ function Logo({ dark = false }: { dark?: boolean }) {
 const NAV = [
   { href: "/store", label: "3D Store" },
   { href: "/catalog", label: "Catalog" },
+  { href: "/contact", label: "Help" },
 ];
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {

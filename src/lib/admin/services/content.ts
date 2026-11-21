@@ -42,15 +42,8 @@ export async function setPagePublished(db: Db, actor: Actor, id: string, publish
 
 // ───────────────────────── Email ─────────────────────────
 
-export interface EmailProvider {
-  id: string;
-  send(msg: { to: string; subject: string; text: string }): Promise<{ messageId: string }>;
-}
-
-/** Returns the configured provider, or null. No provider is bundled: add one (e.g. Resend/Postmark) behind this interface. */
-export function getEmailProvider(): EmailProvider | null {
-  return null;
-}
+import { getEmailProvider } from "../../email/provider";
+export { getEmailProvider, type EmailProvider } from "../../email/provider";
 
 export function emailStatus(): { configured: boolean; detail: string } {
   return getEmailProvider()

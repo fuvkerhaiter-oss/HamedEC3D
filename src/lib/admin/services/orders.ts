@@ -10,6 +10,7 @@ import { marketForCountry } from "../../markets";
 import type { CurrencyCode } from "../../money";
 import { canTransition, ORDER_TRANSITIONS, transitionOrder, type ActorType, type OrderStatus, type TransitionEvidence } from "../../orders/state-machine";
 import { getPaymentProvider } from "../../payments/registry";
+import { queueOrderStatusEmail } from "../../email/outbox";
 import { quoteShipping } from "../../shipping/quote";
 import { logActivity, type Actor } from "../audit";
 import { loadCouponForCode } from "./coupons";
@@ -101,12 +102,45 @@ export async function rateToBase(db: Db, currency: CurrencyCode, base: CurrencyC
  * Idempotent on `idempotencyKey`.
  */
 export async function createOrder(db: Db, input: CreateOrderInput): Promise<{ orderId: string; orderNumber: number; created: boolean }> {
-  const market = marketForCountry(input.shipTo.country);
-  if (!market) throw new OrderError(`We don't ship to ${input.shipTo.country}`);
+  if (!marketForCountry(input.shipTo.country)) throw new OrderError(`We don't ship to ${input.shipTo.country}`);
   return inTx(db, async (tx) => {
     const existing = await tx<{ id: string; order_number: number }[]>`select id, order_number from public.orders where checkout_idempotency_key = ${input.idempotencyKey}`;
     if (existing[0]) return { orderId: existing[0].id, orderNumber: existing[0].order_number, created: false };
 
+    const { market, priced, discount, couponId, option } = await priceOrder(tx, input);
+
+    const base = ((await getSetting(tx, "store.base_currency")) as CurrencyCode | null) ?? "EUR";
+    const fx = await rateToBase(tx, market.currency, base);
+    const [order] = await tx<{ id: string; order_number: number }[]>`
+      insert into public.orders (user_id, email, currency, tax_mode, subtotal, discount_total, shipping_total, tax_total, total,
+        shipping_address, ship_country, discount_code, checkout_idempotency_key, base_currency, fx_rate_to_base, shipping_method_name, is_test, customer_note)
+      values (${input.userId ?? null}, ${input.email.trim().toLowerCase()}, ${market.currency}, ${market.taxMode}, ${priced.subtotal.amount},
+        ${priced.discount.amount}, ${priced.shipping.amount}, ${priced.tax.amount}, ${priced.total.amount}, ${tx.json(JSON.parse(JSON.stringify(input.shipTo)))},
+        ${input.shipTo.country.toUpperCase()}, ${discount?.code ?? null}, ${input.idempotencyKey}, ${base}, ${fx}, ${option.name}, ${input.isTest ?? false},
+        ${input.customerNote ?? null})
+      returning id, order_number`;
+    for (const l of priced.lines) {
+      await tx`insert into public.order_items (order_id, variant_id, product_name, variant_name, sku, unit_price, quantity, line_total)
+               values (${order!.id}, ${l.variantId}, ${l.productName}, ${l.variantName}, ${l.sku}, ${l.unitPrice.amount}, ${l.quantity}, ${l.lineTotal.amount})`;
+    }
+    // Atomic, locked, all-or-nothing reservation (raises on oversell → transaction rolls back).
+    await tx`select public.reserve_order_inventory(${order!.id}, ${tx.json(priced.lines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })))})`;
+    if (couponId) await tx`insert into public.discount_redemptions (discount_id, order_id, user_id) values (${couponId}, ${order!.id}, ${input.userId ?? null})`;
+    return { orderId: order!.id, orderNumber: order!.order_number, created: true };
+  });
+}
+
+export type OrderPricingInput = Pick<CreateOrderInput, "lines" | "shipTo" | "email" | "couponCode"> & { shippingMethodId?: string | null };
+
+/**
+ * Server-side order pricing shared by checkout preview and order creation: fresh DB prices/stock, coupon,
+ * admin-configured shipping and tax. Without `shippingMethodId` the cheapest available method is used.
+ */
+export async function priceOrder(db: Db, input: OrderPricingInput) {
+  const market = marketForCountry(input.shipTo.country);
+  if (!market) throw new OrderError(`We don't ship to ${input.shipTo.country}`);
+  {
+    const tx = db;
     const reader = await dbCatalogReader(tx, input.lines.map((l) => l.variantId));
     const draft = await priceCart(input.lines, reader, { currency: market.currency, taxMode: market.taxMode });
     if (!draft.purchasable) throw new OrderError(draft.issues[0]?.message ?? "Cart is empty");
@@ -131,7 +165,10 @@ export async function createOrder(db: Db, input: CreateOrderInput): Promise<{ or
     const options = quoteShipping(await loadShippingZones(tx), {
       country: input.shipTo.country, currency: market.currency, subtotal: discounted.subtotal.amount - discounted.discount.amount, weightGrams: weight,
     });
-    const option = options.find((o) => o.methodId === input.shippingMethodId);
+    if (options.length === 0) throw new OrderError(`We can't ship to ${input.shipTo.country} yet`);
+    const option = input.shippingMethodId
+      ? options.find((o) => o.methodId === input.shippingMethodId)
+      : [...options].sort((a, b) => a.amount.amount - b.amount.amount)[0];
     if (!option) throw new OrderError("The selected shipping method is not available for this destination");
 
     const bps = await taxRateFor(tx, input.shipTo.country, input.shipTo.region);
@@ -140,26 +177,8 @@ export async function createOrder(db: Db, input: CreateOrderInput): Promise<{ or
       currency: market.currency, taxMode: market.taxMode, discount, taxBasisPoints: bps,
       shipping: { methodId: option.methodId, label: option.name, amount: option.amount },
     });
-
-    const base = ((await getSetting(tx, "store.base_currency")) as CurrencyCode | null) ?? "EUR";
-    const fx = await rateToBase(tx, market.currency, base);
-    const [order] = await tx<{ id: string; order_number: number }[]>`
-      insert into public.orders (user_id, email, currency, tax_mode, subtotal, discount_total, shipping_total, tax_total, total,
-        shipping_address, ship_country, discount_code, checkout_idempotency_key, base_currency, fx_rate_to_base, shipping_method_name, is_test, customer_note)
-      values (${input.userId ?? null}, ${input.email.trim().toLowerCase()}, ${market.currency}, ${market.taxMode}, ${priced.subtotal.amount},
-        ${priced.discount.amount}, ${priced.shipping.amount}, ${priced.tax.amount}, ${priced.total.amount}, ${tx.json(JSON.parse(JSON.stringify(input.shipTo)))},
-        ${input.shipTo.country.toUpperCase()}, ${discount?.code ?? null}, ${input.idempotencyKey}, ${base}, ${fx}, ${option.name}, ${input.isTest ?? false},
-        ${input.customerNote ?? null})
-      returning id, order_number`;
-    for (const l of priced.lines) {
-      await tx`insert into public.order_items (order_id, variant_id, product_name, variant_name, sku, unit_price, quantity, line_total)
-               values (${order!.id}, ${l.variantId}, ${l.productName}, ${l.variantName}, ${l.sku}, ${l.unitPrice.amount}, ${l.quantity}, ${l.lineTotal.amount})`;
-    }
-    // Atomic, locked, all-or-nothing reservation (raises on oversell → transaction rolls back).
-    await tx`select public.reserve_order_inventory(${order!.id}, ${tx.json(priced.lines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })))})`;
-    if (couponId) await tx`insert into public.discount_redemptions (discount_id, order_id, user_id) values (${couponId}, ${order!.id}, ${input.userId ?? null})`;
-    return { orderId: order!.id, orderNumber: order!.order_number, created: true };
-  });
+    return { market, priced, discount, couponId, options, option };
+  }
 }
 
 // ───────────────────────── Transitions ─────────────────────────
@@ -182,6 +201,7 @@ export async function transitionOrderInDb(
     const audit = transitionOrder({ from: row.status, to, actor: { type: actor.type, id: actor.id }, reason: opts.reason, evidence: opts.evidence });
     await tx`select public.transition_order(${orderId}, ${to}, ${audit.actorType}, ${audit.actorId}, ${audit.reason}, ${tx.json(JSON.parse(JSON.stringify(audit.evidence)))})`;
     await applyInventoryEffects(tx, orderId, row.status, to, actor.adminUserId ?? null);
+    await queueOrderStatusEmail(tx, orderId, row.status, to); // sent after commit (flushEmailOutbox)
     if (to === "paid") await notify(tx, { kind: "new_order", title: `New paid order #${row.order_number}`, link: `/admin/orders/${orderId}`, dedupeKey: `paid:${orderId}` });
     if (to === "failed" && row.status !== "pending_payment") {
       await notify(tx, { kind: "order_failed", severity: "warning", title: `Order #${row.order_number} needs attention`, body: opts.reason ?? "", link: `/admin/orders/${orderId}` });

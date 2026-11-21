@@ -14,6 +14,8 @@ export interface CreateSessionInput {
   successUrl: string;
   cancelUrl: string;
   idempotencyKey: string;
+  /** Shown to the customer on the payment page, e.g. "Mega Market order #1042". */
+  label?: string;
 }
 
 export interface PaymentSession {

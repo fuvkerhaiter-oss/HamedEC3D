@@ -115,10 +115,15 @@ export function CartDrawer() {
             <p className="mt-2 text-xs text-ink-soft">
               {market.taxMode === "inclusive" ? "Prices include VAT. Shipping calculated at checkout." : "Sales tax and shipping calculated at checkout."}
             </p>
-            <button disabled className="mt-4 w-full cursor-not-allowed rounded-full bg-ink/35 py-3.5 font-semibold text-cream short:mt-3 short:py-3" title="Payments are not enabled yet">
-              Checkout — coming soon
-            </button>
-            <p className="mt-2 text-center text-xs text-ink-soft">Payments are not enabled yet.</p>
+            <a
+              href="/checkout"
+              onClick={() => setOpen(false)}
+              aria-disabled={!cart.purchasable}
+              className={`mt-4 block w-full rounded-full py-3.5 text-center font-semibold text-cream transition short:mt-3 short:py-3 ${cart.purchasable ? "bg-ink hover:bg-ink-soft" : "pointer-events-none bg-ink/35"}`}
+            >
+              Checkout
+            </a>
+            <p className="mt-2 text-center text-xs text-ink-soft">Secure payment · 14-day returns in the EU</p>
           </footer>
         )}
       </aside>

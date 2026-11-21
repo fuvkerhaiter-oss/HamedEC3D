@@ -66,7 +66,7 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": input.amount.currency.toLowerCase(),
         "line_items[0][price_data][unit_amount]": String(input.amount.amount),
-        "line_items[0][price_data][product_data][name]": `Order ${input.orderId}`,
+        "line_items[0][price_data][product_data][name]": input.label ?? `Order ${input.orderId}`,
       });
       const session = await call("POST", "/checkout/sessions", f, input.idempotencyKey);
       return { providerSessionId: String(session.id), redirectUrl: String(session.url) };

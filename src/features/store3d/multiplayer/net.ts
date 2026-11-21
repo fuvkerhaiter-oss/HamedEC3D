@@ -39,6 +39,8 @@ interface NetState {
   members: Member[];
   micOn: boolean;
   micError: string | null;
+  /** Ids of shoppers I muted. */
+  muted: string[];
 }
 
 const ID = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -54,6 +56,7 @@ export const useNet = create<NetState>()(() => ({
   local: false,
   micOn: false,
   micError: null,
+  muted: [],
 }));
 
 /** Latest pose per remote shopper (mutable, read every frame by the avatars; never triggers renders). */
@@ -64,7 +67,7 @@ if (process.env.NEXT_PUBLIC_TURN_URL) {
   ICE.push({ urls: process.env.NEXT_PUBLIC_TURN_URL, username: process.env.NEXT_PUBLIC_TURN_USERNAME, credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL });
 }
 
-interface PeerAudio { el: HTMLAudioElement; src?: MediaStreamAudioSourceNode; panner?: PannerNode; analyser?: AnalyserNode; buf?: Uint8Array<ArrayBuffer> }
+interface PeerAudio { el: HTMLAudioElement; src?: MediaStreamAudioSourceNode; panner?: PannerNode; gain?: GainNode; analyser?: AnalyserNode; buf?: Uint8Array<ArrayBuffer> }
 interface Peer { id: string; pc: RTCPeerConnection; tx?: RTCRtpTransceiver; dc?: RTCDataChannel; ice: RTCIceCandidateInit[]; audio?: PeerAudio }
 
 let sb: SupabaseClient | null = null;
@@ -264,6 +267,7 @@ function dropPeer(id: string) {
     a.el.srcObject = null;
     a.src?.disconnect();
     a.panner?.disconnect();
+    a.gain?.disconnect();
   }
 }
 
@@ -309,7 +313,7 @@ export function unlockVoiceAudio(): void {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     audioCtx = new Ctx();
-    for (const p of peers.values()) if (p.audio && !p.audio.src) wireSpatial(p.audio);
+    for (const p of peers.values()) if (p.audio && !p.audio.src) wireSpatial(p.id, p.audio);
   }
   if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
   for (const p of peers.values()) p.audio?.el.play().catch(() => {});
@@ -321,12 +325,12 @@ function attachAudio(peer: Peer, stream: MediaStream) {
   el.setAttribute("playsinline", "");
   el.srcObject = stream;
   peer.audio = { el };
-  if (audioCtx) wireSpatial(peer.audio);
-  else el.muted = false; // no Web Audio yet: play directly (non-spatial) until unlocked
+  if (audioCtx) wireSpatial(peer.id, peer.audio);
+  else el.muted = mutedPeers.has(peer.id); // no Web Audio yet: play directly (non-spatial) until unlocked
   el.play().catch(() => {});
 }
 
-function wireSpatial(a: PeerAudio) {
+function wireSpatial(id: string, a: PeerAudio) {
   if (!audioCtx || !(a.el.srcObject instanceof MediaStream)) return;
   // Chrome only feeds a remote WebRTC stream into Web Audio while a (muted) media element plays it.
   a.el.muted = true;
@@ -335,8 +339,21 @@ function wireSpatial(a: PeerAudio) {
   a.analyser.fftSize = 256;
   a.buf = new Uint8Array(new ArrayBuffer(a.analyser.fftSize));
   a.panner = new PannerNode(audioCtx, { panningModel: "HRTF", distanceModel: "inverse", refDistance: 2.5, maxDistance: 40, rolloffFactor: 1.1 });
+  a.gain = new GainNode(audioCtx, { gain: mutedPeers.has(id) ? 0 : 1 });
   a.src.connect(a.analyser);
-  a.src.connect(a.panner).connect(audioCtx.destination);
+  a.src.connect(a.panner).connect(a.gain).connect(audioCtx.destination);
+}
+
+/** Shoppers I've muted (this visit only). Muting is local: it only silences them for me. */
+const mutedPeers = new Set<string>();
+
+export function setPeerMuted(id: string, muted: boolean): void {
+  if (muted) mutedPeers.add(id);
+  else mutedPeers.delete(id);
+  const a = peers.get(id)?.audio;
+  if (a?.gain) a.gain.gain.value = muted ? 0 : 1;
+  else if (a) a.el.muted = muted;
+  useNet.setState({ muted: [...mutedPeers] });
 }
 
 function setParam(p: AudioParam | undefined, v: number) {

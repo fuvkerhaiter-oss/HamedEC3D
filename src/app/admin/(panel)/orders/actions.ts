@@ -1,5 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { getSql } from "@/lib/db/client";
+import { flushEmailOutbox } from "@/lib/email/outbox";
 import { z } from "zod";
 import { adminAction, UserError } from "@/lib/admin/guard";
 import { bool, currency, money as moneyField, optMoneyAny, optStr, reqStr, str, uuid } from "@/lib/admin/form";
@@ -12,6 +15,7 @@ const done = (orderId: string) => {
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
+  after(() => flushEmailOutbox(getSql()).catch((e) => console.error("email flush failed", e))); // customer emails queued by the change
 };
 
 async function friendly<T>(fn: () => Promise<T>): Promise<T> {

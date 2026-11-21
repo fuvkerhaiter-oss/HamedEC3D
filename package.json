@@ -16,7 +16,8 @@
     "db:local": "tsx tools/db/local-db.ts",
     "admin:create": "tsx tools/admin/create-admin.ts",
     "db:seed-test-orders": "tsx tools/db/seed-test-orders.ts",
-    "db:migrate": "tsx tools/db/migrate.ts"
+    "db:migrate": "tsx tools/db/migrate.ts",
+    "content:legal": "tsx --env-file-if-exists=.env.local tools/content/seed-legal-pages.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
