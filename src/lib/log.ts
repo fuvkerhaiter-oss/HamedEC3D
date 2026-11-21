@@ -12,7 +12,7 @@ export function logError(label: string, e: unknown): void {
   console.error(`[${label}]`, JSON.stringify(safeError(e)));
 }
 
-const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT"]);
+const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT"]);
 const warned = new Set<string>();
 
 /** The database can't be reached at all (not running, wrong host) — as opposed to a query failing. */

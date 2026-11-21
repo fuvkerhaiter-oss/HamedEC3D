@@ -12,6 +12,7 @@ test("unreachable database (dev) is one warning; real query errors stay errors",
     const refused = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:54329"), { code: "ECONNREFUSED" });
     assert.equal(isDbUnreachable(refused), true);
     assert.equal(isDbUnreachable({ errors: [{ code: "ECONNREFUSED" }] }), true, "AggregateError (IPv4 + IPv6)");
+    assert.equal(isDbUnreachable({ code: "ENETUNREACH" }), true, "IPv6-only host on Vercel");
     assert.equal(isDbUnreachable(Object.assign(new Error("relation missing"), { code: "42P01" })), false);
     logFallback("test-label", refused);
     logFallback("test-label", refused);
