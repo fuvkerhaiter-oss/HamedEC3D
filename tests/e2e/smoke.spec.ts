@@ -51,7 +51,7 @@ test("catalog: add to cart is priced by the server (client sends ids + quantitie
 
   const dialog = page.getByRole("dialog", { name: "Your cart" });
   await expect(dialog.getByText("Subtotal")).toBeVisible();
-  await expect(dialog.getByRole("button", { name: /Checkout — coming soon/ })).toBeDisabled();
+  await expect(dialog.getByRole("link", { name: "Checkout" })).toHaveAttribute("href", "/checkout");
   expect(errors).toEqual([]);
 });
 
@@ -99,6 +99,9 @@ test.describe("3D store on a phone (touch emulation)", () => {
     test.setTimeout(120_000);
     const errors = trackErrors(page);
     await page.goto("/store");
+    // Portrait phone: the rotate prompt shows first and can be skipped.
+    await page.getByRole("button", { name: "Continue in portrait" }).tap({ timeout: 30_000 }); // a touch, like a real phone
+    await expect(page.getByRole("dialog", { name: "Rotate your phone" })).toBeHidden();
     const enter = page.getByRole("button", { name: "Tap to enter" });
     await expect(enter).toBeVisible({ timeout: 60_000 });
     await expect(page.locator(".vsw-load")).toHaveAttribute("aria-hidden", "true", { timeout: 60_000 });

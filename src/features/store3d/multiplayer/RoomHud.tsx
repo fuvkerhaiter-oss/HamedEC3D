@@ -20,6 +20,7 @@ export function RoomHud() {
   const { status, message, room, me, members, micOn, micError, local, muted } = useNet();
   const locked = useStoreUi((s) => s.locked);
   const inspect = useStoreUi((s) => s.inspect);
+  const touchMode = useStoreUi((s) => s.touchMode);
   const [draft, setDraft] = useState<string | null>(null);
   const known = useRef<Set<string> | null>(null);
 
@@ -55,7 +56,8 @@ export function RoomHud() {
   return (
     <div
       className="fixed z-30 flex max-w-[min(18rem,calc(100vw-2rem))] flex-col gap-2 text-cream"
-      style={{ left: "calc(env(safe-area-inset-left, 0px) + 1rem)", top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+      // Touch play: the Pause button owns the top-left corner (14px + 44px), so sit just right of it.
+      style={{ left: `calc(env(safe-area-inset-left, 0px) + ${touchMode && locked ? "68px" : "1rem"})`, top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
     >
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 rounded-full bg-ink/70 px-3.5 py-2 text-xs shadow-lg ring-1 ring-cream/20 backdrop-blur" role="status" title={message ?? undefined}>
