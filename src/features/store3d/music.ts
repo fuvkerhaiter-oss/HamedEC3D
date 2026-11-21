@@ -7,8 +7,8 @@
  */
 
 const SRC = "/audio/store-music.mp3";
-const VOLUME_PLAYING = 0.35;
-const VOLUME_DUCKED = 0.12;
+const VOLUME_PLAYING = 0.08; // soft background level so shoppers can hear each other in voice chat
+const VOLUME_DUCKED = 0.04;
 const MUTE_KEY = "mm.musicMuted";
 
 let audio: HTMLAudioElement | null = null;
@@ -103,7 +103,7 @@ export function startStoreMusic() {
   else fadeTo(targetVolume());
 }
 
-/** Quieter while the shopper is in a menu, full volume while walking. */
+/** Quieter while the shopper is in a menu, background level while walking. */
 export function setMusicDucked(v: boolean) {
   ducked = v;
   if (started && !muted && audio && !audio.paused) fadeTo(targetVolume());
