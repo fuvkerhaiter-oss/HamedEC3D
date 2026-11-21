@@ -24,7 +24,28 @@ const safeBigint = {
   },
 };
 
+/**
+ * Supabase's direct host (db.<ref>.supabase.co) resolves to IPv6 only. Vercel and many hosts have no IPv6,
+ * so connecting fails with ENETUNREACH (and the build fails while prerendering /sitemap.xml, /, /catalog).
+ * Returns a fix-it hint when the URL points there, otherwise null.
+ */
+export function directSupabaseHostHint(url: string): string | null {
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  if (!/^db\.[a-z0-9]+\.supabase\.co$/i.test(host)) return null;
+  return (
+    `DATABASE_URL uses Supabase's direct host (${host}), which is IPv6-only and unreachable from Vercel (ENETUNREACH). ` +
+    "Use the Transaction pooler string instead: Supabase → Connect → Transaction pooler (…pooler.supabase.com:6543)."
+  );
+}
+
 export function createSql(url: string, max = 5): Sql {
+  const hint = directSupabaseHostHint(url);
+  if (hint && (process.env.VERCEL || process.env.NODE_ENV === "production")) console.error(`[db] ${hint}`);
   return postgres(url, {
     max,
     prepare: false, // required by the Supabase transaction pooler
