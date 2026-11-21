@@ -2,7 +2,9 @@ import type { MetadataRoute } from "next";
 import { getCatalog } from "@/lib/catalog/source";
 import { listPublishedPages } from "@/lib/storefront/settings";
 
-export const revalidate = 3600;
+// Built on request, never at build time: a deploy must not depend on reaching the database
+// (and the sitemap should list the products that exist now, not at the last build).
+export const dynamic = "force-dynamic";
 
 /** Home, store, catalog, help, every published product (never mock data) and published CMS page. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

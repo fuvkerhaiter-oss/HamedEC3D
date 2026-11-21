@@ -26,7 +26,7 @@ const listeners = new Set<() => void>();
 
 function readMuted(): boolean {
   try {
-    return typeof localStorage !== "undefined" && localStorage.getItem(MUTE_KEY) === "1";
+    return typeof window !== "undefined" && window.localStorage.getItem(MUTE_KEY) === "1"; // browser only (Node 26 has a warning server-side localStorage)
   } catch {
     return false;
   }

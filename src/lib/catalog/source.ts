@@ -10,7 +10,7 @@ import { mapProductRow, PRODUCT_SELECT, type ProductRow } from "./source-map";
 import { loadCatalogSql } from "./sql-source";
 import { getSql, isDbConfigured } from "../db/client";
 import type { CatalogReader, Category, Product } from "./types";
-import { logFallback } from "../log";
+import { isDbUnreachable, logFallback } from "../log";
 
 export interface CatalogData {
   categories: Category[];
@@ -32,6 +32,12 @@ export async function getCatalog(): Promise<CatalogData> {
       const data = await loadCatalogSql(getSql(), process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
       return { ...data, source: "database" };
     } catch (err) {
+      // `next build` must not depend on reaching the database: pages prerendered now are built without
+      // products and fill in on their first revalidation. Never mock data in a production build.
+      if (process.env.NEXT_PHASE === "phase-production-build" && isDbUnreachable(err)) {
+        console.warn("[catalog] database not reachable during build — prerendering without products; pages refresh on revalidation.");
+        return { categories: [], products: [], source: "database" };
+      }
       // Production must surface DB failures. In development (local DB not running) keep the storefront usable.
       if (process.env.NODE_ENV === "production") throw err;
       logFallback("catalog", err);
