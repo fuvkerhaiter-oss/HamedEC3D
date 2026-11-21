@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } from "@react-three/drei";
@@ -9,7 +10,7 @@ import { KEYMAP } from "./controls";
 import { STORE_CONFIG, SUPERMARKET } from "./env/supermarket";
 import { Hud } from "./hud/Hud";
 import { LoadingScreen } from "./hud/LoadingScreen";
-import { isCoarsePrimaryPointer, prefersTouchControls } from "./input/device";
+import { isCoarsePrimaryPointer, isIOS, prefersTouchControls } from "./input/device";
 import { TouchLook } from "./input/TouchLook";
 import { interactionRegistry } from "./interactables";
 import { Interactor } from "./Interactor";
@@ -44,6 +45,25 @@ function InspectCamera() {
   return null;
 }
 
+function ContextLostNotice() {
+  return (
+    <div role="alertdialog" aria-labelledby="vsw-ctx-lost" className="fixed inset-0 z-50 flex items-center justify-center bg-ink/90 p-6 text-center text-cream">
+      <div className="max-w-sm">
+        <h2 id="vsw-ctx-lost" className="font-display text-2xl">The 3D view was paused</h2>
+        <p className="mt-3 text-sm text-cream/75">
+          Your device ran short on graphics memory. Your cart is safe. Reload the store, or keep shopping from the catalog.
+        </p>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <button type="button" onClick={() => window.location.reload()} className="rounded-full bg-amber px-7 py-3 font-medium text-ink">
+            Reload the store
+          </button>
+          <Link href="/catalog" className="text-sm underline">Open the catalog</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SceneReady() {
   useEffect(() => {
     useStoreUi.getState().setReady(true);
@@ -59,8 +79,12 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
   const trolleyCatalog = useMemo(() => buildTrolleyCatalog(catalog), [catalog]);
   const setLocked = useStoreUi((s) => s.setLocked);
   // Phones/tablets: render budget decided once at mount (GL context options can't change later).
-  const [lowPower] = useState(isCoarsePrimaryPointer);
-  const [maxDpr, setMaxDpr] = useState(lowPower ? 1.5 : 1.75);
+  // iOS (all browsers there are WebKit) gets the tightest budget: Safari kills a WebGL tab at a much lower
+  // memory level than Android Chrome, and iPhones report a 3× pixel ratio.
+  const [ios] = useState(isIOS);
+  const [lowPower] = useState(() => ios || isCoarsePrimaryPointer());
+  const [maxDpr, setMaxDpr] = useState(ios ? 1.25 : lowPower ? 1.5 : 1.75);
+  const contextLost = useStoreUi((s) => s.contextLost);
 
   useEffect(() => {
     useStoreUi.getState().setTouchMode(prefersTouchControls());
@@ -107,6 +131,14 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
           camera={{ fov: 70, near: 0.05, far: 70, position: STORE_CONFIG.spawn }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => {
+            // iOS drops the GL context under memory pressure / after backgrounding. three.js keeps the
+            // context restorable; pause play and show a notice instead of a frozen or black screen.
+            gl.domElement.addEventListener("webglcontextlost", () => {
+              const s = useStoreUi.getState();
+              if (s.locked) s.releaseLock();
+              useStoreUi.setState({ contextLost: true });
+            });
+            gl.domElement.addEventListener("webglcontextrestored", () => useStoreUi.setState({ contextLost: false }));
             useStoreUi.setState({
               requestLock: () => {
                 // Touch mode has no pointer lock: entering play just activates the touch controls.
@@ -148,6 +180,7 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
       </KeyboardControls>
       <Hud catalog={catalog} />
       <LoadingScreen />
+      {contextLost && <ContextLostNotice />}
     </div>
   );
 }

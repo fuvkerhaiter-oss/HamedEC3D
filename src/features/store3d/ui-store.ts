@@ -21,6 +21,8 @@ interface StoreUiState {
   lockError: string | null;
   /** Dev-only fixed camera (?cam=x,y,z,yawDeg,pitchDeg) for visual testing; disables player control. */
   inspect: boolean;
+  /** The browser dropped the WebGL context (iOS does this under memory pressure or after backgrounding). */
+  contextLost: boolean;
   showToast: (text: string) => void;
   /** Enter play: pointer lock on desktop; in touch mode simply activates the touch controls. */
   requestLock: () => void;
@@ -35,7 +37,7 @@ interface StoreUiState {
   reset: () => void;
 }
 
-const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, toast: null, lockError: null, inspect: false };
+const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, toast: null, lockError: null, inspect: false, contextLost: false };
 
 export const LOCK_ERROR_MESSAGE =
   "Your browser didn't allow mouse capture. Wait a second and click again, or shop from the list view.";

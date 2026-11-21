@@ -1,5 +1,13 @@
 # Project Status
 
+## iPhone / iOS compatibility pass (2026-11-21)
+Reported: 3D store doesn't work for iPhone users (works on Android). No iOS device on this machine, so the fixes target the usual WebKit failure modes:
+- `input/device.ts` `isIOS()` (incl. iPadOS-as-Mac). iOS always uses the low-power budget, DPR cap 1.25 (Android 1.5, desktop 1.75).
+- Product shelf-label photos are downscaled on a canvas before GPU upload (256 px mobile / 512 px desktop). Before, every uploaded photo (up to 2400 px ≈ 20 MB GPU each) went to the GPU at full size, which can crash an iOS tab.
+- WebGL context loss (iOS memory pressure/backgrounding) → play pauses + "3D view was paused" notice with Reload/Catalog (`ui-store.contextLost`); clears on restore. The WebGL2 probe context in `StoreClient` is released right after the check.
+- Audio: `webkitAudioContext` fallback + resume in `sfx.ts`; music goes through a Web Audio gain node when `audio.volume` is read-only (iOS), so fades/ducking work.
+- Verified: typecheck, lint, unit 82/82, build; mobile emulation (375×812) loads, and a simulated context loss shows and clears the notice. Prod bundle has no Safari-16.4-incompatible APIs (Next's baseline; iOS < 16.4 is unsupported by Next 16). **Still needs a test on a real iPhone.**
+
 ## Product image management (2026-11-22)
 - **Admin**: image section on every product (Add/Edit) + **Image Manager** (`/admin/products/images`: search, category, missing/multiple filters, main-image previews, quick upload/replace/delete, bulk upload by file name = slug or SKU (`-2` suffix = gallery) with match preview, bulk “remove all images”, storage cleanup). Drag-and-drop/browse upload with previews, dimensions, size, client-side compression, per-file progress (XHR), toasts; gallery drag-and-drop reorder (+ arrow buttons) → Save order, set main, replace, delete, alt text, full-size preview.
 - **Storage**: Supabase bucket `products` (`{product-id}/{uuid}.webp`, server-side secret key only) via `src/lib/media/storage.ts`; dev fallback = local disk + `/api/media` (labelled in the UI; disabled in production). sharp validation + WebP normalization (`src/lib/media/process.ts`). Upload routes `/api/admin/products/[id]/images`, `/api/admin/images/bulk` (permission + same-origin checked).

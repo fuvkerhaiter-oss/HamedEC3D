@@ -16,3 +16,15 @@ export function prefersTouchControls(): boolean {
   if (isCoarsePrimaryPointer()) return true;
   return navigator.maxTouchPoints > 0 && !mq("(any-pointer: fine)");
 }
+
+/**
+ * iPhone / iPod / iPad, including iPadOS 13+ which reports itself as a Mac ("Macintosh" + touch points).
+ * All iOS browsers are WebKit, which kills a WebGL tab far earlier than Android Chrome when GPU/JS memory
+ * grows, so the store uses a tighter render and texture budget there.
+ */
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  return /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+}

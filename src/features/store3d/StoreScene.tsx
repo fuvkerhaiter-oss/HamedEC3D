@@ -43,7 +43,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
         return placements ? (
           <group key={`${p.id}-${placements.length}`}>
             <ProductInstances product={p} placements={placements} color={colorOf(p)} />
-            {p.imageUrl && <ProductPhotoFaces url={p.imageUrl} placements={placements} />}
+            {p.imageUrl && <ProductPhotoFaces url={p.imageUrl} placements={placements} maxSize={lowPower ? 256 : 512} />}
           </group>
         ) : null;
       })}
@@ -182,16 +182,19 @@ function ProductInstances({ product, placements, color }: { product: Product; pl
  * The product's main image (managed in Admin → Product images) as a front label on every shelf placeholder.
  * One texture + one instanced plane mesh per product; nothing renders if the image can't be loaded.
  */
-function ProductPhotoFaces({ url, placements }: { url: string; placements: ItemPlacement[] }) {
+function ProductPhotoFaces({ url, placements, maxSize }: { url: string; placements: ItemPlacement[]; maxSize: number }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     let disposed = false;
     let tex: THREE.Texture | null = null;
-    const loader = new THREE.TextureLoader();
+    const loader = new THREE.ImageLoader();
     loader.setCrossOrigin("anonymous");
-    loader.load(url, (t) => {
-      if (disposed) return t.dispose();
+    loader.load(url, (img) => {
+      if (disposed) return;
+      // Uploaded photos can be 2400 px+ (≈20 MB of GPU memory each with mipmaps). A shelf label never needs
+      // that: downscale before upload so a large catalog can't exhaust phone (especially iPhone) GPU memory.
+      const t = downscaledTexture(img, maxSize);
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 4;
       tex = t;
@@ -201,7 +204,7 @@ function ProductPhotoFaces({ url, placements }: { url: string; placements: ItemP
       disposed = true;
       tex?.dispose();
     };
-  }, [url]);
+  }, [url, maxSize]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -230,6 +233,27 @@ function ProductPhotoFaces({ url, placements }: { url: string; placements: ItemP
       <meshStandardMaterial map={texture} roughness={0.6} />
     </instancedMesh>
   );
+}
+
+/** Texture from an image, resized on a canvas so its longest side is at most `maxSize` px. */
+function downscaledTexture(img: HTMLImageElement, maxSize: number): THREE.Texture {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const k = maxSize / Math.max(w, h, 1);
+  if (k < 1) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * k));
+    canvas.height = Math.max(1, Math.round(h * k));
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return new THREE.CanvasTexture(canvas);
+    }
+  }
+  const t = new THREE.Texture(img);
+  t.needsUpdate = true;
+  return t;
 }
 
 /** Shelf-edge labels with live prices from the catalog, in the shopper's market currency. */

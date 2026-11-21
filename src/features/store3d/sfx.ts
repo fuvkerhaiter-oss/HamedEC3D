@@ -5,7 +5,13 @@ let ctx: AudioContext | null = null;
 /** Soft thud + light wire "tick" when an item lands in the trolley. Synthesized: no audio files. */
 export function playDrop(): void {
   try {
-    ctx ??= new AudioContext();
+    if (!ctx) {
+      // Older iOS Safari only has the prefixed constructor.
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+    }
+    if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
     const thud = ctx.createOscillator();

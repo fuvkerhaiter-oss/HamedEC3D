@@ -14,7 +14,15 @@ let cachedSupport: Support | null = null;
 /** Touch devices are supported (joystick + drag-to-look); only missing WebGL 2 falls back to the catalog. */
 function detectSupport(): Support {
   if (cachedSupport) return cachedSupport;
-  cachedSupport = document.createElement("canvas").getContext("webgl2") ? "ok" : "no-webgl";
+  let gl: WebGL2RenderingContext | null = null;
+  try {
+    gl = document.createElement("canvas").getContext("webgl2");
+  } catch {
+    gl = null;
+  }
+  cachedSupport = gl ? "ok" : "no-webgl";
+  // Free the probe context right away: iOS allows only a few live WebGL contexts and counts their memory.
+  gl?.getExtension("WEBGL_lose_context")?.loseContext();
   return cachedSupport;
 }
 const noopSubscribe = () => () => {};
