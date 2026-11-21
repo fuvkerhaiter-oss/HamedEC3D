@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ASSETS } from "../../src/features/store3d/assets/registry";
 
 /** Collect uncaught page errors and console errors (ignoring known-noisy WebGL driver warnings). */
 function trackErrors(page: Page) {
@@ -16,7 +17,7 @@ function trackErrors(page: Page) {
 test("home page links to the store and the catalog", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Mega Market");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("WEGO SHIIIP");
   // Hero CTA and the closing CTA band both enter the store.
   const enter = page.getByRole("main").getByRole("link", { name: "Enter the store" });
   await expect(enter.first()).toBeVisible();
@@ -87,8 +88,8 @@ test("3D store loads the environment and trolley GLBs and shows the entry overla
   // The loading shell fades out (stays mounted with aria-hidden) once the scene and GLBs are ready.
   await expect(page.locator(".vsw-load")).toHaveAttribute("aria-hidden", "true", { timeout: 60_000 });
 
-  expect(glbs.get("/models/env/supermarket.glb")).toBe(200);
-  expect(glbs.get("/models/props/trolley.glb")).toBe(200);
+  expect(glbs.get(ASSETS.supermarket.url)).toBe(200);
+  expect(glbs.get(ASSETS.trolley.url)).toBe(200);
   expect(errors).toEqual([]);
 });
 
@@ -124,4 +125,26 @@ test.describe("3D store on a phone (touch emulation)", () => {
     await expect(page.getByRole("button", { name: "Tap to enter" })).toBeVisible();
     expect(errors).toEqual([]);
   });
+});
+
+test("without WebGL the store offers the catalog instead of a broken canvas", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, ...rest: unknown[]) {
+      if (/webgl/i.test(kind)) return null;
+      return (original as (...a: unknown[]) => RenderingContext | null).call(this, kind, ...rest);
+    } as typeof original;
+  });
+  await page.goto("/store");
+  await expect(page.getByRole("heading", { name: "Your browser can't open the 3D store" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Open the catalog" }).click();
+  await expect(page).toHaveURL(/\/catalog/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});
+
+test("unknown pages show a helpful 404 with a way back to shopping", async ({ page }) => {
+  const res = await page.goto("/this-page-does-not-exist");
+  expect(res?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: /couldn.t find that page/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse the catalog" })).toBeVisible();
 });

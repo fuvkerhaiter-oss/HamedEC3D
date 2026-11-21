@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
   const live = process.env.VERCEL_ENV ? process.env.VERCEL_ENV === "production" : process.env.NODE_ENV === "production";
   if (!live) return { rules: { userAgent: "*", disallow: "/" } };
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/order", "/dev/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/order", "/account", "/dev/"] },
     sitemap: `${site}/sitemap.xml`,
   };
 }

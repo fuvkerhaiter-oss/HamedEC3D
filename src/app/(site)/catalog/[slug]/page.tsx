@@ -49,7 +49,7 @@ function productJsonLd(p: Product, site: string) {
       itemCondition: "https://schema.org/NewCondition",
     })),
   );
-  const json = { "@context": "https://schema.org", "@type": "Product", name: p.name, description: p.description, image: p.gallery?.map((g) => g.url) ?? (p.imageUrl ? [p.imageUrl] : undefined), sku: p.variants[0]?.sku, brand: { "@type": "Brand", name: "Mega Market" }, offers };
+  const json = { "@context": "https://schema.org", "@type": "Product", name: p.name, description: p.description, image: p.gallery?.map((g) => g.url) ?? (p.imageUrl ? [p.imageUrl] : undefined), sku: p.variants[0]?.sku, brand: { "@type": "Brand", name: "WEGO SHIIIP" }, offers };
   // Escape "<" so product text can never close the script tag.
   return JSON.stringify(json).replace(/</g, "\u003c");
 }

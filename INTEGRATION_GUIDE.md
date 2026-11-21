@@ -37,15 +37,30 @@ npm run test:unit
 ## Stripe (test mode first)
 1. Dashboard → Developers → API keys: copy `sk_test_…` / `pk_test_…` into `.env.local`.
 2. Local webhooks: `stripe listen --forward-to localhost:3000/api/webhooks/stripe` → copy the `whsec_…` into `STRIPE_WEBHOOK_SECRET`.
-3. Production webhook endpoint `https://<domain>/api/webhooks/stripe`, events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`.
+3. Production webhook endpoint `https://<domain>/api/webhooks/stripe`, events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `refund.created`, `refund.updated`, `refund.failed` (per-refund status for partial refunds and failures). The webhook re-checks every payment with the Stripe API (PaymentIntent + balance transaction for actual fees), so the secret key must be able to read PaymentIntents.
 4. Enable the payment methods you want for EU/US in the Stripe Dashboard (Checkout shows what's enabled).
 5. Live keys are refused by the code until the account is activated and `allowLive` is set deliberately.
 
 ## Taxes
-EU prices are VAT-inclusive, US prices tax-exclusive. Fill `tax_rates` (admin) with rates confirmed by your accountant (EU OSS registration, US states where you have nexus). Alternative later: Stripe Tax.
+EU prices are VAT-inclusive, US prices tax-exclusive. Rates live in `tax_rates` (Admin → Settings): one row per country, optionally per region (US state, e.g. `US` + `NY`). Lookup: exact country+region first, else the country-wide row; no row → checkout refuses that destination (nothing is guessed). Every order stores the applied rate (`tax_rate_bps`), country/region and amounts.
+**Not handled (needs an accountant / tax provider):** product-specific tax classes (reduced VAT on food/books, US exemptions), US local (county/city) rates, OSS thresholds, US nexus decisions. The rates in the local dev DB are TEST values. For automatic rates later, plug Stripe Tax (or similar) in behind `priceOrder` → `taxRateFor`.
+
+## Shipping
+Admin → Shipping prices: zones (countries) → methods (fixed / weight tiers / order-value tiers, free-over threshold, optional min–max business days). Checkout shows only methods for the destination, with the price before payment; delivery days are shown as an ESTIMATE and stored on the order (`shipping_min_days/max_days`). US addresses need a state + ZIP; billing address optional (defaults to delivery address).
 
 ## Suppliers (not configured)
 Implement `SupplierAdapter` per supplier from its official API docs; declare only supported capabilities. Store the API secret in Supabase Vault and its name in `supplier_credentials`.
+
+## Production readiness checklist
+Run `npm run check:env` in the production environment (prints variable NAMES with problems, never values; exit 1 = not ready).
+- **Env (Vercel → Production):** `NEXT_PUBLIC_SITE_URL` (https), `DATABASE_URL` (Supabase pooled, not localhost), `ORDER_LINK_SECRET` (32+ random), `CRON_SECRET` (16+), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (+ `STRIPE_ALLOW_LIVE=true` only after the test-mode run), `RESEND_API_KEY` + `EMAIL_FROM` (verified domain), `SUPPORT_EMAIL`, Supabase URL/keys. Never set `PAYMENT_PROVIDER=dev-simulator` there. Use separate Stripe/Supabase projects (or at least test keys) for Preview deployments.
+- **Migrations:** apply `supabase/migrations/*` in order (`supabase db push`); all Phase 1/2 migrations are additive. Take a backup first.
+- **Backups:** enable Supabase daily backups (Pro) and Point-in-Time Recovery for a live shop; test one restore into a separate project.
+- **Stripe:** webhook endpoint + events listed above; one test-mode order, partial refund and full refund end-to-end before going live.
+- **HTTPS / headers:** Vercel serves HTTPS; `next.config.ts` adds HSTS (production), nosniff, frame and referrer policies (`no-referrer` on `/order` and `/account`, whose URLs carry signed tokens).
+- **Rate limiting:** built-in limits are per server instance (in memory). Add Vercel Firewall / WAF rules for real abuse protection.
+- **Logging:** server errors go through `lib/log.ts` (no query parameters, emails masked). **Monitoring/error reporting is not installed** — recommended: Sentry (or Vercel Observability) + an uptime check on `/` and alerts on failed cron runs.
+- **Cron:** `vercel.json` runs `/api/cron/maintenance` daily (expire unpaid checkouts, retry emails, fill Stripe fees).
 
 ## Deployment
 Vercel for Next.js (set the same env vars), Supabase hosted. GLBs/images in Storage buckets `product-models` / `product-images` (public read, admin write) served via CDN.

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
@@ -17,6 +17,7 @@ import { interactionRegistry } from "./interactables";
 import { Interactor } from "./Interactor";
 import { PeekTracker } from "./peek/PeekTracker";
 import { buildStoreLayout } from "./layout";
+import { CinematicCamera } from "./CinematicCamera";
 import { Player } from "./Player";
 import { RemotePlayers } from "./multiplayer/RemotePlayers";
 import { RoomHud } from "./multiplayer/RoomHud";
@@ -34,17 +35,18 @@ useGLTF.preload(ASSETS.trolley.url);
 /** Dev-only visual testing: /store?cam=x,y,z,yawDeg,pitchDeg fixes the camera and hides the overlay. */
 function InspectCamera() {
   const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     // Dev-only handle for browser testing (touch input can't be driven by a real thumb in automation).
-    (window as unknown as { __vsw?: unknown }).__vsw = { camera, ui: useStoreUi, registry: interactionRegistry };
+    (window as unknown as { __vsw?: unknown }).__vsw = { camera, gl, ui: useStoreUi, registry: interactionRegistry };
     const cam = new URLSearchParams(window.location.search).get("cam");
     if (!cam) return;
     const [x = 0, y = 1.6, z = 0, yaw = 0, pitch = 0] = cam.split(",").map(Number);
     camera.position.set(x, y, z);
     camera.rotation.set((pitch * Math.PI) / 180, (yaw * Math.PI) / 180, 0, "YXZ");
     useStoreUi.setState({ inspect: true });
-  }, [camera]);
+  }, [camera, gl]);
   return null;
 }
 
@@ -74,7 +76,11 @@ function SceneReady() {
   return null;
 }
 
-export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) {
+/**
+ * The 3D store. `embedded` = homepage hero: starts as a live "picture" (preview stage, cinematic camera, no
+ * HUD), expands to full screen with a 3D fly-in on enter, then plays exactly like /store.
+ */
+export default function StoreExperience({ catalog, embedded = false }: { catalog: StoreCatalog; embedded?: boolean }) {
   const layout = useMemo(
     () => buildStoreLayout(catalog.categories, catalog.products, SUPERMARKET, (catalog.stockAllFaces ?? STORE_CONFIG.stockAllFaces) ? "all" : STORE_CONFIG.benchmarkFaces),
     [catalog],
@@ -88,6 +94,36 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
   const [lowPower] = useState(() => ios || isCoarsePrimaryPointer());
   const [maxDpr, setMaxDpr] = useState(ios ? 1.25 : lowPower ? 1.5 : 1.75);
   const contextLost = useStoreUi((s) => s.contextLost);
+  const stage = useStoreUi((s) => s.stage);
+  const ready = useStoreUi((s) => s.ready);
+  const root = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(true);
+  const preview = embedded && stage === "preview";
+  const playing = !embedded || stage === "play";
+
+  // Homepage embed starts as the live preview (before any child effect reads the stage).
+  useLayoutEffect(() => {
+    if (embedded) useStoreUi.setState({ stage: "preview" });
+  }, [embedded]);
+
+  // Enter: grow from the hero frame to full screen (clip-path, GPU only) while the camera flies in.
+  useLayoutEffect(() => {
+    const el = root.current;
+    const frame = el?.parentElement?.getBoundingClientRect();
+    if (!embedded || stage !== "entering" || !el || !frame) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const from = `inset(${Math.max(0, frame.top)}px ${Math.max(0, vw - frame.right)}px ${Math.max(0, vh - frame.bottom)}px ${Math.max(0, frame.left)}px round 28px)`;
+    el.animate([{ clipPath: from }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], { duration: 950, easing: "cubic-bezier(0.65, 0, 0.2, 1)" });
+  }, [embedded, stage]);
+
+  // Don't render the hero preview while it's scrolled out of view (battery, other tabs' GPU).
+  useEffect(() => {
+    if (!embedded || !root.current) return;
+    const io = new IntersectionObserver(([e]) => setInView(e?.isIntersecting ?? true));
+    io.observe(root.current.parentElement ?? root.current);
+    return () => io.disconnect();
+  }, [embedded]);
 
   useEffect(() => {
     useStoreUi.getState().setTouchMode(prefersTouchControls());
@@ -108,7 +144,9 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
       if (document.hidden && s.touchMode && s.locked) s.releaseLock();
     };
     // iOS Safari pinch-zoom gestures inside the game.
-    const stopGesture = (e: Event) => e.preventDefault();
+    const stopGesture = (e: Event) => {
+      if (useStoreUi.getState().stage === "play") e.preventDefault(); // homepage preview keeps normal page zoom
+    };
     document.addEventListener("pointerlockerror", onLockError);
     window.addEventListener("pointerdown", onPointerDown, { capture: true });
     document.addEventListener("visibilitychange", onVisibility);
@@ -125,11 +163,15 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
   }, []);
 
   return (
-    <div className="fixed inset-0 select-none overscroll-none bg-ink">
+    <div
+      ref={root}
+      className={`${preview ? "pointer-events-none absolute inset-0" : embedded ? "fixed inset-0 z-[70]" : "fixed inset-0"} select-none overscroll-none bg-ink transition-opacity duration-700 ${embedded && !ready ? "opacity-0" : "opacity-100"}`}
+    >
       <KeyboardControls map={KEYMAP}>
         <Canvas
           shadows
           dpr={[1, maxDpr]}
+          frameloop={preview && !inView ? "never" : "always"}
           style={{ touchAction: "none" }}
           camera={{ fov: 70, near: 0.05, far: 70, position: STORE_CONFIG.spawn }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
@@ -161,8 +203,9 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
             });
           }}
         >
-          {/* Mobile: drop to 1× resolution if the device can't hold its frame rate. */}
-          {lowPower && <PerformanceMonitor onDecline={() => setMaxDpr(1)} flipflops={2} />}
+          {/* Adaptive resolution: when the device can't hold its frame rate, render fewer pixels
+              (phones → 1×, weak laptop GPUs on high-DPI screens → 1.25×). */}
+          <PerformanceMonitor onDecline={() => setMaxDpr((d) => Math.min(d, lowPower ? 1 : 1.25))} flipflops={2} />
           <color attach="background" args={["#e9e4da"]} />
           <fog attach="fog" args={["#e9e4da", 25, 60]} />
           <Suspense fallback={null}>
@@ -170,23 +213,25 @@ export default function StoreExperience({ catalog }: { catalog: StoreCatalog }) 
               <StoreScene env={SUPERMARKET} layout={layout} catalog={catalog} lowPower={lowPower} />
               <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} trolley={<Trolley tc={trolleyCatalog} />} />
             </Physics>
-            <RemotePlayers />
+            <RemotePlayers tc={trolleyCatalog} />
             <FlightLayer tc={trolleyCatalog} />
             <Interactor />
             <PeekTracker />
             <TouchLook />
             <InspectCamera />
+            {embedded && <CinematicCamera />}
             <SceneReady />
           </Suspense>
           {/* Selector matches nothing on purpose: locking is triggered only by our own buttons. */}
           <PointerLockControls selector="#vsw-no-auto-lock" onLock={() => setLocked(true)} onUnlock={() => setLocked(false)} />
         </Canvas>
       </KeyboardControls>
-      <Hud catalog={catalog} />
-      <RoomHud />
-      <LoadingScreen />
-      <RotateHint />
-      {contextLost && <ContextLostNotice />}
+      {/* The hero preview is a picture: no HUD, no rooms, no loading screen (the hero shows the still image). */}
+      {playing && <Hud catalog={catalog} />}
+      {playing && <RoomHud />}
+      {!embedded && <LoadingScreen />}
+      {playing && <RotateHint />}
+      {playing && contextLost && <ContextLostNotice />}
     </div>
   );
 }

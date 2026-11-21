@@ -69,3 +69,27 @@ export function ContactForm() {
     </form>
   );
 }
+
+/** Asks for an emailed, signed link to all orders of an address (same answer whether or not it has orders). */
+export function OrderHistoryRequestForm() {
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        setBusy(true);
+        setMsg(null);
+        const { ok, json } = await post("/api/account/orders-link", { email: f.get("email") });
+        setMsg({ ok, text: (ok ? json.message : json.error) ?? "Something went wrong." });
+        setBusy(false);
+      }}
+    >
+      <label className="block"><span className="text-sm font-medium">Email used for your orders</span><input name="email" type="email" required autoComplete="email" className={FIELD} /></label>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-900" : "bg-red-50 text-red-800"}`}>{msg.text}</p>}
+      <button disabled={busy} className="w-full rounded-full bg-ink py-3 font-semibold text-cream disabled:opacity-50">{busy ? "Sending…" : "Email me my orders"}</button>
+    </form>
+  );
+}

@@ -9,8 +9,11 @@ import { invertRate } from "../../fx";
 import { marketForCountry } from "../../markets";
 import type { CurrencyCode } from "../../money";
 import { canTransition, ORDER_TRANSITIONS, transitionOrder, type ActorType, type OrderStatus, type TransitionEvidence } from "../../orders/state-machine";
+import { assertFulfillmentEligible, FulfillmentEligibilityError } from "../../orders/fulfillment-eligibility";
 import { getPaymentProvider } from "../../payments/registry";
-import { queueOrderStatusEmail } from "../../email/outbox";
+import { StripeApiError } from "../../payments/stripe";
+import type { PaymentProvider, ProviderRefundStatus } from "../../payments/types";
+import { queueOrderEmail, queueOrderStatusEmail } from "../../email/outbox";
 import { quoteShipping } from "../../shipping/quote";
 import { logActivity, type Actor } from "../audit";
 import { loadCouponForCode } from "./coupons";
@@ -41,6 +44,8 @@ export interface CreateOrderInput {
   userId?: string | null;
   lines: CartLineInput[];
   shipTo: ShipTo;
+  /** Billing address; omitted = same as shipTo. */
+  billTo?: ShipTo;
   shippingMethodId: string;
   couponCode?: string | null;
   idempotencyKey: string;
@@ -107,17 +112,20 @@ export async function createOrder(db: Db, input: CreateOrderInput): Promise<{ or
     const existing = await tx<{ id: string; order_number: number }[]>`select id, order_number from public.orders where checkout_idempotency_key = ${input.idempotencyKey}`;
     if (existing[0]) return { orderId: existing[0].id, orderNumber: existing[0].order_number, created: false };
 
-    const { market, priced, discount, couponId, option } = await priceOrder(tx, input);
+    const { market, priced, discount, couponId, option, taxBps } = await priceOrder(tx, input);
 
     const base = ((await getSetting(tx, "store.base_currency")) as CurrencyCode | null) ?? "EUR";
     const fx = await rateToBase(tx, market.currency, base);
     const [order] = await tx<{ id: string; order_number: number }[]>`
       insert into public.orders (user_id, email, currency, tax_mode, subtotal, discount_total, shipping_total, tax_total, total,
-        shipping_address, ship_country, discount_code, checkout_idempotency_key, base_currency, fx_rate_to_base, shipping_method_name, is_test, customer_note)
+        shipping_address, ship_country, discount_code, checkout_idempotency_key, base_currency, fx_rate_to_base, shipping_method_name, is_test, customer_note,
+        billing_address, tax_rate_bps, tax_country, tax_region, shipping_min_days, shipping_max_days)
       values (${input.userId ?? null}, ${input.email.trim().toLowerCase()}, ${market.currency}, ${market.taxMode}, ${priced.subtotal.amount},
         ${priced.discount.amount}, ${priced.shipping.amount}, ${priced.tax.amount}, ${priced.total.amount}, ${tx.json(JSON.parse(JSON.stringify(input.shipTo)))},
         ${input.shipTo.country.toUpperCase()}, ${discount?.code ?? null}, ${input.idempotencyKey}, ${base}, ${fx}, ${option.name}, ${input.isTest ?? false},
-        ${input.customerNote ?? null})
+        ${input.customerNote ?? null},
+        ${input.billTo ? tx.json(JSON.parse(JSON.stringify(input.billTo))) : null}, ${taxBps}, ${input.shipTo.country.toUpperCase()}, ${input.shipTo.region?.toUpperCase() ?? null},
+        ${option.minDays}, ${option.maxDays})
       returning id, order_number`;
     for (const l of priced.lines) {
       await tx`insert into public.order_items (order_id, variant_id, product_name, variant_name, sku, unit_price, quantity, line_total)
@@ -177,7 +185,7 @@ export async function priceOrder(db: Db, input: OrderPricingInput) {
       currency: market.currency, taxMode: market.taxMode, discount, taxBasisPoints: bps,
       shipping: { methodId: option.methodId, label: option.name, amount: option.amount },
     });
-    return { market, priced, discount, couponId, options, option };
+    return { market, priced, discount, couponId, options, option, taxBps: bps };
   }
 }
 
@@ -217,6 +225,19 @@ async function applyInventoryEffects(tx: Tx, orderId: string, from: OrderStatus,
   if (to === "shipped") await tx`select public.settle_order_inventory(${orderId}, 'commit', ${adminId})`;
 }
 
+/**
+ * Row-locks the order and checks fulfillment eligibility (verified payment, re-checked with the provider).
+ * Call inside a transaction, immediately before any fulfillment step. Throws OrderError with the reason.
+ */
+export async function requireFulfillmentEligible(tx: Db, orderId: string, getProvider: (id: string) => PaymentProvider | null = (id) => getPaymentProvider(id)) {
+  try {
+    return await assertFulfillmentEligible(tx, orderId, { getProvider });
+  } catch (e) {
+    if (e instanceof FulfillmentEligibilityError) throw new OrderError(`Fulfillment refused: ${e.message}`);
+    throw e;
+  }
+}
+
 /** Statuses an admin may pick in the UI. `paid` is excluded: only a verified provider webhook may mark an order paid. */
 export function adminTargets(from: OrderStatus): OrderStatus[] {
   return ORDER_TRANSITIONS[from].filter((t) => t !== "paid" && t !== "refunded");
@@ -229,6 +250,8 @@ export async function adminTransition(db: Db, actor: Actor, orderId: string, to:
   if (!o) throw new OrderError("Order not found");
   if (!canTransition(o.status, to)) throw new OrderError(`Order cannot move from ${o.status} to ${to}`);
   return inTx(db, async (tx) => {
+    // Entering fulfillment by hand needs the same verified-payment check as the supplier flow (re-verified with the provider).
+    if (to === "processing" || to === "submitted_to_supplier") await requireFulfillmentEligible(tx, orderId);
     const res = await transitionOrderInDb(tx, orderId, to, { type: "admin", id: actor.id, adminUserId: actor.id }, { reason, evidence });
     await logActivity(tx, actor, { action: "order.transition", entity: "order", entityId: orderId, summary: `${res.from} → ${res.to}${reason ? `: ${reason}` : ""}`, before: { status: res.from }, after: { status: res.to } });
     return res;
@@ -349,6 +372,15 @@ export async function updateShipmentStatus(db: Db, actor: Actor, shipmentId: str
        where id = ${shipmentId} returning order_id, status`;
     if (!sh) throw new OrderError("Shipment not found");
     await logActivity(tx, actor, { action: "shipment.status", entity: "order", entityId: sh.order_id, summary: `Shipment → ${status}` });
+    // When every shipment of a shipped order is delivered, the order is delivered (customer is emailed once).
+    if (status === "delivered") {
+      const [st] = await tx<{ status: OrderStatus; open: number }[]>`
+        select o.status, (select count(*)::int from public.shipments s where s.order_id = o.id and s.status <> 'delivered') as open
+          from public.orders o where o.id = ${sh.order_id} for update`;
+      if (st?.status === "shipped" && st.open === 0) {
+        await transitionOrderInDb(tx, sh.order_id, "delivered", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: "All shipments delivered" });
+      }
+    }
   });
 }
 
@@ -361,67 +393,137 @@ export async function updateShipmentStatus(db: Db, actor: Actor, shipmentId: str
  */
 export async function refundOrder(
   db: Db, actor: Actor, orderId: string,
-  r: { amount: number; reason: string; manual: boolean; manualReference?: string },
+  r: { amount: number; reason: string; manual: boolean; manualReference?: string; requestId?: string },
+  deps: { getProvider?: (id: string) => PaymentProvider | null } = {},
 ): Promise<{ status: string; refundId: string }> {
-  const [pay] = await db<{ id: string; provider: string; provider_payment_id: string | null; status: string; amount: number; refunded_amount: number; currency: CurrencyCode }[]>`
-    select * from public.payments where order_id = ${orderId} and status in ('succeeded','partially_refunded') order by created_at desc limit 1`;
-  if (!pay) throw new OrderError("This order has no successful payment to refund");
-  const [{ pending, attempts } = { pending: 0, attempts: 0 }] = await db<{ pending: number; attempts: number }[]>`
-    select coalesce(sum(amount) filter (where status in ('pending','succeeded','manual')), 0)::bigint as pending, count(*)::int as attempts
-      from public.refunds where payment_id = ${pay.id}`;
-  const refundable = pay.amount - Math.max(pay.refunded_amount, pending);
   if (!Number.isSafeInteger(r.amount) || r.amount <= 0) throw new OrderError("Refund amount must be positive");
-  if (r.amount > refundable) throw new OrderError(`At most ${refundable} (minor units) can still be refunded`);
+  const getProvider = deps.getProvider ?? ((id: string) => getPaymentProvider(id));
 
-  // Same attempt number + amount = a double submit (e.g. two clicks) → rejected by the UNIQUE key.
-  const key = `refund:${orderId}:${pay.id}:${attempts}:${r.amount}`;
-  const [order] = await db<{ status: OrderStatus }[]>`select status from public.orders where id = ${orderId}`;
-  const [row] = await db<{ id: string }[]>`
-    insert into public.refunds (order_id, payment_id, amount, currency, reason, status, provider, idempotency_key, admin_user_id, provider_refund_id)
-    values (${orderId}, ${pay.id}, ${r.amount}, ${pay.currency}, ${r.reason}, ${r.manual ? "manual" : "pending"}, ${pay.provider}, ${key}, ${actor.id}, ${r.manual ? r.manualReference ?? null : null})
-    on conflict (idempotency_key) do nothing returning id`;
-  if (!row) throw new OrderError("This refund was already submitted");
-  if (order && order.status !== "refund_requested" && canTransition(order.status, "refund_requested")) {
-    await transitionOrderInDb(db, orderId, "refund_requested", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: r.reason });
-  }
-  await logActivity(db, actor, { action: "order.refund", entity: "order", entityId: orderId, summary: `${r.manual ? "Manual refund recorded" : "Refund requested"}: ${r.amount} ${pay.currency}`, after: r });
+  // Reserve the refund atomically: order + payment rows locked, so concurrent refunds can never exceed the
+  // remaining refundable amount. Pending refunds count against the balance until the provider settles them.
+  const reserved = await inTx(db, async (tx) => {
+    const [order] = await tx<{ status: OrderStatus }[]>`select status from public.orders where id = ${orderId} for update`;
+    if (!order) throw new OrderError("Order not found");
+    const [pay] = await tx<{ id: string; provider: string; provider_payment_id: string | null; amount: number; refunded_amount: number; currency: CurrencyCode }[]>`
+      select id, provider, provider_payment_id, amount, refunded_amount, currency from public.payments
+       where order_id = ${orderId} and status in ('succeeded','partially_refunded') order by created_at desc limit 1 for update`;
+    if (!pay) throw new OrderError("This order has no successful payment to refund");
+    const [{ reservedAmount, attempts } = { reservedAmount: 0, attempts: 0 }] = await tx<{ reservedAmount: number; attempts: number }[]>`
+      select coalesce(sum(amount) filter (where status in ('pending','succeeded','manual')), 0)::bigint as "reservedAmount", count(*)::int as attempts
+        from public.refunds where payment_id = ${pay.id}`;
+    const refundable = refundableAmount(Number(pay.amount), Number(pay.refunded_amount), Number(reservedAmount));
+    if (r.amount > refundable) throw new OrderError(`At most ${refundable} (minor units) can still be refunded`);
+
+    // A double submit of the same form (same requestId) hits the UNIQUE key; without a requestId the serialised attempt number is used.
+    const key = r.requestId ? `refund:${pay.id}:req:${r.requestId}` : `refund:${pay.id}:n:${attempts + 1}`;
+    const provider = r.manual ? null : getProvider(pay.provider);
+    const sendable = r.manual || (!!provider && !!pay.provider_payment_id);
+    const [row] = await tx<{ id: string }[]>`
+      insert into public.refunds (order_id, payment_id, amount, currency, reason, status, provider, idempotency_key, admin_user_id, provider_refund_id, error)
+      values (${orderId}, ${pay.id}, ${r.amount}, ${pay.currency}, ${r.reason}, ${sendable ? "pending" : "failed"}, ${pay.provider}, ${key}, ${actor.id},
+              ${r.manual ? r.manualReference ?? null : null}, ${sendable ? null : "Payment provider not configured — no refund was sent"})
+      on conflict (idempotency_key) do nothing returning id`;
+    if (!row) throw new OrderError("This refund was already submitted");
+    await logActivity(tx, actor, { action: "order.refund", entity: "order", entityId: orderId, summary: `${r.manual ? "Manual refund recorded" : "Refund requested"}: ${r.amount} ${pay.currency}`, after: r });
+    if (!sendable) {
+      await notify(tx, { kind: "refund_failed", severity: "critical", title: "Refund could not be sent", body: `Provider ${pay.provider} is not configured.`, link: `/admin/orders/${orderId}` });
+    }
+    return { refundId: row.id, pay, key, sendable, provider, isFull: r.amount === refundable };
+  });
+  const { refundId, pay, key, provider } = reserved;
 
   if (r.manual) {
-    await finalizeRefund(db, row.id, "manual", r.manualReference ?? null);
-    return { status: "manual", refundId: row.id };
+    await finalizeRefund(db, refundId, "manual", r.manualReference ?? null);
+    return { status: "manual", refundId };
   }
-  const provider = getPaymentProvider(pay.provider);
-  if (!provider || !pay.provider_payment_id) {
-    await db`update public.refunds set status = 'failed', error = ${"Payment provider not configured — no refund was sent"} where id = ${row.id}`;
-    await notify(db, { kind: "refund_failed", severity: "critical", title: "Refund could not be sent", body: `Provider ${pay.provider} is not configured.`, link: `/admin/orders/${orderId}` });
+  if (!reserved.sendable || !provider) {
     throw new OrderError(`The ${pay.provider} provider is not configured, so no refund was sent. Configure it, or refund at the provider and record a manual refund.`);
   }
+  let res: { refundId: string; status: ProviderRefundStatus };
   try {
-    const res = await provider.refund(pay.provider_payment_id, { amount: r.amount, currency: pay.currency }, key);
-    // Provider accepted the request. Final confirmation arrives via the refund webhook.
-    await db`update public.refunds set provider_refund_id = ${res.refundId} where id = ${row.id}`;
-    return { status: "pending", refundId: row.id };
+    res = await provider.refund(pay.provider_payment_id!, { amount: r.amount, currency: pay.currency }, key, { localRefundId: refundId, orderId });
   } catch (err) {
-    await db`update public.refunds set status = 'failed', error = ${String((err as Error).message).slice(0, 500)} where id = ${row.id}`;
-    await notify(db, { kind: "refund_failed", severity: "critical", title: "Refund failed at the provider", body: String((err as Error).message).slice(0, 300), link: `/admin/orders/${orderId}` });
-    throw new OrderError(`The provider rejected the refund: ${(err as Error).message}`);
+    const msg = String((err as Error).message).slice(0, 500);
+    if (err instanceof StripeApiError && err.status >= 400 && err.status < 500) {
+      // Definitive rejection: nothing was refunded.
+      await markRefundFailed(db, refundId, msg);
+      throw new OrderError(`The provider rejected the refund: ${msg}`);
+    }
+    // Network error / timeout / 5xx: the refund MAY exist at the provider. Keep it pending (amount stays reserved);
+    // the provider's refund webhook (matched by metadata.local_refund_id) settles it.
+    await db`update public.refunds set error = ${`Unconfirmed — check at ${pay.provider}: ${msg}`} where id = ${refundId} and status = 'pending'`;
+    await notify(db, { kind: "refund_failed", severity: "critical", title: "Refund result unknown — check the payment provider", body: msg.slice(0, 300), link: `/admin/orders/${orderId}` });
+    throw new OrderError(`No confirmation from the provider (${msg}). The refund is kept as pending until the provider reports it; check the provider dashboard.`);
   }
+  await db`update public.refunds set provider_refund_id = ${res.refundId} where id = ${refundId} and provider_refund_id is null`;
+  if (res.status === "succeeded") {
+    await finalizeRefund(db, refundId, "succeeded", res.refundId);
+    return { status: "succeeded", refundId };
+  }
+  if (res.status === "failed" || res.status === "canceled") {
+    await markRefundFailed(db, refundId, `Provider reported the refund as ${res.status}`);
+    throw new OrderError(`The provider reported the refund as ${res.status}`);
+  }
+  // Accepted but not settled yet: a full refund moves the order to refund_requested (blocks fulfillment); the webhook completes it.
+  if (reserved.isFull) {
+    await inTx(db, async (tx) => {
+      const [o] = await tx<{ status: OrderStatus }[]>`select status from public.orders where id = ${orderId} for update`;
+      if (o && canTransition(o.status, "refund_requested")) {
+        await transitionOrderInDb(tx, orderId, "refund_requested", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: r.reason });
+      }
+    });
+  }
+  return { status: "pending", refundId };
 }
 
-/** Marks a refund succeeded (provider webhook or manual record), updates the payment, and completes the order when fully refunded. */
-export async function finalizeRefund(db: Db, refundId: string, status: "succeeded" | "manual", providerRefundId: string | null) {
-  await inTx(db, async (tx) => {
+/** Remaining refundable amount: pending + settled refunds both count (prevents over-refunding while one is in flight). */
+export function refundableAmount(paymentAmount: number, refundedAmount: number, reservedByRefunds: number): number {
+  return Math.max(0, paymentAmount - Math.max(refundedAmount, reservedByRefunds));
+}
+
+/** Marks a pending refund failed (releases its reserved amount) and alerts an admin. Idempotent. */
+export async function markRefundFailed(db: Db, refundId: string, error: string) {
+  const [ref] = await db<{ order_id: string }[]>`
+    update public.refunds set status = 'failed', error = ${error.slice(0, 500)} where id = ${refundId} and status = 'pending' returning order_id`;
+  if (ref) {
+    await notify(db, { kind: "refund_failed", severity: "critical", title: "Refund failed at the provider", body: error.slice(0, 300), link: `/admin/orders/${ref.order_id}` });
+  }
+  return !!ref;
+}
+
+/**
+ * Settles a PENDING refund (provider confirmation or manual record): adds it to the payment's refunded
+ * amount exactly once and completes the order when the payment is fully refunded. Returns false when the
+ * refund was already settled (idempotent under webhook redelivery).
+ */
+export async function finalizeRefund(db: Db, refundId: string, status: "succeeded" | "manual", providerRefundId: string | null): Promise<boolean> {
+  return inTx(db, async (tx) => {
     const [ref] = await tx<{ order_id: string; payment_id: string; amount: number }[]>`
-      update public.refunds set status = ${status}, provider_refund_id = coalesce(provider_refund_id, ${providerRefundId}) where id = ${refundId} returning order_id, payment_id, amount`;
-    if (!ref) return;
+      update public.refunds set status = ${status}, error = null, provider_refund_id = coalesce(provider_refund_id, ${providerRefundId})
+       where id = ${refundId} and status = 'pending' returning order_id, payment_id, amount`;
+    if (!ref) return false;
+    const [o] = await tx<{ status: OrderStatus }[]>`select status from public.orders where id = ${ref.order_id} for update`;
     const [pay] = await tx<{ amount: number; refunded_amount: number }[]>`
       update public.payments set refunded_amount = least(amount, refunded_amount + ${ref.amount}),
         status = case when refunded_amount + ${ref.amount} >= amount then 'refunded'::public.payment_status else 'partially_refunded'::public.payment_status end
        where id = ${ref.payment_id} returning amount, refunded_amount`;
-    const [o] = await tx<{ status: OrderStatus }[]>`select status from public.orders where id = ${ref.order_id}`;
-    if (pay && pay.refunded_amount >= pay.amount && o?.status === "refund_requested") {
-      await transitionOrderInDb(tx, ref.order_id, "refunded", { type: status === "manual" ? "admin" : "payment_webhook", id: "refund" }, { reason: "Fully refunded" });
+    let orderRefunded = false;
+    if (pay && Number(pay.refunded_amount) >= Number(pay.amount) && o) {
+      let current = o.status;
+      if (current !== "refund_requested" && canTransition(current, "refund_requested")) {
+        await transitionOrderInDb(tx, ref.order_id, "refund_requested", { type: "system", id: "refund" }, { reason: "Payment fully refunded" });
+        current = "refund_requested";
+      }
+      if (current === "refund_requested") {
+        await transitionOrderInDb(tx, ref.order_id, "refunded", { type: status === "manual" ? "admin" : "payment_webhook", id: "refund" }, { reason: "Fully refunded" });
+        orderRefunded = true; // the "order refunded" status email covers it
+      }
     }
+    if (!orderRefunded) {
+      const [r] = await tx<{ currency: CurrencyCode }[]>`select currency from public.refunds where id = ${refundId}`;
+      await queueOrderEmail(tx, ref.order_id, "refund_partial", `refund:${refundId}`, { refundAmount: { amount: Number(ref.amount), currency: r!.currency } });
+    }
+    return true;
   });
 }
 

@@ -21,7 +21,7 @@ let pendingY = 0;
 export function TouchLook() {
   useFrame(({ camera }, delta) => {
     const ui = useStoreUi.getState();
-    if (!ui.touchMode || ui.inspect) return;
+    if (!ui.touchMode || ui.inspect || ui.stage !== "play") return;
     pendingX += touchInput.lookDX;
     pendingY += touchInput.lookDY;
     touchInput.lookDX = 0;

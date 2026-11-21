@@ -67,7 +67,7 @@ export function createDevPaymentSimulator(opts: { secret: string; baseUrl: strin
 
     async refund(providerPaymentId, _amount: Money, idempotencyKey) {
       payments.set(providerPaymentId, "refunded");
-      return { refundId: `sim_ref_${idempotencyKey}` };
+      return { refundId: `sim_ref_${idempotencyKey}`, status: "succeeded" as const };
     },
   };
 }

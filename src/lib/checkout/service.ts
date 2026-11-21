@@ -64,7 +64,7 @@ export async function startCheckout(
     successUrl: `${confirmation}&paid=1`,
     cancelUrl: `${siteUrl}/checkout?cancelled=1`,
     idempotencyKey: `checkout:${orderId}`, // a retry for the same order reuses the same provider session
-    label: `Mega Market order #${orderNumber}`,
+    label: `WEGO SHIIIP order #${orderNumber}`,
   });
   const updated = await db`update public.payments set provider_session_id = ${session.providerSessionId}, updated_at = now()
                            where order_id = ${orderId} and provider = ${provider.id} and status = 'pending' returning id`;

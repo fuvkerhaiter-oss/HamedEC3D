@@ -57,7 +57,10 @@ test("cancelling releases the reservation exactly once; shipping commits stock",
 
   const b = await createOrder(t.sql, { email: "y@test.local", lines: [{ variantId: v, quantity: 3 }], shipTo: IT_ADDRESS, shippingMethodId: methods.euMethod, idempotencyKey: "rel-2", isTest: true });
   await assert.rejects(adminTransition(t.sql, admin, b.orderId, "paid", "manual"), /verified payment/, "admins cannot mark orders paid");
-  await transitionOrderInDb(t.sql, b.orderId, "paid", { type: "payment_webhook", id: "test" }, { evidence: { verifiedPaymentId: "pi_test" } });
+  // Fulfillment needs a real successful payment record (dev simulator = local-only provider without a remote lookup).
+  const [{ total }] = (await t.sql<{ total: number }[]>`select total from public.orders where id = ${b.orderId}`) as unknown as [{ total: number }];
+  await t.sql`insert into public.payments (order_id, provider, provider_payment_id, status, amount, currency) values (${b.orderId}, 'dev-simulator', 'sim_pi_test', 'succeeded', ${total}, 'EUR')`;
+  await transitionOrderInDb(t.sql, b.orderId, "paid", { type: "payment_webhook", id: "dev-simulator" }, { evidence: { verifiedPaymentId: "sim_pi_test" } });
   await adminTransition(t.sql, admin, b.orderId, "processing", "");
   await transitionOrderInDb(t.sql, b.orderId, "submitted_to_supplier", { type: "admin", id: admin.id }, { evidence: { supplierOrderRef: "SUP-1" } });
   await adminTransition(t.sql, admin, b.orderId, "supplier_accepted", "");

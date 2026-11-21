@@ -47,8 +47,28 @@ select pg_temp.expect(not public.reserve_inventory((select id from public.produc
 -- Duplicate webhook / supplier order protection
 insert into public.payment_events (provider, provider_event_id, event_type, payload) values ('stripe','evt_1','x','{}');
 select pg_temp.expect_error($$insert into public.payment_events (provider, provider_event_id, event_type, payload) values ('stripe','evt_1','x','{}')$$, 'duplicate webhook event');
-insert into public.supplier_orders (order_id, supplier_id, idempotency_key) select '11111111-1111-1111-1111-111111111111', id, 'k1' from public.suppliers limit 1;
-select pg_temp.expect_error($$insert into public.supplier_orders (order_id, supplier_id, idempotency_key) select '11111111-1111-1111-1111-111111111111', id, 'k1' from public.suppliers limit 1$$, 'duplicate supplier order');
+-- ── Fulfillment gate: no fulfillment without a verified successful payment ──
+-- Order 1111 is 'paid' by status only (no payment row): it must not enter fulfillment.
+select pg_temp.expect_error($$update public.orders set status = 'processing' where id = '11111111-1111-1111-1111-111111111111'$$, 'processing without a verified payment');
+select pg_temp.expect_error($$insert into public.supplier_orders (order_id, supplier_id, idempotency_key) select '11111111-1111-1111-1111-111111111111', id, 'k0' from public.suppliers limit 1$$, 'supplier order without a verified payment');
+-- Order 2222: verified payment (succeeded, full amount, paid by webhook) → fulfillable.
+insert into public.orders (id, user_id, email, currency, tax_mode, subtotal, total, shipping_address, ship_country)
+  values ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-00000000000a', 'alice@example.com', 'EUR', 'inclusive', 1000, 1000, '{}', 'IT');
+insert into public.payments (order_id, provider, provider_payment_id, status, amount, currency) values ('22222222-2222-2222-2222-222222222222', 'stripe', 'pi_2', 'failed', 1000, 'EUR');
+select public.transition_order('22222222-2222-2222-2222-222222222222', 'paid', 'payment_webhook', 'stripe', null, '{"verifiedPaymentId":"pi_2"}');
+select pg_temp.expect_error($$update public.orders set status = 'processing' where id = '22222222-2222-2222-2222-222222222222'$$, 'failed payment blocks fulfillment');
+update public.payments set status = 'succeeded' where provider_payment_id = 'pi_2';
+update public.orders set status = 'processing' where id = '22222222-2222-2222-2222-222222222222';
+insert into public.supplier_orders (order_id, supplier_id, idempotency_key) select '22222222-2222-2222-2222-222222222222', id, 'k1' from public.suppliers limit 1;
+select pg_temp.expect_error($$insert into public.supplier_orders (order_id, supplier_id, idempotency_key) select '22222222-2222-2222-2222-222222222222', id, 'k1' from public.suppliers limit 1$$, 'duplicate supplier order');
+update public.payments set status = 'refunded', refunded_amount = 1000 where provider_payment_id = 'pi_2';
+select pg_temp.expect_error($$update public.supplier_orders set status = 'submitted', supplier_order_ref = 'R1' where idempotency_key = 'k1'$$, 'refunded payment blocks supplier submission');
+-- Refund integrity
+insert into public.refunds (order_id, payment_id, amount, currency, reason, provider, provider_refund_id, idempotency_key)
+  select '22222222-2222-2222-2222-222222222222', id, 100, 'EUR', 'x', 'stripe', 're_1', 'rk1' from public.payments where provider_payment_id = 'pi_2';
+select pg_temp.expect_error($$insert into public.refunds (order_id, payment_id, amount, currency, reason, provider, provider_refund_id, idempotency_key)
+  select '22222222-2222-2222-2222-222222222222', id, 100, 'EUR', 'x', 'stripe', 're_1', 'rk2' from public.payments where provider_payment_id = 'pi_2'$$, 'duplicate provider refund');
+select pg_temp.expect_error($$update public.payments set refunded_amount = 2000 where provider_payment_id = 'pi_2'$$, 'refunded more than paid');
 
 -- ── RLS: anonymous visitor ──
 set local role anon;
@@ -66,7 +86,7 @@ reset role;
 -- ── RLS: customer Alice ──
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', true);
-select pg_temp.expect((select count(*) = 1 from public.orders), 'alice sees her order');
+select pg_temp.expect((select count(*) = 2 from public.orders), 'alice sees her orders (only hers)');
 select pg_temp.expect((select count(*) = 1 from public.order_items), 'alice sees her order items');
 select pg_temp.expect((select count(*) = 0 from public.supplier_products), 'customer cannot see supplier costs');
 select pg_temp.expect((select count(*) = 0 from public.supplier_credentials), 'customer cannot see credentials');
@@ -92,9 +112,15 @@ select pg_temp.expect((select status = 'paid' from public.orders where id = '111
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', true);
 select pg_temp.expect((select count(*) = 0 from public.orders), 'bob cannot see alice order');
+select pg_temp.expect((select count(*) = 0 from public.payments), 'bob cannot see alice payments');
+select pg_temp.expect((select count(*) = 0 from public.refunds), 'bob cannot see refunds');
+select pg_temp.expect((select count(*) = 0 from public.order_status_events), 'bob cannot see alice order history');
+update public.orders set status = 'cancelled';
+select pg_temp.expect_error($$select public.order_has_verified_payment('22222222-2222-2222-2222-222222222222')$$, 'customer cannot call payment check');
 select pg_temp.expect((select count(*) = 0 from public.addresses), 'bob cannot see alice address');
 select pg_temp.expect((select count(*) = 0 from public.cart_items), 'bob cannot see alice cart');
 reset role;
+select pg_temp.expect((select count(*) = 0 from public.orders where status = 'cancelled'), 'bob cannot modify alice orders');
 
 -- ── RLS: admin ──
 set local role authenticated;

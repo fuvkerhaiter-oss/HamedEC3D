@@ -56,6 +56,16 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
             ))}
           </ul>
         )}
+        {o.deliveryEstimate && !["delivered", "cancelled", "refunded", "failed", "pending_payment"].includes(o.status) && (
+          <p className="mt-3 text-sm text-ink-soft">Estimated delivery: {o.deliveryEstimate.minDays}–{o.deliveryEstimate.maxDays} business days after dispatch. This is an estimate, not a guaranteed date.</p>
+        )}
+        {o.refunds.length > 0 && (
+          <ul className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
+            {o.refunds.map((r, n) => (
+              <li key={n}>Refund {fmt(r.amount)} · <span className="text-ink-soft">{r.status === "pending" ? "in progress" : "completed — it can take 5–10 business days to reach your account"}</span></li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="mt-6 rounded-3xl bg-white/70 p-6 shadow-card">
@@ -72,7 +82,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
           <div className="flex justify-between"><dt>Subtotal</dt><dd>{fmt(o.subtotal)}</dd></div>
           {o.discount.amount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd>−{fmt(o.discount)}</dd></div>}
           <div className="flex justify-between"><dt>Shipping{o.shippingMethod ? ` (${o.shippingMethod})` : ""}</dt><dd>{o.shipping.amount === 0 ? "Free" : fmt(o.shipping)}</dd></div>
-          <div className="flex justify-between text-ink-soft"><dt>{o.taxMode === "inclusive" ? "Incl. VAT" : "Sales tax"}</dt><dd>{fmt(o.tax)}</dd></div>
+          <div className="flex justify-between text-ink-soft"><dt>{o.taxMode === "inclusive" ? "Incl. VAT" : "Sales tax"}{o.taxRateBps != null ? ` (${(o.taxRateBps / 100).toLocaleString(locale)} %)` : ""}</dt><dd>{fmt(o.tax)}</dd></div>
           <div className="flex justify-between pt-2 text-base font-semibold"><dt>Total</dt><dd>{fmt(o.total)}</dd></div>
         </dl>
       </section>

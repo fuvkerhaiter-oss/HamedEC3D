@@ -4,6 +4,7 @@ import { QuoteBody } from "@/lib/checkout/schema";
 import { checkoutUnavailableReason } from "@/lib/checkout/service";
 import { getSql } from "@/lib/db/client";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ cart: r.priced, options: r.options, selectedMethodId: r.option.methodId }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     if (e instanceof OrderError) return NextResponse.json({ error: e.message }, { status: 422 });
-    console.error("checkout quote failed", e);
+    logError("checkout quote failed", e);
     return NextResponse.json({ error: "Could not calculate your total. Please try again." }, { status: 502 });
   }
 }

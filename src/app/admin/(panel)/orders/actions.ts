@@ -10,12 +10,13 @@ import { ORDER_STATUSES } from "@/lib/orders/state-machine";
 import { InvalidTransitionError } from "@/lib/orders/state-machine";
 import { addOrderNote, addShipment, adminTransition, issueInvoice, OrderError, refundOrder, updateShipmentStatus } from "@/lib/admin/services/orders";
 import { createSupplierOrders, recordSupplierSubmission } from "@/lib/admin/services/suppliers";
+import { logError } from "@/lib/log";
 
 const done = (orderId: string) => {
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
-  after(() => flushEmailOutbox(getSql()).catch((e) => console.error("email flush failed", e))); // customer emails queued by the change
+  after(() => flushEmailOutbox(getSql()).catch((e) => logError("email flush failed", e))); // customer emails queued by the change
 };
 
 async function friendly<T>(fn: () => Promise<T>): Promise<T> {
@@ -88,12 +89,12 @@ export const supplierRefAction = adminAction(
 
 export const refundAction = adminAction(
   "orders.refund",
-  z.object({ orderId: uuid, amount: moneyField("EUR"), reason: reqStr(1000), manual: bool, manualReference: optStr(120) }),
+  z.object({ orderId: uuid, amount: moneyField("EUR"), reason: reqStr(1000), manual: bool, manualReference: optStr(120), requestId: optStr(64) }),
   async (i, { sql, actor }) => {
     if (i.manual && !i.manualReference) throw new UserError("Enter the refund reference from the payment provider");
-    const r = await friendly(() => refundOrder(sql, actor, i.orderId, { amount: i.amount, reason: i.reason, manual: i.manual, manualReference: i.manualReference ?? undefined }));
+    const r = await friendly(() => refundOrder(sql, actor, i.orderId, { amount: i.amount, reason: i.reason, manual: i.manual, manualReference: i.manualReference ?? undefined, requestId: i.requestId ?? undefined }));
     done(i.orderId);
-    return { ok: true, message: r.status === "manual" ? "Manual refund recorded." : "Refund sent to the provider. The order is marked refunded when the provider confirms." };
+    return { ok: true, message: r.status === "manual" ? "Manual refund recorded." : r.status === "succeeded" ? "Refund completed at the provider." : "Refund sent to the provider. It is completed when the provider confirms." };
   },
 );
 

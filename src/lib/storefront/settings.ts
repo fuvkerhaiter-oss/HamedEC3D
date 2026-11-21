@@ -3,6 +3,7 @@
  * Without a database every value falls back to the built-in defaults, so the storefront never breaks.
  */
 import { getSql, isDbConfigured } from "../db/client";
+import { logFallback } from "../log";
 
 export interface HomeContent {
   heroEyebrow: string;
@@ -38,7 +39,7 @@ export async function getStorefrontSettings(): Promise<StorefrontSettings> {
       },
     };
   } catch (err) {
-    console.error("storefront settings unavailable", err);
+    logFallback("storefront settings unavailable", err);
     return { stockAllFaces: undefined, home: EMPTY_HOME };
   }
 }

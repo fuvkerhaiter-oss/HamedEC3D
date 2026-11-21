@@ -1,5 +1,48 @@
 # Project Status
 
+## Phase 3 3D experience, UX & visual polish (2026-11-21)
+Status: **PARTIAL** — measured asset/perf wins, visual + a11y + error-state fixes, tests green; real product models, real-device (iPhone/Android) and low-end GPU tests still open.
+- **Assets** (`tools/assets/optimize-glb.mjs`, meshoptimizer dev tool, no runtime dependency): `supermarket.opt.glb` 12.6 → 2.3 MB, `trolley.opt.glb` 9.5 → 0.8 MB (162k → 32k tris, simplified 0.2 at 0.4 % error), meshopt-compressed geometry, 8-bit normals, WebP textures (same resolution). Visual diff vs. old files: mean pixel difference 0.2–4 / 255. Registry points to the .opt files; the old `supermarket.glb` / `trolley.glb` are kept until the owner approves deleting them.
+- **Measured** (`tools/perf/measure-store.ts`, headless Edge + GPU, 1440×900, 3 runs each, same 4 views): models over the wire 11.1 MB (gzip) → 1.9 MB; triangles/frame 383–550k → 253–290k; JS heap 88 → 49 MB; ready 4.2 → 3.7 s on localhost; draw calls unchanged (30–105); FPS on this desktop GPU within noise (~200–400 uncapped). Homepage hero downloads the same smaller models.
+- **Visual**: floor tiles were half-metallic + mirror-smooth (puffy, wet look) → polished vinyl (non-metal, roughness 0.42, faint relief). Hero still re-rendered from the live scene.
+- **Rendering quality**: adaptive resolution now on every device (weak laptop GPUs → 1.25×, phones → 1×).
+- **Accessibility**: product dialog takes focus and traps Tab; reduced-motion users get a still hero preview and a straight fly-in (no FOV punch/sway/bank).
+- **Interactions**: "Put in trolley" can't add twice on a fast double click/tap; quantity clamped to stock.
+- **States**: storefront error page (`(site)/error.tsx`), helpful 404 (`app/not-found.tsx`), catalog loading skeleton.
+- Tests: typecheck/lint clean · unit 107/107 · e2e 14/14 on the production build (new: WebGL-off fallback → catalog, 404) · integration see report.
+- **Open**: products on shelves are labelled placeholder boxes until real product GLBs/photos are uploaded (no fake models); no real-device test (iPhone/Android/low-end laptop); the 3D bundle JS size not reduced; draw calls from price-tag text not batched.
+
+## Phase 2 commercial operations (2026-11-21)
+Status: **PARTIAL** — code complete and tested locally; needs real Stripe test-mode run, real tax/shipping configuration, email domain, monitoring. Migration `20261124000001_commerce_operations.sql` (additive).
+- **Orders** now snapshot the applied tax rate + country/state (`tax_rate_bps`, `tax_country`, `tax_region`), an optional **billing address**, and the delivery **estimate** (min/max business days). Checkout: billing section ("same as delivery" default), estimate wording "estimate, not guaranteed"; server validates US state + ZIP and postal-code shape (`lib/shipping/address.ts`); client prices/totals are stripped by the schema.
+- **Fulfillment**: marking the last shipment delivered moves the order to `delivered` (emails once). Full manual flow tested end-to-end with audit log entries.
+- **Emails** (outbox): + payment failed, delivered, partial refund (amount); tracking + estimate in shipped email; **dedupe_key** makes each email unique per event.
+- **Reports** (Admin → Reports): order counts (total/paid/pending/cancelled/failed/refunded) and a per-order money table (products, discount, shipping, tax, refunds net, Stripe fee, supplier cost final/est., net revenue, est. profit). **Fixed**: refunds used to subtract their tax twice; refunded-before-fulfilment orders no longer get an invented supplier cost.
+- **Customer order history** without accounts: `/account/orders` → email a signed 24 h link (only to the address itself, same answer for unknown addresses, 1/hour) → all that address's orders with status, tracking, refunds. Linked from Help.
+- **Production**: security headers (HSTS prod, nosniff, frame, referrer; `no-referrer` + no-store on token pages), `lib/log.ts` (no query params/emails in logs), `npm run check:env` (config check by name only), production checklist in INTEGRATION_GUIDE.
+- **Not done (needs decisions/services)**: real customer accounts (login, profile, saved addresses), product tax classes / US local rates / Stripe Tax, error monitoring (Sentry), distributed rate limiting, server-side cart, legal review of the draft pages.
+
+## Other shoppers push their own trolleys (2026-11-21)
+- `multiplayer/RemotePlayers.tsx`: every avatar pushes the real trolley model (arms on the handle) with its basket contents; new items drop in with a bounce, the trolley jiggles, "+N" pops over their head, label shows "N items in trolley".
+- Basket travels in Realtime presence as `[productId, count][]` (`rooms.ts` `packBasket`/`cleanBasket`, ids validated, capped at 36; product ids only, no prices). `net.ts` `setMyBasket` debounces updates (350 ms).
+- Verified with two headless Edge shoppers (local channel). Not yet tested with Supabase keys.
+
+## Homepage hero = live 3D store with a 3D fly-in (2026-11-21)
+- Hero (`features/home/StorePortal.tsx`) shows the real render `assets/hero/store-first-view.webp` (made by `tools/assets/capture-store-preview.ts` from the actual scene) at once, then loads the live store in the background (idle; skipped on data-saver/2G/3G and without WebGL 2 → loads on click) and crossfades to it: `StoreExperience embedded` in stage "preview" with `CinematicCamera` (slow hover behind/above the aisle). Rendering pauses when the hero is scrolled away.
+- Click (or any "Enter the store" button via `mm:enter-store`): synthesized woosh (`lib/fx/whoosh.ts`), room matchmaking starts, music starts; the hero frame grows to full screen (clip-path) while the camera flies down to the shopper's eyes (swoop + FOV punch, 1.5 s), then play starts in place — no route change, no loading screen, no menu. Desktop requests pointer lock inside the click; touch enters automatically. Pause → "Leave store" returns to the live hero (`ui-store.onLeave`). `/store` unchanged for direct links.
+- `ui-store.stage` (preview/entering/play) gates Player + TouchLook; HUD/rooms/rotate hint only in play. The old picture-zoom + flash navigation (PortalArrival) was removed.
+- Verified with headless Edge (desktop + Pixel 7 landscape): preview renders live, fly-in frames, play with HUD/room/pointer lock, phone auto-enter with touch controls, leave → back to hero with scroll restored; no page errors. typecheck/lint clean · unit 99/99 · e2e 12/12.
+- Cost: the homepage now downloads the 3D models (~22 MB, cached) after load on fast connections.
+
+## Phase 1 security hardening — payments, refunds, fulfillment (2026-11-21)
+Status: **PARTIAL** (all code checks pass; real Stripe test-mode round-trip not yet run). Migration `20261123000001_payment_fulfillment_hardening.sql` (additive).
+- **CRITICAL fixed**: an order whose payment FAILED (status `failed`) could be pushed `failed → processing` → supplier (createSupplierOrders accepted `failed`; adminTransition allowed it; recordSupplierSubmission had no check). Now `requireFulfillmentEligible` (lib/orders/fulfillment-eligibility.ts) runs, under the order row lock, in createSupplierOrders, recordSupplierSubmission and admin transitions to processing/submitted_to_supplier, and re-verifies the PaymentIntent with Stripe (fails closed). DB triggers enforce the same rule.
+- **Refunds**: reservation now atomic (order+payment locked → no over-refund under concurrency); partial refunds no longer move the order to `refund_requested` (used to get it stuck); provider refund status used (succeeded → settled immediately, pending → settled by `refund.*` webhooks matched by id/metadata, failed → amount released); finalizeRefund idempotent (only pending → settled); network errors keep the refund pending (no double refund); requestId per rendered form blocks double submits; refunds made in the Stripe dashboard are flagged.
+- **Webhook**: Stripe PaymentIntent re-checked (pending → delivery fails and is retried; canceled/mismatch → flagged); order row locked; late payment on a cancelled order is recorded + flagged (admin must refund); unknown-order payments flagged.
+- **Fees**: actual gross/fee/net/settlement currency from the balance transaction stored on `payments` (fee_amount only when same currency); cron backfills.
+- Tests: unit 99/99, integration 40/40 (new payment-security.test.ts 14), SQL/RLS ok, typecheck/lint clean, build OK.
+- **Owner to do**: add Stripe webhook events `refund.created`, `refund.updated`, `refund.failed`; run a Stripe TEST-mode payment + partial refund end-to-end; remaining risk: a failed FULL refund leaves the order in `refund_requested` (state machine has no way back) — retry the refund or record it manually.
+
 ## Admin made easy to understand (2026-11-21)
 Owner found the admin confusing. Plain-language UX pass (no logic changes):
 - **Menu** (`features/admin/nav.ts`): groups "Every day / Products / Money & delivery / Setup", plain names (Home, Alerts, Stock (Inventory), Discount codes, Reports, Shipping prices, Website text, Shop settings, Team & logins, Change history), new "Product photos" item, real SVG icons (`features/admin/icons.tsx`), hover hints.

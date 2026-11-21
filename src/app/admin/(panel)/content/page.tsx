@@ -23,7 +23,7 @@ export default async function ContentPage() {
           <ActionForm action={homeContentAction} submitLabel="Publish homepage content">
             <Field label="Announcement bar" hint="Shown above the site header when set"><input name="announcement" defaultValue={h.announcement} maxLength={200} className="admin-input" /></Field>
             <Field label="Hero eyebrow"><input name="heroEyebrow" defaultValue={h.heroEyebrow} maxLength={80} placeholder="(default)" className="admin-input" /></Field>
-            <Field label="Hero title"><input name="heroTitle" defaultValue={h.heroTitle} maxLength={120} placeholder="(default: Mega Market)" className="admin-input" /></Field>
+            <Field label="Hero title"><input name="heroTitle" defaultValue={h.heroTitle} maxLength={120} placeholder="(default: WEGO SHIIIP)" className="admin-input" /></Field>
             <Field label="Hero subtitle"><textarea name="heroSubtitle" defaultValue={h.heroSubtitle} maxLength={400} rows={3} placeholder="(default)" className="admin-input" /></Field>
           </ActionForm>
         </Card>

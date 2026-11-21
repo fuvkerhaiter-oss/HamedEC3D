@@ -67,11 +67,15 @@ export function computeProfit(
 
   for (const o of orders) {
     if (!REVENUE_STATUSES.has(o.status)) continue;
+    // A refund gives back tax too: split it pro rata so tax is not subtracted twice (revenue is already net of tax).
+    const refundTax = o.total > 0 ? Math.round((o.refunded * o.taxTotal) / o.total) : 0;
     const revenue = toBase(o.total - o.taxTotal, o.currency, o.fxRateToBase);
-    const tax = toBase(o.taxTotal, o.currency, o.fxRateToBase);
-    const refunds = toBase(o.refunded, o.currency, o.fxRateToBase);
+    const tax = toBase(o.taxTotal - refundTax, o.currency, o.fxRateToBase);
+    const refunds = toBase(o.refunded - refundTax, o.currency, o.fxRateToBase);
     const fee = o.fee === null ? 0 : toBase(o.fee, o.currency, o.fxRateToBase);
-    const costSrc = o.supplierCostFinal ?? o.supplierCostEstimated;
+    // Refunded before reaching a supplier: no goods were bought, so no cost (never an invented one).
+    const neverFulfilled = o.status === "refunded" && o.supplierCostFinal === null;
+    const costSrc = neverFulfilled ? null : (o.supplierCostFinal ?? o.supplierCostEstimated);
     const cost = costSrc ? toBase(costSrc.amount, costSrc.currency, costSrc.currency === o.currency ? o.fxRateToBase : null) : 0;
     if (revenue === null || tax === null || refunds === null || fee === null || cost === null) {
       s.missingRate = true;
@@ -83,8 +87,8 @@ export function computeProfit(
     s.refunds += refunds;
     s.fees += fee;
     s.costOfGoods += cost;
-    if (!costSrc) s.missingCost++;
-    const final = o.supplierCostFinal !== null && o.fee !== null && (o.status === "delivered" || o.status === "refunded");
+    if (!costSrc && !neverFulfilled) s.missingCost++;
+    const final = (o.supplierCostFinal !== null || neverFulfilled) && o.fee !== null && (o.status === "delivered" || o.status === "refunded");
     if (!final) s.estimatedOrders++;
   }
   for (const e of expenses) {
@@ -101,4 +105,43 @@ export function computeProfit(
 export function marginBps(price: number, cost: number): number | null {
   if (price <= 0) return null;
   return Math.round(((price - cost) * 10000) / price);
+}
+
+export interface OrderBreakdownInput {
+  status: string;
+  currency: CurrencyCode;
+  subtotal: number; // gross product revenue (before discount; incl. VAT for EU inclusive pricing)
+  discount: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  refunded: number; // settled refunds (succeeded + manual), order currency
+  fee: number | null; // actual provider fee in order currency; null = not reported
+  supplierCost: { amount: number; currency: CurrencyCode; final: boolean } | null;
+}
+
+export interface OrderBreakdown {
+  netRevenue: number; // total − tax − refunds (net of their tax share), order currency
+  refundedNet: number;
+  taxKept: number;
+  /** null when a cost is in another currency (no invented conversion) or missing for a fulfilled order. */
+  supplierCost: number | null;
+  costFinal: boolean;
+  fee: number | null;
+  /** netRevenue − supplier cost − fee; null when the cost is unknown. ESTIMATED unless costFinal and fee are known. */
+  estimatedProfit: number | null;
+}
+
+/** One order's money, in the order's own currency. Pure (unit tested). */
+export function orderBreakdown(o: OrderBreakdownInput): OrderBreakdown {
+  const refundTax = o.total > 0 ? Math.round((o.refunded * o.tax) / o.total) : 0;
+  const refundedNet = o.refunded - refundTax;
+  const netRevenue = o.total - o.tax - refundedNet;
+  const neverFulfilled = o.status === "refunded" && !(o.supplierCost?.final);
+  const cost = neverFulfilled ? 0 : o.supplierCost && o.supplierCost.currency === o.currency ? o.supplierCost.amount : null;
+  return {
+    netRevenue, refundedNet, taxKept: o.tax - refundTax,
+    supplierCost: cost, costFinal: neverFulfilled || !!o.supplierCost?.final, fee: o.fee,
+    estimatedProfit: cost === null ? null : netRevenue - cost - (o.fee ?? 0),
+  };
 }

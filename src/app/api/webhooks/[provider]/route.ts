@@ -5,6 +5,7 @@ import { pgWebhookStore } from "@/lib/payments/pg-store";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { WebhookVerificationError } from "@/lib/payments/types";
 import { handlePaymentWebhook } from "@/lib/payments/webhook";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ provide
   try {
     // One transaction: if applying the event fails, the dedupe record rolls back too, so the provider's retry is processed.
     const result = await getSql().begin((tx) => handlePaymentWebhook(provider, raw, req.headers, pgWebhookStore(tx as unknown as Tx, { isTest: provider.isSandbox })));
-    after(() => flushEmailOutbox(getSql()).catch((e) => console.error("email flush failed", e)));
+    after(() => flushEmailOutbox(getSql()).catch((e) => logError("email flush failed", e)));
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof WebhookVerificationError) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-    console.error("webhook processing failed", err);
+    logError("webhook processing failed", err);
     return NextResponse.json({ error: "Processing failed" }, { status: 500 }); // provider retries; dedupe protects us
   }
 }

@@ -24,7 +24,7 @@ export default async function SettingsPage() {
         <Card title="Store">
           <ActionForm action={settingsAction} submitLabel="Save settings">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Store name"><input name="storeName" defaultValue={str("store.name") || "Mega Market"} required className="admin-input" /></Field>
+              <Field label="Store name"><input name="storeName" defaultValue={str("store.name") || "WEGO SHIIIP"} required className="admin-input" /></Field>
               <Field label="Support email"><input name="supportEmail" type="email" defaultValue={str("store.support_email")} className="admin-input" /></Field>
               <Field label="Base (reporting) currency" hint="Changing it affects reports only; orders keep their own currency and rate snapshot.">
                 <select name="baseCurrency" defaultValue={str("store.base_currency") || "EUR"} className="admin-input"><option>EUR</option><option>USD</option></select>

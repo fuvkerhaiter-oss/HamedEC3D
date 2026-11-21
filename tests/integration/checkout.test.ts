@@ -66,7 +66,7 @@ test("unpaid checkouts expire and release stock", async () => {
 
 test("paying queues a confirmation email in the same transaction; the outbox sends it once", async () => {
   process.env.RESEND_API_KEY = "re_test_dummy";
-  process.env.EMAIL_FROM = "Mega Market <orders@test.local>";
+  process.env.EMAIL_FROM = "WEGO SHIIIP <orders@test.local>";
   const realFetch = globalThis.fetch;
   const sent: { to: string[]; subject: string; html?: string }[] = [];
   globalThis.fetch = (async (_url: string, init: RequestInit) => {

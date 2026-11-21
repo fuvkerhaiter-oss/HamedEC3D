@@ -20,7 +20,7 @@ export interface AssetEntry {
 export const ASSETS = {
   supermarket: {
     id: "supermarket",
-    url: "/models/env/supermarket.glb",
+    url: "/models/env/supermarket.opt.glb",
     purpose: "Store architecture and fixtures: walls, floor, ceiling, 6 gondola runs, wall racks, freezers, checkout, entrance trolleys",
     source: "super_market_for_free.glb",
     scale: 1,
@@ -31,7 +31,7 @@ export const ASSETS = {
   },
   trolley: {
     id: "trolley",
-    url: "/models/props/trolley.glb",
+    url: "/models/props/trolley.opt.glb",
     purpose: "Customer's shopping trolley pushed in first person; purchased items land in its basket",
     source: "cart_basket.glb",
     scale: 0.01, // authored in centimeters

@@ -10,6 +10,7 @@ import { mapProductRow, PRODUCT_SELECT, type ProductRow } from "./source-map";
 import { loadCatalogSql } from "./sql-source";
 import { getSql, isDbConfigured } from "../db/client";
 import type { CatalogReader, Category, Product } from "./types";
+import { logFallback } from "../log";
 
 export interface CatalogData {
   categories: Category[];
@@ -33,7 +34,7 @@ export async function getCatalog(): Promise<CatalogData> {
     } catch (err) {
       // Production must surface DB failures. In development (local DB not running) keep the storefront usable.
       if (process.env.NODE_ENV === "production") throw err;
-      console.error("[catalog] database unavailable — serving the mock catalog in development:", (err as Error).message);
+      logFallback("catalog", err);
       return { categories: MOCK_CATEGORIES, products: MOCK_PRODUCTS, source: "mock" };
     }
   }

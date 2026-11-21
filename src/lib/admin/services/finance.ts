@@ -1,6 +1,6 @@
 /** Analytics, profit, payments, exchange rates, expenses — all computed from DB records. */
 import type { Db } from "../../db/client";
-import { computeProfit, REVENUE_STATUSES, type ProfitOrderInput } from "../../finance/profit";
+import { computeProfit, orderBreakdown, REVENUE_STATUSES, type ProfitOrderInput } from "../../finance/profit";
 import { parseRate } from "../../fx";
 import type { CurrencyCode } from "../../money";
 import { logActivity, type Actor } from "../audit";
@@ -204,4 +204,59 @@ export async function addExpense(db: Db, actor: Actor, e: { category: string; de
 export async function deleteExpense(db: Db, actor: Actor, id: string) {
   const [before] = await db`delete from public.expenses where id = ${id} returning *`;
   await logActivity(db, actor, { action: "expense.delete", entity: "expense", entityId: id, summary: "Deleted expense", before });
+}
+
+// ───────────────────────── Order counts & per-order breakdown ─────────────────────────
+
+export async function orderStatusCounts(db: Db, range: DateRange) {
+  const rows = await db<{ status: string; n: number }[]>`
+    select status::text, count(*)::int as n from public.orders
+     where not is_test and created_at >= ${range.from} and created_at < ${range.to} group by status`;
+  const by = Object.fromEntries(rows.map((r) => [r.status, r.n])) as Record<string, number>;
+  const sum = (...s: string[]) => s.reduce((t, k) => t + (by[k] ?? 0), 0);
+  return {
+    total: rows.reduce((t, r) => t + r.n, 0),
+    paid: sum(...REVENUE_STATUSES),
+    pending: sum("pending_payment"),
+    cancelled: sum("cancelled"),
+    failed: sum("failed"),
+    refunded: sum("refunded"),
+  };
+}
+
+/** Per-order money for the period (order currency; no FX). Supplier cost = recorded supplier orders, else mapping ESTIMATE. */
+export async function orderFinancials(db: Db, range: DateRange, limit = 100) {
+  const rows = await db<{
+    id: string; order_number: number; status: string; currency: CurrencyCode; subtotal: number; discount_total: number; shipping_total: number;
+    tax_total: number; total: number; refunded: number; fee: number | null; final_amount: number | null; final_currency: CurrencyCode | null;
+    final_complete: boolean; est_amount: number | null; est_currency: CurrencyCode | null; created_at: Date;
+  }[]>`
+    select o.id, o.order_number, o.status::text, o.currency, o.subtotal, o.discount_total, o.shipping_total, o.tax_total, o.total, o.created_at,
+      coalesce((select sum(r.amount) from public.refunds r where r.order_id = o.id and r.status in ('succeeded','manual')), 0)::bigint as refunded,
+      (select sum(p.fee_amount) from public.payments p where p.order_id = o.id and p.fee_amount is not null)::bigint as fee,
+      so.amount as final_amount, so.currency as final_currency, coalesce(so.complete, false) as final_complete,
+      est.amount as est_amount, est.currency as est_currency
+    from public.orders o
+    left join lateral (
+      select sum(cost_total)::bigint as amount, min(cost_currency) as currency,
+        bool_and(cost_total is not null) and count(distinct cost_currency) = 1 as complete
+      from public.supplier_orders where order_id = o.id and status = 'submitted') so on true
+    left join lateral (
+      select sum(sp.cost_amount * oi.quantity)::bigint as amount, min(sp.cost_currency) as currency
+      from public.order_items oi join public.supplier_products sp on sp.variant_id = oi.variant_id and sp.is_primary
+      where oi.order_id = o.id having count(distinct sp.cost_currency) = 1) est on true
+    where not o.is_test and o.status::text = any(${PAID}) and o.created_at >= ${range.from} and o.created_at < ${range.to}
+    order by o.created_at desc limit ${limit}`;
+  return rows.map((o) => {
+    const supplierCost = o.final_complete && o.final_amount !== null && o.final_currency
+      ? { amount: Number(o.final_amount), currency: o.final_currency, final: true }
+      : o.est_amount !== null && o.est_currency ? { amount: Number(o.est_amount), currency: o.est_currency, final: false } : null;
+    const n = (v: number) => Number(v);
+    return {
+      id: o.id, orderNumber: n(o.order_number), status: o.status, currency: o.currency, createdAt: o.created_at,
+      subtotal: n(o.subtotal), discount: n(o.discount_total), shipping: n(o.shipping_total), tax: n(o.tax_total), total: n(o.total), refunded: n(o.refunded),
+      ...orderBreakdown({ status: o.status, currency: o.currency, subtotal: n(o.subtotal), discount: n(o.discount_total), shipping: n(o.shipping_total),
+        tax: n(o.tax_total), total: n(o.total), refunded: n(o.refunded), fee: o.fee === null ? null : n(o.fee), supplierCost }),
+    };
+  });
 }

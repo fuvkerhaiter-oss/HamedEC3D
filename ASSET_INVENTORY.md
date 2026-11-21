@@ -4,6 +4,14 @@ Source folder: `3D models/` (originals — never modified or deleted). Optimized
 Build scripts: `tools/assets/` (Python 3 + numpy + Pillow). Registry: `src/features/store3d/assets/registry.ts`.
 Audited 2026-11-20 (structure, bounds, materials, textures, triangle counts, orthographic + first-person renders).
 
+## Web-optimized copies (2026-11-21, Phase 3)
+`node tools/assets/optimize-glb.mjs <in> <out> [--simplify=r] [--error=e] [--webp=q]` → meshopt compression (EXT_meshopt_compression + KHR_mesh_quantization), WebP textures (EXT_texture_webp), optional simplification. Used by the app (registry):
+| File | Before | After | Tris |
+|---|---|---|---|
+| `public/models/env/supermarket.opt.glb` | 12.6 MB | 2.3 MB | 211k (unchanged) |
+| `public/models/props/trolley.opt.glb` | 9.5 MB | 0.8 MB | 163k → 32.5k (`--simplify=0.2 --error=0.004`) |
+Previous copies (`supermarket.glb`, `trolley.glb`) are kept until deletion is approved.
+
 ## Summary
 
 | File | Size | Tris | Units / orientation | Purpose | Decision |

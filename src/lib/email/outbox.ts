@@ -12,6 +12,8 @@ import { orderEmail, textToHtml, type OrderEmailKind } from "./templates";
 const KIND_FOR_STATUS: Partial<Record<OrderStatus, OrderEmailKind>> = {
   paid: "order_confirmed",
   shipped: "order_shipped",
+  delivered: "order_delivered",
+  failed: "payment_failed",
   refunded: "order_refunded",
   cancelled: "order_cancelled",
 };
@@ -21,16 +23,29 @@ function publicSiteUrl(env = process.env): string {
   return (env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
-/** Called in the status-change transaction. Unpaid cancellations (abandoned checkouts) don't email. */
+/**
+ * Called in the status-change transaction. Unpaid cancellations (abandoned checkouts) don't email; `failed` emails the
+ * customer only for a failed PAYMENT (a supplier problem after payment is handled by the shop, not the customer).
+ * At most one email per (order, status): dedupe_key is UNIQUE.
+ */
 export async function queueOrderStatusEmail(tx: Db, orderId: string, from: OrderStatus, to: OrderStatus): Promise<void> {
   const kind = KIND_FOR_STATUS[to];
-  if (!kind || (to === "cancelled" && from === "pending_payment")) return;
+  if (!kind || (to === "cancelled" && from === "pending_payment") || (to === "failed" && from !== "pending_payment")) return;
+  await queueOrderEmail(tx, orderId, kind, `status:${orderId}:${to}`);
+}
+
+/** Queue one customer email for an order; a repeated dedupeKey is ignored (no duplicate notifications). */
+export async function queueOrderEmail(
+  tx: Db, orderId: string, kind: OrderEmailKind, dedupeKey: string, extra?: Parameters<typeof orderEmail>[3],
+): Promise<boolean> {
   const o = await getCustomerOrder(tx, orderId);
-  if (!o) return;
-  const { subject, text } = orderEmail(kind, o, orderUrl(publicSiteUrl(), orderId));
+  if (!o) return false;
+  const { subject, text } = orderEmail(kind, o, orderUrl(publicSiteUrl(), orderId), extra);
   const status = getEmailProvider() ? "queued" : "not_configured";
-  await tx`insert into public.email_outbox (to_address, subject, body_text, template, status, related_order_id)
-           values (${o.email}, ${subject}, ${text}, ${kind}, ${status}, ${orderId})`;
+  const rows = await tx`insert into public.email_outbox (to_address, subject, body_text, template, status, related_order_id, dedupe_key)
+           values (${o.email}, ${subject}, ${text}, ${kind}, ${status}, ${orderId}, ${dedupeKey})
+           on conflict (dedupe_key) where dedupe_key is not null do nothing returning id`;
+  return rows.length > 0;
 }
 
 /** Sends queued emails (oldest first). Safe to call often and concurrently (rows are claimed with SKIP LOCKED). */

@@ -167,10 +167,12 @@ function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex overflow-y-auto bg-ink/55 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-20 flex overflow-y-auto bg-ink/55 p-4 backdrop-blur-sm"
+    >
       <div className="m-auto w-full max-w-md rounded-3xl bg-cream p-6 text-center shadow-2xl sm:p-8 short:grid short:max-w-3xl short:grid-cols-2 short:items-center short:gap-x-8 short:p-6">
         <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">Mega Market</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">WEGO SHIIIP</p>
         <h1 className="mt-2 font-display text-3xl sm:text-4xl">Welcome in</h1>
         {touchMode ? (
           <>
@@ -222,7 +224,16 @@ function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => 
         )}
         <div className="mt-4 flex justify-center gap-6 text-sm">
           <Link href="/catalog" className="py-1 underline">Shop the list view</Link>
-          <Link href="/" className="py-1 underline">Leave store</Link>
+          <Link
+            href="/"
+            className="py-1 underline"
+            onClick={(e) => {
+              const leave = useStoreUi.getState().onLeave; // homepage embed: glide back to the hero
+              if (leave) { e.preventDefault(); leave(); }
+            }}
+          >
+            Leave store
+          </Link>
         </div>
         </div>
       </div>

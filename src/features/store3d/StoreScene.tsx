@@ -54,6 +54,9 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
   );
 }
 
+/** Material name of the floor tiles in supermarket.glb. */
+const FLOOR_MATERIAL = "Material";
+
 /** Imported store architecture + fixtures (see assets/registry.ts and ASSET_INVENTORY.md). */
 function SupermarketModel() {
   const a = ASSETS.supermarket;
@@ -67,6 +70,13 @@ function SupermarketModel() {
         // The source floor/wall normal maps are very strong (quilted look in-browser); soften them.
         const mat = m.material as THREE.MeshStandardMaterial;
         if (mat.normalMap) mat.normalScale.set(0.3, 0.3);
+        // Floor tiles were authored half-metallic and mirror-smooth: every tile looked puffy and wet.
+        // Polished vinyl: non-metal, soft sheen, barely any relief.
+        if (mat.name === FLOOR_MATERIAL) {
+          mat.metalness = 0;
+          mat.roughness = 0.42;
+          mat.normalScale.set(0.08, 0.08);
+        }
       }
     });
   }, [scene, a.castShadow, a.receiveShadow]);

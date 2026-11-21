@@ -4,6 +4,7 @@ import { notify } from "@/lib/admin/services/notifications";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { getEmailProvider } from "@/lib/email/provider";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
       messageId = (await provider.send({ to, subject, text, replyTo: email })).messageId;
       status = "sent";
     } catch (e) {
-      console.error("contact email failed", e);
+      logError("contact email failed", e);
       status = "failed";
     }
   }

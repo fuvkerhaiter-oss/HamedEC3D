@@ -68,5 +68,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     csv = toCsv(["country", "currency", "orders", "revenue"], rows.map((r) => [r.country, r.currency, r.orders, dec(r.revenue, r.currency)]));
   }
   await logActivity(sql, { id: session.user.id, email: session.user.email, ip: await clientIp() }, { action: "export", entity: kind, summary: `Exported ${kind} CSV` });
-  return csvResponse(`megamarket-${kind}-${stamp}.csv`, csv);
+  return csvResponse(`wegoshiiip-${kind}-${stamp}.csv`, csv);
 }

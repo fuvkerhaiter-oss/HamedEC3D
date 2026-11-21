@@ -10,13 +10,13 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", 
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: { default: "Mega Market · Happy Family, Happy Animals", template: "%s · Mega Market" },
-  description: "Mega Market — Happy Family, Happy Animals. Walk a beautiful 3D supermarket in your browser and shop real products, delivered across Europe and the USA.",
-  applicationName: "Mega Market",
+  title: { default: "WEGO SHIIIP · Happy Family, Happy Animals", template: "%s · WEGO SHIIIP" },
+  description: "WEGO SHIIIP — Happy Family, Happy Animals. Walk a beautiful 3D supermarket in your browser and shop real products, delivered across Europe and the USA.",
+  applicationName: "WEGO SHIIIP",
   openGraph: {
     type: "website",
-    siteName: "Mega Market",
-    title: "Mega Market · Happy Family, Happy Animals",
+    siteName: "WEGO SHIIIP",
+    title: "WEGO SHIIIP · Happy Family, Happy Animals",
     description: "Walk a 3D supermarket in your browser, shop with friends and get it delivered across Europe and the USA.",
   },
   twitter: { card: "summary_large_image" },
@@ -27,7 +27,8 @@ export const viewport: Viewport = { themeColor: "#111513" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
-      <body className="min-h-dvh font-sans antialiased">
+      {/* Browser extensions inject attributes on <body> (e.g. location="…") before hydration. */}
+      <body className="min-h-dvh font-sans antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

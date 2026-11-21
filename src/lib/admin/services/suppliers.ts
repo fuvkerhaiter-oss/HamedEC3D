@@ -10,7 +10,13 @@ import { getSupplierAdapter } from "../../suppliers/registry";
 import { splitOrderBySupplier, type SupplierMapping } from "../../suppliers/split";
 import { logActivity, type Actor } from "../audit";
 import { notify } from "./notifications";
-import { transitionOrderInDb, OrderError, type ShipTo } from "./orders";
+import { requireFulfillmentEligible, transitionOrderInDb, OrderError, type ShipTo } from "./orders";
+import type { PaymentProvider } from "../../payments/types";
+
+/** Injectable payment-provider lookup for the fulfillment gate (tests); defaults to the configured providers. */
+export interface FulfillmentDeps {
+  getProvider?: (id: string) => PaymentProvider | null;
+}
 
 export interface SupplierRow {
   id: string;
@@ -119,10 +125,19 @@ export function pgFulfillmentStore(db: Db, extra: { fulfillmentMode: "manual" | 
  * Moves the order paid → processing. API suppliers are submitted through their adapter; manual ones
  * wait for an admin to record the supplier reference.
  */
-export async function createSupplierOrders(db: Db, actor: Actor, orderId: string) {
-  const [order] = await db<{ status: string; shipping_address: ShipTo; order_number: number }[]>`select status, shipping_address, order_number from public.orders where id = ${orderId}`;
-  if (!order) throw new OrderError("Order not found");
-  if (!["paid", "processing", "failed"].includes(order.status)) throw new OrderError(`Supplier orders can be created for paid orders (this one is ${order.status})`);
+export async function createSupplierOrders(db: Db, actor: Actor, orderId: string, deps: FulfillmentDeps = {}) {
+  // Payment gate + move to processing under the order row lock: concurrent calls serialise here, and an order
+  // whose payment is not verified (failed, pending, cancelled, refunded, mismatching) is refused.
+  const order = await inTx(db, async (tx) => {
+    const [o] = await tx<{ status: string; shipping_address: ShipTo; order_number: number }[]>`select status, shipping_address, order_number from public.orders where id = ${orderId} for update`;
+    if (!o) throw new OrderError("Order not found");
+    if (!["paid", "processing", "failed"].includes(o.status)) throw new OrderError(`Supplier orders can be created for paid orders (this one is ${o.status})`);
+    await requireFulfillmentEligible(tx, orderId, deps.getProvider);
+    if (o.status === "paid" || o.status === "failed") {
+      await transitionOrderInDb(tx, orderId, "processing", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: "Fulfillment started" });
+    }
+    return o;
+  });
   const items = await db<{ id: string; variant_id: string | null; sku: string; quantity: number }[]>`select id, variant_id, sku, quantity from public.order_items where order_id = ${orderId}`;
   const mappings = await db<{ variant_id: string; supplier_id: string; supplier_sku: string; cost_amount: number; cost_currency: CurrencyCode; is_primary: boolean }[]>`
     select sp.* from public.supplier_products sp join public.suppliers s on s.id = sp.supplier_id
@@ -131,9 +146,6 @@ export async function createSupplierOrders(db: Db, actor: Actor, orderId: string
     items.map((i) => ({ orderItemId: i.id, variantId: i.variant_id, sku: i.sku, quantity: i.quantity })),
     mappings.map<SupplierMapping>((m) => ({ variantId: m.variant_id, supplierId: m.supplier_id, supplierSku: m.supplier_sku, costAmount: m.cost_amount, costCurrency: m.cost_currency, isPrimary: m.is_primary })),
   );
-  if (order.status === "paid" || order.status === "failed") {
-    await transitionOrderInDb(db, orderId, "processing", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: "Fulfillment started" });
-  }
   const results: { supplierId: string; outcome: string }[] = [];
   for (const g of split.groups) {
     const [sup] = await db<{ name: string; adapter_key: string; fulfillment_mode: "manual" | "api" }[]>`select name, adapter_key, fulfillment_mode from public.suppliers where id = ${g.supplierId}`;
@@ -180,14 +192,22 @@ function toSupplierAddress(a: ShipTo) {
 }
 
 /** Manual mode: the admin placed the order with the supplier and records its reference (and optionally the real cost). */
-export async function recordSupplierSubmission(db: Db, actor: Actor, supplierOrderId: string, ref: string, cost: { amount: number; currency: CurrencyCode } | null) {
-  const [so] = await db<{ order_id: string; status: string }[]>`
-    update public.supplier_orders set status = 'submitted', supplier_order_ref = ${ref}, last_error = null,
-      cost_total = coalesce(${cost?.amount ?? null}, cost_total), cost_currency = coalesce(${cost?.currency ?? null}, cost_currency)
-     where id = ${supplierOrderId} returning order_id, status`;
-  if (!so) throw new OrderError("Supplier order not found");
-  await logActivity(db, actor, { action: "supplier_order.submitted", entity: "order", entityId: so.order_id, summary: `Supplier reference ${ref} recorded`, after: { ref, cost } });
-  await advanceIfAllSubmitted(db, actor, so.order_id);
+export async function recordSupplierSubmission(
+  db: Db, actor: Actor, supplierOrderId: string, ref: string, cost: { amount: number; currency: CurrencyCode } | null, deps: FulfillmentDeps = {},
+) {
+  await inTx(db, async (tx) => {
+    const [target] = await tx<{ order_id: string }[]>`select order_id from public.supplier_orders where id = ${supplierOrderId}`;
+    if (!target) throw new OrderError("Supplier order not found");
+    // Revalidate payment eligibility (with the provider) immediately before recording the supplier order as placed.
+    await requireFulfillmentEligible(tx, target.order_id, deps.getProvider);
+    const [so] = await tx<{ order_id: string; status: string }[]>`
+      update public.supplier_orders set status = 'submitted', supplier_order_ref = ${ref}, last_error = null,
+        cost_total = coalesce(${cost?.amount ?? null}, cost_total), cost_currency = coalesce(${cost?.currency ?? null}, cost_currency)
+       where id = ${supplierOrderId} returning order_id, status`;
+    if (!so) throw new OrderError("Supplier order not found");
+    await logActivity(tx, actor, { action: "supplier_order.submitted", entity: "order", entityId: so.order_id, summary: `Supplier reference ${ref} recorded`, after: { ref, cost } });
+    await advanceIfAllSubmitted(tx, actor, so.order_id);
+  });
 }
 
 /** When every supplier order of a processing order is submitted, the order moves to submitted_to_supplier. */

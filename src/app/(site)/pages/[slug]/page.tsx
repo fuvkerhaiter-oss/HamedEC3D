@@ -16,7 +16,7 @@ export default async function CmsPage({ params }: { params: Promise<{ slug: stri
   const blocks = page.body.split(/\r?\n\s*\r?\n/).map((b) => b.trim()).filter(Boolean);
   return (
     <article className="mx-auto max-w-3xl px-5 py-14">
-      <p className="eyebrow text-brand">Mega Market</p>
+      <p className="eyebrow text-brand">WEGO SHIIIP</p>
       <h1 className="mt-3 font-display text-5xl leading-none">{page.title}</h1>
       <div className="mt-8 space-y-4 leading-relaxed text-ink-soft">
         {blocks.map((b, i) =>

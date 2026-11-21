@@ -116,10 +116,10 @@ export function AdminShell({ user, allowed, unread, logout, children }: Props) {
   const sidebar = (compact: boolean) => (
     <div className="flex h-full flex-col">
       <Link href="/admin" className={`flex items-center gap-2.5 px-4 py-4 ${compact ? "justify-center px-2" : ""}`}>
-        <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber font-display text-base text-ink">M</span>
+        <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber font-display text-base text-ink">W</span>
         {!compact && (
           <span className="min-w-0">
-            <span className="block truncate font-display text-base leading-none text-cream">Mega Market</span>
+            <span className="block truncate font-display text-base leading-none text-cream">WEGO SHIIIP.</span>
             <span className="mt-1 block text-xs text-cream/55">Shop admin</span>
           </span>
         )}

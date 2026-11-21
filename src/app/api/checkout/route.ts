@@ -5,6 +5,7 @@ import { CheckoutBody } from "@/lib/checkout/schema";
 import { checkoutProvider, checkoutUnavailableReason, expireStalePendingOrders, legalBlocker, startCheckout } from "@/lib/checkout/service";
 import { getSql } from "@/lib/db/client";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,15 @@ export async function POST(req: Request) {
   if (unavailable || !provider) return NextResponse.json({ error: unavailable ?? "Payments are not configured." }, { status: 503 });
   const parsed = CheckoutBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    const field = parsed.error.issues[0]?.path.join(".") ?? "";
+    const issue = parsed.error.issues[0];
+    const field = issue?.path.join(".") ?? "";
+    if (issue?.code === "custom") return NextResponse.json({ error: issue.message }, { status: 400 });
     return NextResponse.json({ error: field === "acceptTerms" ? "Please accept the Terms of Sale." : `Please check: ${field || "your details"}` }, { status: 400 });
   }
   const db = getSql();
   const legal = await legalBlocker(db);
   if (legal) return NextResponse.json({ error: `Checkout is not open yet. ${legal}` }, { status: 503 });
-  void expireStalePendingOrders(db).catch((e) => console.error("pending order expiry failed", e));
+  void expireStalePendingOrders(db).catch((e) => logError("pending order expiry failed", e));
   try {
     const input = { ...parsed.data, acceptTerms: undefined };
     const result = await startCheckout(db, input, { provider, siteUrl: siteUrl(req) });
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
     if (e instanceof Error && /stock|inventory/i.test(e.message)) {
       return NextResponse.json({ error: "Sorry, an item just sold out. Please review your cart." }, { status: 409 });
     }
-    console.error("checkout failed", e);
+    logError("checkout failed", e);
     return NextResponse.json({ error: "We couldn't start the payment. You have not been charged. Please try again." }, { status: 502 });
   }
 }

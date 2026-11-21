@@ -28,3 +28,8 @@ export function isIOS(): boolean {
   if (/iPhone|iPad|iPod/i.test(ua)) return true;
   return /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
 }
+
+/** Visitor asked the OS for less motion: no camera sway, FOV punch or bank (vestibular comfort). */
+export function prefersReducedMotion(): boolean {
+  return mq("(prefers-reduced-motion: reduce)");
+}

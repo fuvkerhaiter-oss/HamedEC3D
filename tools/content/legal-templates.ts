@@ -10,7 +10,7 @@ export const LEGAL_PAGES: { slug: string; title: string; body: string }[] = [
     body: `TEMPLATE — fill in the [bracketed] details and have it reviewed by a lawyer before publishing.
 
 # 1. Who we are
-These terms apply to purchases on [WEBSITE DOMAIN] ("Mega Market"), operated by [LEGAL COMPANY NAME], [REGISTERED ADDRESS], VAT number [VAT NUMBER], company register [REGISTER + NUMBER], email [SUPPORT EMAIL].
+These terms apply to purchases on [WEBSITE DOMAIN] ("WEGO SHIIIP"), operated by [LEGAL COMPANY NAME], [REGISTERED ADDRESS], VAT number [VAT NUMBER], company register [REGISTER + NUMBER], email [SUPPORT EMAIL].
 
 # 2. Orders and contract
 Product pages, the catalog and the 3D store are an invitation to order. When you click "Pay", you make an offer to buy. The contract is formed when we confirm your order by email after your payment has been received. We may refuse an order in case of obvious pricing errors, suspected fraud or stock that is no longer available; any amount paid is then refunded in full.

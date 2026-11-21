@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/features/admin/ActionForm";
@@ -214,6 +215,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 <summary className="cursor-pointer text-sm font-medium text-brand">Give money back (refund)…</summary>
                 <ActionForm action={refundAction} submitLabel="Refund" variant="danger" confirm="Give this money back to the customer? This cannot be undone." className="mt-2">
                   <input type="hidden" name="orderId" value={o.id} />
+                  <input type="hidden" name="requestId" value={randomUUID()} />{/* one refund per rendered form: a double submit is rejected */}
                   <Field label={`Amount (${paid.currency}, max ${toDecimalString({ amount: refundable, currency: paid.currency })})`}><input name="amount" inputMode="decimal" defaultValue={toDecimalString({ amount: refundable, currency: paid.currency })} className="admin-input font-mono" /></Field>
                   <Field label="Reason"><input name="reason" required placeholder="e.g. item arrived broken" className="admin-input" /></Field>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="manual" className="h-4 w-4" /> I already refunded it myself in Stripe (just write it down here)</label>

@@ -5,10 +5,10 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { PricedCart } from "@/lib/cart/pricing";
 import { EU_COUNTRIES, MARKETS, type MarketId } from "@/lib/markets";
 import { formatMoney, type Money } from "@/lib/money";
+import { US_STATES } from "@/lib/shipping/address";
 import type { ShippingOption } from "@/lib/shipping/quote";
 import { useCart } from "@/features/cart/cart-store";
 
-const US_STATES = "AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" ");
 const FIELD = "mt-1 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-amber/40";
 const LABEL = "block text-sm font-medium";
 
@@ -50,6 +50,9 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
   const [couponError, setCouponError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [billingSame, setBillingSame] = useState(true);
+  const [billCountry, setBillCountry] = useState(cartMarket === "US" ? "US" : "IT");
+  const [billRegion, setBillRegion] = useState("");
 
 
   const market: MarketId = country === "US" ? "US" : "EU";
@@ -111,6 +114,10 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           shipTo: {
             fullName: get("fullName"), line1: get("line1"), line2: get("line2"), city: get("city"),
             region: region || undefined, postalCode: get("postalCode"), country, phone: get("phone"),
+          },
+          billTo: billingSame ? undefined : {
+            fullName: get("b_fullName"), line1: get("b_line1"), line2: get("b_line2"), city: get("b_city"),
+            region: billRegion || undefined, postalCode: get("b_postalCode"), country: billCountry,
           },
           shippingMethodId: methodId,
           couponCode: appliedCoupon,
@@ -190,6 +197,38 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
         </section>
 
         <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+          <h2 className="font-display text-xl">Billing address</h2>
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={billingSame} onChange={(e) => setBillingSame(e.target.checked)} className="h-4 w-4" />
+            Same as delivery address
+          </label>
+          {!billingSame && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className={LABEL}>Country</span>
+                <select value={billCountry} onChange={(e) => { setBillCountry(e.target.value); setBillRegion(""); }} autoComplete="billing country" className={FIELD}>
+                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </label>
+              <label className="sm:col-span-2"><span className={LABEL}>Full name</span><input name="b_fullName" required minLength={2} autoComplete="billing name" className={FIELD} /></label>
+              <label className="sm:col-span-2"><span className={LABEL}>Address</span><input name="b_line1" required minLength={3} autoComplete="billing address-line1" className={FIELD} /></label>
+              <label className="sm:col-span-2"><span className={LABEL}>Apartment, suite, etc. <span className="font-normal text-ink-soft">(optional)</span></span><input name="b_line2" autoComplete="billing address-line2" className={FIELD} /></label>
+              <label><span className={LABEL}>Postal code</span><input name="b_postalCode" required autoComplete="billing postal-code" className={FIELD} /></label>
+              <label><span className={LABEL}>City</span><input name="b_city" required autoComplete="billing address-level2" className={FIELD} /></label>
+              {billCountry === "US" && (
+                <label>
+                  <span className={LABEL}>State</span>
+                  <select value={billRegion} onChange={(e) => setBillRegion(e.target.value)} required autoComplete="billing address-level1" className={FIELD}>
+                    <option value="">Select…</option>
+                    {US_STATES.map((st) => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
           <h2 className="font-display text-xl">Shipping method</h2>
           {quote?.options.length ? (
             <div className="mt-4 space-y-2" role="radiogroup">
@@ -199,7 +238,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
                     <input type="radio" name="shipping" checked={methodId === o.methodId} onChange={() => setMethodId(o.methodId)} />
                     <span>
                       <span className="font-medium">{o.name}</span>
-                      {o.minDays != null && o.maxDays != null && <span className="block text-xs text-ink-soft">{o.minDays}–{o.maxDays} business days</span>}
+                      {o.minDays != null && o.maxDays != null && <span className="block text-xs text-ink-soft">Estimated {o.minDays}–{o.maxDays} business days after dispatch (estimate, not guaranteed)</span>}
                     </span>
                   </span>
                   <span className="font-medium tabular-nums">{o.isFree ? "Free" : fmt(o.amount)}</span>

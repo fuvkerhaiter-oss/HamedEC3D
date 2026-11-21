@@ -30,6 +30,12 @@ function memoryStore(status: OrderStatus, total: Money) {
       order.status = audit.toStatus;
       audits.push(audit);
     },
+    async flagForReview() {},
+    async recordUnmatchedPayment() {},
+    async recordPaymentFinancials() {},
+    async applyRefundUpdate() {
+      return "unknown" as const;
+    },
   };
   return { store, order, audits };
 }

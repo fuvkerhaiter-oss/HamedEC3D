@@ -17,9 +17,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
     <div className="vsw-grid-bg grid min-h-dvh place-items-center bg-ink px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3 text-cream">
-          <span aria-hidden className="grid h-10 w-10 place-items-center rounded-xl bg-amber font-display text-lg text-ink">M</span>
+          <span aria-hidden className="grid h-10 w-10 place-items-center rounded-xl bg-amber font-display text-lg text-ink">W</span>
           <div>
-            <p className="font-display text-xl leading-none">Mega Market</p>
+            <p className="font-display text-xl leading-none">WEGO SHIIIP.</p>
             <p className="eyebrow mt-1 !text-[10px] text-cream/50">Admin console</p>
           </div>
         </div>

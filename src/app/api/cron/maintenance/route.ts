@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { expireStalePendingOrders } from "@/lib/checkout/service";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { flushEmailOutbox } from "@/lib/email/outbox";
+import { syncMissingPaymentFinancials } from "@/lib/payments/financials";
+import { getPaymentProvider } from "@/lib/payments/registry";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Backstop job (Vercel Cron, see vercel.json; sends `Authorization: Bearer $CRON_SECRET`): retries unsent
- * customer emails and releases stock held by checkouts that were never paid. Both also run inline after
+ * customer emails, releases stock held by checkouts that were never paid, and fills Stripe fee records. Both also run inline after
  * each payment/checkout, so this only catches what failed there.
  */
 export async function GET(req: Request) {
@@ -22,5 +24,6 @@ export async function GET(req: Request) {
   const db = getSql();
   const expired = await expireStalePendingOrders(db);
   const emails = await flushEmailOutbox(db, 100);
-  return NextResponse.json({ expired, emails });
+  const financials = await syncMissingPaymentFinancials(db, (id) => getPaymentProvider(id)); // Stripe fees from balance transactions
+  return NextResponse.json({ expired, emails, financials });
 }

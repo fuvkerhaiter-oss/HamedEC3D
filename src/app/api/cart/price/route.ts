@@ -5,6 +5,7 @@ import { getCatalogReader } from "@/lib/catalog/source";
 import { MARKETS } from "@/lib/markets";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { loadCouponForCode } from "@/lib/admin/services/coupons";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(coupon ? { ...cart, coupon } : cart, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
-    console.error("cart pricing failed", err);
+    logError("cart pricing failed", err);
     return NextResponse.json({ error: "Could not price cart" }, { status: 502 });
   }
 }

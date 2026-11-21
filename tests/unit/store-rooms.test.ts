@@ -28,3 +28,13 @@ test("rooms: untrusted presence/pose data is sanitized", () => {
   assert.equal(cleanPose([1, 2, "x", 0]), null);
   assert.equal(cleanPose([1e9, 0, 0, 0]), null);
 });
+
+test("rooms: basket wire round-trips and rejects junk", async () => {
+  const { packBasket, cleanBasket, BASKET_MAX } = await import("../../src/features/store3d/multiplayer/rooms");
+  const ids = ["a", "a", "b", "a"];
+  assert.deepEqual(packBasket(ids), [["a", 2], ["b", 1], ["a", 1]]);
+  assert.deepEqual(cleanBasket(packBasket(ids)), ids);
+  assert.deepEqual(cleanBasket([["<script>", 3], ["ok", -2], ["x", "2"], 5, null]), ["x", "x"]);
+  assert.equal(cleanBasket([["p", 1e9]]).length, BASKET_MAX);
+  assert.deepEqual(cleanBasket("nope"), []);
+});

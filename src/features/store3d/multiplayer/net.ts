@@ -13,7 +13,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { localChannel } from "./local-channel";
-import { cleanColor, cleanName, cleanPose, MAX_ROOMS, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type MemberMeta, type Pose } from "./rooms";
+import { BASKET_MAX, cleanBasket, cleanColor, cleanName, cleanPose, MAX_ROOMS, packBasket, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type MemberMeta, type Pose } from "./rooms";
 
 export type NetStatus = "off" | "connecting" | "online" | "unavailable";
 
@@ -26,7 +26,7 @@ export interface Chan {
   send(msg: { type: "broadcast"; event: string; payload: unknown }): Promise<unknown>;
   remove(): void;
 }
-export interface Member { id: string; name: string; color: string; mic: boolean }
+export interface Member { id: string; name: string; color: string; mic: boolean; /** Product ids in their trolley (display only). */ basket: string[] }
 
 interface NetState {
   status: NetStatus;
@@ -51,7 +51,7 @@ export const useNet = create<NetState>()(() => ({
   status: "off",
   message: null,
   room: null,
-  me: { id: ID, name: "Shopper", color: "#2e86ab", mic: false },
+  me: { id: ID, name: "Shopper", color: "#2e86ab", mic: false, basket: [] },
   members: [],
   local: false,
   micOn: false,
@@ -78,6 +78,8 @@ let joinedAt = 0;
 let running = false;
 let micTrack: MediaStreamTrack | null = null;
 let audioCtx: AudioContext | null = null;
+let myBasket: string[] = [];
+let basketTimer: ReturnType<typeof setTimeout> | null = null;
 const peers = new Map<string, Peer>();
 // Dev-only handle for browser testing.
 if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") (window as unknown as { __mmNet?: unknown }).__mmNet = { peers, remotePoses };
@@ -91,7 +93,7 @@ export function startMultiplayer(): void {
   running = true;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const me = { id: ID, name: cleanName(stored("mm-name") ?? randomName()), color: cleanColor(stored("mm-color") ?? randomColor()), mic: false };
+  const me = { id: ID, name: cleanName(stored("mm-name") ?? randomName()), color: cleanColor(stored("mm-color") ?? randomColor()), mic: false, basket: myBasket };
   store("mm-name", me.name);
   store("mm-color", me.color);
   useNet.setState({ me });
@@ -124,7 +126,7 @@ function leaveRoom() {
 
 function myMeta(): Record<string, unknown> {
   const { me, micOn } = useNet.getState();
-  return { id: ID, name: me.name, color: me.color, joinedAt, mic: micOn };
+  return { id: ID, name: me.name, color: me.color, joinedAt, mic: micOn, basket: packBasket(myBasket) };
 }
 
 function joinRoom(n: number) {
@@ -159,15 +161,15 @@ function joinRoom(n: number) {
 }
 
 function onSync(ch: Chan) {
-  const state = ch.presenceState() as Record<string, Partial<MemberMeta & { mic: boolean }>[]>;
+  const state = ch.presenceState() as Record<string, Partial<MemberMeta & { mic: boolean; basket: unknown }>[]>;
   const all = Object.entries(state).map(([key, metas]) => {
     const m = metas[0]!;
-    return { id: key, name: cleanName(m.name), color: cleanColor(m.color), joinedAt: Number(m.joinedAt) || 0, mic: !!m.mic };
+    return { id: key, name: cleanName(m.name), color: cleanColor(m.color), joinedAt: Number(m.joinedAt) || 0, mic: !!m.mic, basket: cleanBasket(m.basket) };
   });
   if (!all.some((m) => m.id === ID)) return; // my own track hasn't landed yet
   if (mustMoveOn(all, ID, ROOM_CAPACITY)) return joinRoom(roomNo + 1);
   const others = all.filter((m) => m.id !== ID).sort((a, b) => a.joinedAt - b.joinedAt);
-  useNet.setState({ status: "online", message: null, room: roomNo, members: others.map(({ id, name, color, mic }) => ({ id, name, color, mic })) });
+  useNet.setState({ status: "online", message: null, room: roomNo, members: others.map(({ id, name, color, mic, basket }) => ({ id, name, color, mic, basket })) });
   const ids = new Set(others.map((m) => m.id));
   for (const id of [...peers.keys()]) if (!ids.has(id)) dropPeer(id);
   for (const id of ids) if (!peers.has(id) && ID < id) void callPeer(id); // lower id makes the offer
@@ -179,6 +181,18 @@ export function setMyName(raw: string): void {
   store("mm-name", name);
   useNet.setState((s) => ({ me: { ...s.me, name } }));
   channel?.track(myMeta()).catch(() => {});
+}
+
+/** My trolley contents (product ids) for the other shoppers; debounced so a burst of adds is one presence update. */
+export function setMyBasket(productIds: readonly string[]): void {
+  const next = productIds.slice(0, BASKET_MAX);
+  if (next.length === myBasket.length && next.every((id, i) => id === myBasket[i])) return;
+  myBasket = next;
+  if (basketTimer) clearTimeout(basketTimer);
+  basketTimer = setTimeout(() => {
+    basketTimer = null;
+    channel?.track(myMeta()).catch(() => {});
+  }, 350);
 }
 
 // ---------------------------------------------------------------- WebRTC

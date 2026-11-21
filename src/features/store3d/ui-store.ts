@@ -23,6 +23,14 @@ interface StoreUiState {
   inspect: boolean;
   /** The browser dropped the WebGL context (iOS does this under memory pressure or after backgrounding). */
   contextLost: boolean;
+  /**
+   * Homepage hero embed: "preview" = live 3D picture with a cinematic camera, "entering" = 3D fly-in to the
+   * spawn point, "play" = normal store (the /store page is always "play").
+   */
+  stage: "preview" | "entering" | "play";
+  /** Set by the homepage embed: "Leave store" returns to the hero instead of navigating. */
+  onLeave: (() => void) | null;
+  setStage: (stage: "preview" | "entering" | "play") => void;
   showToast: (text: string) => void;
   /** Enter play: pointer lock on desktop; in touch mode simply activates the touch controls. */
   requestLock: () => void;
@@ -37,7 +45,7 @@ interface StoreUiState {
   reset: () => void;
 }
 
-const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, toast: null, lockError: null, inspect: false, contextLost: false };
+const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, toast: null, lockError: null, inspect: false, contextLost: false, stage: "play" as const, onLeave: null };
 
 export const LOCK_ERROR_MESSAGE =
   "Your browser didn't allow mouse capture. Wait a second and click again, or shop from the list view.";
@@ -54,6 +62,7 @@ export const useStoreUi = create<StoreUiState>()((set, get) => ({
   setLocked: (locked) => set(locked ? { locked, lockError: null } : { locked }),
   setLockError: (lockError) => set({ lockError }),
   setReady: (ready) => set({ ready }),
+  setStage: (stage) => set({ stage }),
   setTarget: (target) => set({ target }),
   openProduct: (openProductId) => set({ openProductId, target: null }),
   showToast: (text) => {

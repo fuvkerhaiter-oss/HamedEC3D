@@ -4,7 +4,7 @@ import { ContactForm, OrderLookupForm } from "@/features/support/SupportForms";
 
 export const metadata: Metadata = {
   title: "Help & contact",
-  description: "Track your order, read our shipping and returns policies, or send a message to the Mega Market team.",
+  description: "Track your order, read our shipping and returns policies, or send a message to the WEGO SHIIIP team.",
 };
 
 const FAQ = [
@@ -26,6 +26,7 @@ export default function ContactPage() {
           <h2 className="font-display text-2xl">Track an order</h2>
           <p className="mt-1 text-sm text-ink-soft">No account needed.</p>
           <div className="mt-5"><OrderLookupForm /></div>
+          <p className="mt-4 text-sm text-ink-soft">See all your orders at once? <Link href="/account/orders" className="underline">Get a link by email</Link>.</p>
         </section>
         <section id="message" className="rounded-3xl bg-white/70 p-6 shadow-card">
           <h2 className="font-display text-2xl">Send us a message</h2>

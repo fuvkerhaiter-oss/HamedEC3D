@@ -1,9 +1,24 @@
 import { z } from "zod";
 import { MAX_CART_LINES } from "../cart/pricing";
+import { addressProblem } from "../shipping/address";
 
 const lines = z.array(z.object({ variantId: z.string().min(1).max(100), quantity: z.number().int().min(1).max(99) })).min(1).max(MAX_CART_LINES);
 const country = z.string().trim().length(2).transform((s) => s.toUpperCase());
 const opt = (max: number) => z.string().trim().max(max).optional().transform((s) => s || undefined);
+
+const address = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  line1: z.string().trim().min(3).max(200),
+  line2: opt(200),
+  city: z.string().trim().min(1).max(100),
+  region: opt(60),
+  postalCode: z.string().trim().min(2).max(20),
+  country,
+  phone: opt(40),
+}).superRefine((a, ctx) => {
+  const problem = addressProblem(a);
+  if (problem) ctx.addIssue({ code: "custom", message: problem, path: [a.country === "US" && /state/i.test(problem) ? "region" : "postalCode"] });
+});
 
 export const QuoteBody = z.object({
   lines,
@@ -13,19 +28,13 @@ export const QuoteBody = z.object({
   shippingMethodId: z.string().max(100).nullish(),
 });
 
+/** Unknown keys (e.g. a client-sent price or total) are stripped: prices are always computed on the server. */
 export const CheckoutBody = z.object({
   lines,
   email: z.string().trim().toLowerCase().email().max(254),
-  shipTo: z.object({
-    fullName: z.string().trim().min(2).max(120),
-    line1: z.string().trim().min(3).max(200),
-    line2: opt(200),
-    city: z.string().trim().min(1).max(100),
-    region: opt(60),
-    postalCode: z.string().trim().min(2).max(20),
-    country,
-    phone: opt(40),
-  }),
+  shipTo: address,
+  /** Omitted = billing address is the delivery address. */
+  billTo: address.optional(),
   shippingMethodId: z.string().min(1).max(100),
   couponCode: opt(40),
   customerNote: opt(1000),

@@ -5,7 +5,7 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { isCurrencyCode, money, type Money } from "../money";
-import { WebhookVerificationError, type PaymentEvent, type PaymentProvider } from "./types";
+import { WebhookVerificationError, type PaymentEvent, type PaymentProvider, type ProviderRefundStatus, type VerifiedPayment } from "./types";
 
 const API = "https://api.stripe.com/v1";
 const TOLERANCE_SECONDS = 300;
@@ -86,10 +86,19 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
       return "pending";
     },
 
-    async refund(providerPaymentId, amount, idempotencyKey) {
+    async retrievePayment(providerPaymentId) {
+      const pi = await call("GET", `/payment_intents/${encodeURIComponent(providerPaymentId)}?expand[]=latest_charge.balance_transaction`);
+      return mapPaymentIntent(pi);
+    },
+
+    async refund(providerPaymentId, amount, idempotencyKey, meta) {
       const f = new URLSearchParams({ payment_intent: providerPaymentId, amount: String(amount.amount) });
+      if (meta) {
+        f.set("metadata[local_refund_id]", meta.localRefundId);
+        f.set("metadata[order_id]", meta.orderId);
+      }
       const r = await call("POST", "/refunds", f, idempotencyKey);
-      return { refundId: String(r.id) };
+      return { refundId: String(r.id), status: mapRefundStatus(r.status) };
     },
   };
 }
@@ -112,6 +121,36 @@ export function verifyStripeSignature(rawBody: string, header: string | null, se
     return given.length === expected.length && timingSafeEqual(given, expected);
   });
   if (!ok) throw new WebhookVerificationError("Invalid Stripe signature");
+}
+
+export function mapRefundStatus(s: unknown): ProviderRefundStatus {
+  if (s === "succeeded") return "succeeded";
+  if (s === "failed") return "failed";
+  if (s === "canceled") return "canceled";
+  return "pending"; // pending, requires_action
+}
+
+/** PaymentIntent (with latest_charge.balance_transaction expanded) → trusted payment figures. */
+export function mapPaymentIntent(pi: StripeObject): VerifiedPayment {
+  const s = String(pi.status);
+  const status: VerifiedPayment["status"] =
+    s === "succeeded" ? "succeeded" : s === "canceled" ? "canceled" : s === "requires_payment_method" && pi.last_payment_error ? "failed" : "pending";
+  const cur = String(pi.currency ?? "").toUpperCase();
+  if (!isCurrencyCode(cur)) throw new StripeApiError(`Unsupported PaymentIntent currency ${cur}`, 0);
+  const charge = typeof pi.latest_charge === "object" && pi.latest_charge !== null ? (pi.latest_charge as StripeObject) : null;
+  const bt = charge && typeof charge.balance_transaction === "object" && charge.balance_transaction !== null ? (charge.balance_transaction as StripeObject) : null;
+  const int = (v: unknown) => (typeof v === "number" && Number.isSafeInteger(v) ? v : null);
+  const gross = int(bt?.amount), fee = int(bt?.fee), net = int(bt?.net);
+  const btCur = String(bt?.currency ?? "").toUpperCase();
+  return {
+    status,
+    amountReceived: money(int(pi.amount_received) ?? 0, cur),
+    amountRefunded: charge ? int(charge.amount_refunded) : null,
+    livemode: typeof pi.livemode === "boolean" ? pi.livemode : null,
+    balance: bt && gross !== null && fee !== null && net !== null && /^[A-Z]{3}$/.test(btCur)
+      ? { transactionId: String(bt.id), gross, fee, net, currency: btCur }
+      : null,
+  };
 }
 
 function toMoney(amount: unknown, currency: unknown): Money {
@@ -140,6 +179,16 @@ export function mapStripeEvent(event: { id: string; type: string; created: numbe
       // Only full refunds move the order to `refunded`; partial refunds are handled by admin.
       if (o.refunded !== true) return null;
       return { eventId: event.id, type: "refund.succeeded", orderId: meta.order_id ?? null, providerPaymentId: String(o.payment_intent), amount: toMoney(o.amount_refunded, o.currency), occurredAt };
+    case "refund.created":
+    case "refund.updated":
+    case "refund.failed":
+    case "charge.refund.updated":
+      // Per-refund status (partial refunds, failures). Matched to the local refund by id / metadata.
+      return {
+        eventId: event.id, type: "refund.updated", orderId: meta.order_id ?? null, providerPaymentId: String(o.payment_intent),
+        amount: toMoney(o.amount, o.currency), occurredAt,
+        refund: { providerRefundId: String(o.id), status: mapRefundStatus(o.status), localRefundId: meta.local_refund_id ?? null },
+      };
     default:
       return null;
   }

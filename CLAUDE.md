@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Mega Market (tagline "Happy Family, Happy Animals"; formerly Virtual Shopping World): first-person 3D supermarket + custom dropshipping store (Next.js, R3F, Supabase, Stripe). Markets: EU (EUR) + US (USD).
+WEGO SHIIIP. (tagline "Happy Family, Happy Animals"; formerly Mega Market, Virtual Shopping World): first-person 3D supermarket + custom dropshipping store (Next.js, R3F, Supabase, Stripe). Markets: EU (EUR) + US (USD).
 Start every session with `PROJECT_STATUS.md` (state, next action). Design: `ARCHITECTURE.md`. Setup: `INTEGRATION_GUIDE.md`.
 
 ## Rules

@@ -19,6 +19,11 @@ export interface CustomerOrderView {
   shippingMethod: string | null;
   shipTo: { fullName: string; line1: string; line2?: string; city: string; region?: string; postalCode: string; country: string };
   shipments: { carrier: string; trackingNumber: string; trackingUrl: string | null; status: string }[];
+  /** Business-day ESTIMATE shown at checkout (not a guarantee); null when the method had none. */
+  deliveryEstimate: { minDays: number; maxDays: number } | null;
+  /** Applied tax rate in basis points (snapshot at purchase); null for orders before it was recorded. */
+  taxRateBps: number | null;
+  refunds: { amount: Money; status: "pending" | "completed"; createdAt: string }[];
 }
 
 /** Plain-language status for customers. */
@@ -41,14 +46,16 @@ export async function getCustomerOrder(db: Db, orderId: string): Promise<Custome
   const [o] = await db<{
     id: string; order_number: string; status: OrderStatus; email: string; created_at: Date; tax_mode: "inclusive" | "exclusive"; currency: CurrencyCode;
     subtotal: number; discount_total: number; shipping_total: number; tax_total: number; total: number; shipping_method_name: string | null;
-    shipping_address: CustomerOrderView["shipTo"];
+    shipping_address: CustomerOrderView["shipTo"]; shipping_min_days: number | null; shipping_max_days: number | null; tax_rate_bps: number | null;
   }[]>`select id, order_number, status, email, created_at, tax_mode, currency, subtotal, discount_total, shipping_total, tax_total, total,
-             shipping_method_name, shipping_address from public.orders where id = ${orderId}`;
+             shipping_method_name, shipping_address, shipping_min_days, shipping_max_days, tax_rate_bps from public.orders where id = ${orderId}`;
   if (!o) return null;
   const items = await db<{ product_name: string; variant_name: string; quantity: number; line_total: number }[]>`
     select product_name, variant_name, quantity, line_total from public.order_items where order_id = ${orderId} order by product_name`;
   const ships = await db<{ carrier: string; tracking_number: string; tracking_url: string | null; status: string }[]>`
     select carrier, tracking_number, tracking_url, status from public.shipments where order_id = ${orderId} order by shipped_at nulls last`;
+  const refunds = await db<{ amount: number; status: string; created_at: Date }[]>`
+    select amount, status, created_at from public.refunds where order_id = ${orderId} and status in ('pending','succeeded','manual') order by created_at`;
   const m = (amount: number): Money => ({ amount: Number(amount), currency: o.currency });
   return {
     id: o.id,
@@ -66,5 +73,8 @@ export async function getCustomerOrder(db: Db, orderId: string): Promise<Custome
     shippingMethod: o.shipping_method_name,
     shipTo: o.shipping_address,
     shipments: ships.map((s) => ({ carrier: s.carrier, trackingNumber: s.tracking_number, trackingUrl: s.tracking_url, status: s.status })),
+    deliveryEstimate: o.shipping_min_days != null && o.shipping_max_days != null ? { minDays: o.shipping_min_days, maxDays: o.shipping_max_days } : null,
+    taxRateBps: o.tax_rate_bps,
+    refunds: refunds.map((r) => ({ amount: m(r.amount), status: r.status === "pending" ? "pending" : "completed", createdAt: new Date(r.created_at).toISOString() })),
   };
 }

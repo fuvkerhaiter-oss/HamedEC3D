@@ -1,17 +1,20 @@
+import Image from "next/image";
 import Link from "next/link";
+import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
 import { getStorefrontSettings, listPublishedPages } from "@/lib/storefront/settings";
 
 function Logo({ dark = false }: { dark?: boolean }) {
   return (
-    <Link href="/" className="group inline-flex items-center gap-2.5" aria-label="Mega Market home">
-      <span aria-hidden className={`flex h-8 w-8 items-center justify-center rounded-lg font-display text-sm transition group-hover:rotate-[-6deg] ${dark ? "bg-amber text-ink" : "bg-ink text-amber"}`}>
-        M
-      </span>
-      <span className={`font-display text-xl leading-none ${dark ? "text-cream" : "hidden min-[420px]:inline"}`}>
-        Mega<span className={dark ? "text-amber" : "text-brand"}>Market</span>
-      </span>
+    <Link href="/" className="group inline-flex items-center" aria-label="WEGO SHIIIP. home">
+      <Image
+        src={brandLogo}
+        alt=""
+        priority={!dark}
+        sizes={dark ? "160px" : "96px"}
+        className={`w-auto transition group-hover:rotate-[-3deg] group-hover:scale-105 ${dark ? "h-16" : "h-10 drop-shadow-[0_2px_4px_rgb(0_0_0/0.18)]"}`}
+      />
     </Link>
   );
 }
@@ -27,8 +30,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-dvh flex-col">
       {home.announcement && <p className="bg-amber px-5 py-2 text-center text-sm font-medium text-ink">{home.announcement}</p>}
-      <header className="sticky top-0 z-40 border-b border-line/80 bg-cream/80 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3" aria-label="Main">
+      {/* Floating golden-edged banner (public/brand/navbar-banner.webp, 9-slice in globals.css .vsw-nav-banner). */}
+      <header className="sticky top-0 z-40 px-2 pt-2 sm:px-4">
+        <nav className="vsw-nav-banner mx-auto flex max-w-6xl items-center justify-between gap-3 py-2 pl-7 pr-7 sm:gap-4 sm:pl-9 sm:pr-8" aria-label="Main">
           <Logo />
           <div className="hidden items-center gap-1 text-sm font-medium sm:flex">
             {NAV.map((n) => (
@@ -72,11 +76,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           </div>
         </div>
         <p aria-hidden className="pointer-events-none select-none px-5 text-center font-display text-[18vw] leading-[0.8] text-cream/[0.06] sm:text-[15vw]">
-          Mega Market
+          WEGO SHIIIP.
         </p>
         <div className="border-t border-cream/10">
           <div className="mx-auto flex max-w-6xl flex-col justify-between gap-2 px-5 py-5 text-xs text-cream/50 sm:flex-row">
-            <p>© {new Date().getFullYear()} Mega Market · Italy</p>
+            <p>© {new Date().getFullYear()} WEGO SHIIIP · Italy</p>
             <p className="eyebrow !tracking-[0.14em]">Happy Family, Happy Animals</p>
           </div>
         </div>

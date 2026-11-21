@@ -61,3 +61,31 @@ export function cleanPose(raw: unknown): Pose | null {
 export const packPose = (x: number, y: number, z: number, yaw: number): Pose => [
   Math.round(x * 100) / 100, Math.round(y * 100) / 100, Math.round(z * 100) / 100, Math.round(yaw * 100) / 100,
 ];
+
+/** Trolley contents shown on other shoppers: product ids only (no prices, no variants), same cap as my own basket. */
+export const BASKET_MAX = 36;
+export type BasketWire = [string, number][];
+const PRODUCT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** Product ids in basket order → compact run-length pairs for presence. */
+export function packBasket(productIds: readonly string[]): BasketWire {
+  const out: BasketWire = [];
+  for (const id of productIds.slice(0, BASKET_MAX)) {
+    const last = out[out.length - 1];
+    if (last && last[0] === id) last[1]++;
+    else out.push([id, 1]);
+  }
+  return out;
+}
+
+/** Untrusted wire → product ids (valid ids only, counts clamped, total capped). */
+export function cleanBasket(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const pair of raw.slice(0, BASKET_MAX)) {
+    if (!Array.isArray(pair) || typeof pair[0] !== "string" || !PRODUCT_ID.test(pair[0])) continue;
+    const n = Math.min(BASKET_MAX, Math.max(0, Math.floor(Number(pair[1]) || 0)));
+    for (let i = 0; i < n && out.length < BASKET_MAX; i++) out.push(pair[0]);
+  }
+  return out;
+}

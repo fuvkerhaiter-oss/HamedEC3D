@@ -7,6 +7,7 @@ import type { createDevPaymentSimulator } from "@/lib/payments/dev-simulator";
 import { pgWebhookStore } from "@/lib/payments/pg-store";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { handlePaymentWebhook } from "@/lib/payments/webhook";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,6 @@ export async function POST(req: Request) {
   if (!o) return NextResponse.json({ error: "Unknown order" }, { status: 404 });
   const { rawBody, headers } = sim.buildWebhook({ type: outcome, orderId, providerPaymentId: `sim_pi_${session}`, amount: { amount: Number(o.total), currency: o.currency } });
   await db.begin((tx) => handlePaymentWebhook(sim, rawBody, headers, pgWebhookStore(tx as unknown as Tx, { isTest: true })));
-  after(() => flushEmailOutbox(db).catch((e) => console.error("email flush failed", e)));
+  after(() => flushEmailOutbox(db).catch((e) => logError("email flush failed", e)));
   return NextResponse.redirect(`${orderUrl(siteUrl(req), orderId)}&paid=1`, 303);
 }

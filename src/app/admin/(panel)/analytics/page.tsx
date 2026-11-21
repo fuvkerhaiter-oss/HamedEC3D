@@ -3,7 +3,8 @@ import { DateRangeForm } from "@/features/admin/DateRangeForm";
 import { BarChart, Card, Field, fmtDate, fmtMoney, HBars, Notice, PageHeader, Stat, Table, CsvLink } from "@/features/admin/ui";
 import { resolveRange } from "@/lib/admin/date-range";
 import { requirePage } from "@/lib/admin/guard";
-import { dailySeries, listExpenses, profitReport, salesByCountry, topProducts } from "@/lib/admin/services/finance";
+import Link from "next/link";
+import { dailySeries, listExpenses, orderFinancials, orderStatusCounts, profitReport, salesByCountry, topProducts } from "@/lib/admin/services/finance";
 import { getSql } from "@/lib/db/client";
 import { addExpenseAction, deleteExpenseAction } from "../ops-actions";
 
@@ -15,9 +16,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const range = resolveRange(sp);
   const sql = getSql();
   const finance = session.permissions.has("finance.view");
-  const [series, top, countries, profit, expenses] = await Promise.all([
+  const [series, top, countries, profit, expenses, counts, perOrder] = await Promise.all([
     dailySeries(sql, range), topProducts(sql, range, 10), salesByCountry(sql, range),
     finance ? profitReport(sql, range) : Promise.resolve(null), finance ? listExpenses(sql, range) : Promise.resolve([]),
+    orderStatusCounts(sql, range), finance ? orderFinancials(sql, range) : Promise.resolve([]),
   ]);
   const qs = new URLSearchParams(Object.entries({ range: range.preset, from: sp.from, to: sp.to }).filter((e): e is [string, string] => !!e[1])).toString();
   const b = profit?.baseCurrency ?? "EUR";
@@ -25,6 +27,15 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader eyebrow={range.label} title="Reports" description="Your sales, costs and profit for the chosen period." actions={<DateRangeForm range={range.preset} from={sp.from} to={sp.to} />} />
+
+      <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Orders" value={counts.total} hint="all, excl. test orders" />
+        <Stat label="Paid" value={counts.paid} hint="incl. shipped / refunded" />
+        <Stat label="Waiting for payment" value={counts.pending} />
+        <Stat label="Cancelled" value={counts.cancelled} hint="mostly unpaid checkouts" />
+        <Stat label="Payment failed" value={counts.failed} />
+        <Stat label="Refunded" value={counts.refunded} />
+      </div>
 
       {profit && (
         <>
@@ -57,6 +68,30 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           {countries.length ? <HBars rows={countries.map((r) => ({ label: `${r.country} (${r.currency})`, value: r.orders }))} format={(n) => `${n} orders`} /> : <p className="text-sm text-ink-soft">No paid orders in this period.</p>}
         </Card>
       </div>
+
+      {finance && (
+        <Card title="Money per order (order currency)" className="mt-6" pad={false}>
+          {perOrder.length === 0 ? <p className="p-5 text-sm text-ink-soft">No paid orders in this period.</p> : (
+            <Table head={["Order", "Products", "Discount", "Shipping", "Tax", "Refunds (net)", "Stripe fee", "Supplier cost", "Net revenue", "Est. profit"]}>
+              {perOrder.map((o) => (
+                <tr key={o.id}>
+                  <td><Link href={`/admin/orders/${o.id}`} className="underline">#{o.orderNumber}</Link></td>
+                  <td className="font-mono">{fmtMoney(o.subtotal, o.currency)}</td>
+                  <td className="font-mono">{o.discount ? `−${fmtMoney(o.discount, o.currency)}` : "—"}</td>
+                  <td className="font-mono">{fmtMoney(o.shipping, o.currency)}</td>
+                  <td className="font-mono">{fmtMoney(o.taxKept, o.currency)}</td>
+                  <td className="font-mono">{o.refundedNet ? `−${fmtMoney(o.refundedNet, o.currency)}` : "—"}</td>
+                  <td className="font-mono">{o.fee === null ? <span title="Not reported by Stripe yet">unknown</span> : fmtMoney(o.fee, o.currency)}</td>
+                  <td className="font-mono">{o.supplierCost === null ? <span title="No cost recorded or different currency">unknown</span> : <>{fmtMoney(o.supplierCost, o.currency)}{!o.costFinal && <span title="From the supplier mapping, not yet recorded on the supplier order"> (est.)</span>}</>}</td>
+                  <td className="font-mono">{fmtMoney(o.netRevenue, o.currency)}</td>
+                  <td className="font-mono">{o.estimatedProfit === null ? "—" : fmtMoney(o.estimatedProfit, o.currency)}{o.estimatedProfit !== null && (!o.costFinal || o.fee === null) ? " (est.)" : ""}</td>
+                </tr>
+              ))}
+            </Table>
+          )}
+          <p className="px-5 py-3 text-xs text-ink-soft">Net revenue = total paid − tax − refunds (tax share removed). Profit = net revenue − supplier cost − Stripe fee. Fees come from Stripe balance transactions; unknown fees and costs are shown as unknown, never guessed.</p>
+        </Card>
+      )}
 
       <Card title="Best sellers" className="mt-6" pad={false}>
         {top.length === 0 ? <p className="p-5 text-sm text-ink-soft">No sales in this period.</p> : (

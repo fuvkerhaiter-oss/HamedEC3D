@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import heroImage from "@/assets/hero/mega-market-hero.webp";
+import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
+import storeFirstView from "@/assets/hero/store-first-view.webp";
+import { StorePortal } from "@/features/home/StorePortal";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
+import { getCatalog } from "@/lib/catalog/source";
 
 // Hero copy is editable in Admin → Website Content (empty fields keep the defaults below).
 export const revalidate = 60;
@@ -27,28 +30,39 @@ const STATS = [
   ["€ · $", "Local pricing"],
 ];
 
+/** Brand logo: amber halo pulsing behind it + a glow hugging the letters (globals.css .vsw-logo). */
+const heroLogo = (
+  <>
+    <span aria-hidden className="vsw-logo-glow pointer-events-none absolute -inset-[12%] -z-10 rounded-full bg-[radial-gradient(closest-side,rgb(255_196_61/0.55),rgb(229_169_61/0.18)_55%,transparent)] blur-2xl" />
+    <Image
+      src={brandLogo}
+      alt=""
+      priority
+      sizes="(min-width: 1024px) 34rem, 90vw"
+      className="vsw-logo h-auto w-full"
+    />
+  </>
+);
+
 export default async function HomePage() {
-  const { home } = await getStorefrontSettings();
+  const [{ home, stockAllFaces }, { categories, products }] = await Promise.all([getStorefrontSettings(), getCatalog()]);
   return (
     <>
       <section className="relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
-        {/* Photo: stacked above the copy on small screens, right-anchored and faded into ink on large ones,
-            so the headline never covers the characters. Slow drift + fade-in. */}
-        <div aria-hidden className="vsw-hero-photo relative -z-10 aspect-[4/3] w-full overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
-          <div className="vsw-hero-bg absolute inset-0">
-            <Image src={heroImage} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 62vw, 100vw" className="object-cover object-[45%_35%] lg:object-[28%_35%]" />
-          </div>
-          <div className="vsw-load-sweep pointer-events-none absolute inset-0" />
+        {/* Phones: the logo comes first, then the store picture, then the copy (the h1 below is screen-reader only there). */}
+        <div aria-hidden className="vsw-hero-in relative z-10 mx-auto w-[min(86%,26rem)] pb-6 pt-8 lg:hidden">{heroLogo}</div>
+        {/* The real first view of the 3D store (rendered from the scene: tools/assets/capture-store-preview.ts).
+            Click = fly into the store. Between the logo and the copy on phones, right-anchored on large screens. */}
+        <div className="vsw-hero-photo relative z-0 aspect-[4/3] w-full overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
+          <StorePortal image={storeFirstView} catalog={{ categories, products, stockAllFaces }} />
         </div>
         <div aria-hidden className="vsw-grid-bg absolute inset-0 -z-20" />
 
-        <div className="mx-auto -mt-8 flex w-full max-w-6xl flex-col items-start gap-7 px-5 pb-14 lg:mt-0 lg:py-28">
-          <p className="vsw-hero-in eyebrow flex items-center gap-2 rounded-full border border-cream/20 bg-ink/40 px-3.5 py-1.5 text-cream/85 backdrop-blur-sm [--d:100ms]">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber shadow-[0_0_10px_var(--color-amber)]" />
-            {home.heroEyebrow || "The supermarket you can walk into online"}
-          </p>
-          <h1 className="vsw-hero-in max-w-3xl font-display text-[clamp(3.5rem,11vw,8.5rem)] font-extrabold leading-[0.88] tracking-[-0.045em] drop-shadow-[0_4px_24px_rgb(0_0_0/0.45)] [--d:220ms]">
-            {home.heroTitle ? home.heroTitle : <>Mega <br /><span className="text-amber">Market.</span></>}
+        {/* Copy column: its empty space lets clicks through to the store picture behind it. */}
+        <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl flex-col items-start gap-7 px-5 pb-14 pt-8 lg:py-28 [&>*]:pointer-events-auto">
+          <h1 className="vsw-hero-in relative w-[min(100%,34rem)] max-lg:sr-only [--d:120ms]">
+            <span className="sr-only">{home.heroTitle || "WEGO SHIIIP."}</span>
+            <span className="block max-lg:hidden">{heroLogo}</span>
           </h1>
           <p className="vsw-hero-in flex items-center gap-3 font-display text-xl font-semibold tracking-tight text-cream [--d:360ms] sm:text-2xl">
             <span aria-hidden className="h-px w-10 bg-amber" />
@@ -58,10 +72,6 @@ export default async function HomePage() {
             {home.heroSubtitle || "Step into an immersive 3D store, pick real products off the shelves and have them delivered across Europe and the USA."}
           </p>
           <div className="vsw-hero-in flex flex-wrap gap-3 [--d:600ms]">
-            <Link href="/store" className="vsw-hero-cta group inline-flex items-center gap-2 rounded-full bg-amber px-7 py-4 font-semibold text-ink shadow-[0_10px_30px_rgb(229_169_61/0.4)] transition hover:-translate-y-0.5 hover:bg-[#f0bb55]">
-              Enter the store
-              <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-            </Link>
             <Link href="/catalog" className="rounded-full border border-cream/30 bg-ink/30 px-7 py-4 font-semibold backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-cream/60 hover:bg-cream/10">
               Browse the catalog
             </Link>
@@ -96,7 +106,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-5 py-24">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow text-brand">Why Mega Market</p>
+            <p className="eyebrow text-brand">Why WEGO SHIIIP</p>
             <h2 className="mt-3 max-w-xl font-display text-4xl leading-[1.02] sm:text-5xl">Shopping, reimagined as a place you visit.</h2>
           </div>
           <p className="max-w-sm text-ink-soft">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>

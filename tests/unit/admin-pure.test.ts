@@ -87,10 +87,11 @@ test("profit: revenue net of tax, estimated vs final, expenses, fx snapshot", ()
   );
   assert.equal(s.orders, 2);
   assert.equal(s.revenue, 10000 + 9000);
-  assert.equal(s.refunds, 900);
+  // Refund 1000 USD of an order with 800 tax in 10800: its tax share (74) is not revenue lost → 926 USD × 0.9.
+  assert.equal(s.refunds, 833);
   assert.equal(s.costOfGoods, 4000 + 4500);
   assert.equal(s.fees, 300);
-  assert.equal(s.grossProfit, 19000 - 900 - 8500 - 300);
+  assert.equal(s.grossProfit, 19000 - 833 - 8500 - 300);
   assert.equal(s.netProfit, s.grossProfit - 1000);
   assert.equal(s.estimatedOrders, 1);
   assert.equal(marginBps(1000, 600), 4000);

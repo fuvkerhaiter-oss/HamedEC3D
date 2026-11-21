@@ -41,13 +41,14 @@ export function Player({ spawn, spawnYaw = 0, trolley }: { spawn: Vec3; spawnYaw
 
   // Start looking where the body/trolley faces.
   useEffect(() => {
-    if (useStoreUi.getState().inspect) return;
+    if (useStoreUi.getState().inspect || useStoreUi.getState().stage !== "play") return;
     camera.rotation.set(0, spawnYaw, 0, "YXZ");
   }, [camera, spawnYaw]);
 
   useFrame((_, delta) => {
     const b = body.current;
     if (!b || useStoreUi.getState().inspect) return;
+    if (useStoreUi.getState().stage !== "play") return; // the cinematic camera owns the view (homepage embed)
     const dt = Math.min(delta, 0.1);
     const { locked, openProductId } = useStoreUi.getState();
     const keys = getKeys();

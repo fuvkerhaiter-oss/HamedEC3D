@@ -11,6 +11,7 @@ import { getSql, isDbConfigured, type Sql } from "../db/client";
 import type { Actor } from "./audit";
 import { getSessionAdmin, type AdminSession } from "./auth";
 import { ForbiddenError, type Permission } from "./permissions";
+import { logError } from "../log";
 
 export const ADMIN_COOKIE = process.env.NODE_ENV === "production" ? "__Host-mm_admin" : "mm_admin";
 
@@ -93,7 +94,7 @@ export function adminAction<S extends z.ZodType, T>(
       if (msg) return { ok: false, error: msg };
       // redirect()/notFound() throw special errors that must propagate.
       if (err && typeof err === "object" && "digest" in err) throw err;
-      console.error("[admin action]", err);
+      logError("[admin action]", err);
       return { ok: false, error: "Something went wrong. The change was not saved." };
     }
   };

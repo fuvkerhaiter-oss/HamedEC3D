@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { canOptimize } from "@/lib/catalog/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/features/cart/cart-store";
 import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
 import { priceIn, stockStatus, type Product } from "@/lib/catalog/types";
@@ -30,20 +30,38 @@ export function ProductPanel({
   const [qty, setQty] = useState(1);
   const market = MARKETS[useCart((s) => s.market)];
   const setCartOpen = useCart((s) => s.setOpen);
+  const dialog = useRef<HTMLDivElement>(null);
+  const primary = useRef<HTMLButtonElement>(null);
+  const added = useRef(false); // a fast double click/tap must not add twice before the panel unmounts
 
   const variant = product.variants.find((v) => v.id === variantId);
   const price = variant ? priceIn(variant, market.currency) : null;
   const stock = variant ? stockStatus(variant) : "out_of_stock";
   const maxQty = variant ? Math.min(MAX_LINE_QUANTITY, variant.stockQuantity) : 0;
 
+  // Keyboard/screen-reader users land inside the dialog (on the main action, or the close button when it
+  // is disabled) and Tab stays inside it.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose(false);
+    (primary.current?.disabled ? dialog.current?.querySelector<HTMLElement>("button") : primary.current)?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onClose(false);
+      if (e.key !== "Tab" || !dialog.current) return;
+      const items = [...dialog.current.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-30 flex overflow-y-auto overscroll-contain bg-ink/50 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="product-title">
+    <div ref={dialog} className="fixed inset-0 z-30 flex overflow-y-auto overscroll-contain bg-ink/50 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="product-title">
       <div className="m-auto grid w-full max-w-3xl overflow-hidden rounded-3xl bg-cream shadow-2xl md:grid-cols-2 short:grid-cols-[2fr_3fr]">
         <div className="relative min-h-44 bg-sand sm:min-h-56 short:min-h-0">
           {product.imageUrl ? (
@@ -94,8 +112,13 @@ export function ProductPanel({
               <button className="h-11 w-11 disabled:opacity-30" onClick={() => setQty((q) => Math.min(maxQty, q + 1))} disabled={qty >= maxQty} aria-label="Increase quantity">+</button>
             </div>
             <button
+              ref={primary}
               disabled={!variant || !price || stock === "out_of_stock"}
-              onClick={() => variant && onAdd(variant.id, qty)}
+              onClick={() => {
+                if (!variant || added.current) return;
+                added.current = true;
+                onAdd(variant.id, Math.min(qty, maxQty));
+              }}
               className="flex-1 rounded-full bg-ink py-3 font-medium text-cream transition hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
             >
               Put in trolley

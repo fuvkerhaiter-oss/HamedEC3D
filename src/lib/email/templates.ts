@@ -3,9 +3,12 @@ import type { CustomerOrderView } from "../checkout/order-view";
 import { MARKETS } from "../markets";
 import { formatMoney } from "../money";
 
-export type OrderEmailKind = "order_confirmed" | "order_shipped" | "order_refunded" | "order_cancelled";
+export type OrderEmailKind =
+  | "order_confirmed" | "order_shipped" | "order_delivered" | "order_refunded" | "order_cancelled" | "payment_failed" | "refund_partial";
 
-export function orderEmail(kind: OrderEmailKind, o: CustomerOrderView, link: string): { subject: string; text: string } {
+export function orderEmail(
+  kind: OrderEmailKind, o: CustomerOrderView, link: string, extra: { refundAmount?: CustomerOrderView["total"] } = {},
+): { subject: string; text: string } {
   const fmt = (m: CustomerOrderView["total"]) => formatMoney(m, o.total.currency === "USD" ? MARKETS.US.locale : MARKETS.EU.locale);
   const hello = `Hello ${o.shipTo.fullName.split(" ")[0] || "there"},`;
   const items = o.items.map((i) => `  ${i.quantity} × ${i.name}${i.variant && i.variant !== "Default" ? ` (${i.variant})` : ""}  ${fmt(i.lineTotal)}`).join("\n");
@@ -18,19 +21,37 @@ export function orderEmail(kind: OrderEmailKind, o: CustomerOrderView, link: str
   ].filter(Boolean).join("\n");
   const address = [o.shipTo.fullName, o.shipTo.line1, o.shipTo.line2, `${o.shipTo.postalCode} ${o.shipTo.city}${o.shipTo.region ? `, ${o.shipTo.region}` : ""}`, o.shipTo.country]
     .filter(Boolean).map((l) => `  ${l}`).join("\n");
-  const footer = `\nFollow your order: ${link}\n\nQuestions? Just reply to this email with your order number #${o.orderNumber}.\n\nMega Market · Happy Family, Happy Animals`;
+  const footer = `\nFollow your order: ${link}\n\nQuestions? Just reply to this email with your order number #${o.orderNumber}.\n\nWEGO SHIIIP · Happy Family, Happy Animals`;
 
   switch (kind) {
     case "order_confirmed":
       return {
         subject: `Order #${o.orderNumber} confirmed — thank you!`,
-        text: `${hello}\n\nThank you for shopping at Mega Market! We've received your payment and are preparing your order.\n\nOrder #${o.orderNumber}\n${items}\n\n${totals}\n\nDelivery to:\n${address}\n${o.shippingMethod ? `Shipping method: ${o.shippingMethod}\n` : ""}\nWe'll email you the tracking number as soon as it ships.\n\nEU customers: you may withdraw from this purchase within 14 days of delivery. See our returns policy for how.\n${footer}`,
+        text: `${hello}\n\nThank you for shopping at WEGO SHIIIP! We've received your payment and are preparing your order.\n\nOrder #${o.orderNumber}\n${items}\n\n${totals}\n\nDelivery to:\n${address}\n${o.shippingMethod ? `Shipping method: ${o.shippingMethod}\n` : ""}\nWe'll email you the tracking number as soon as it ships.\n\nEU customers: you may withdraw from this purchase within 14 days of delivery. See our returns policy for how.\n${footer}`,
+      };
+    case "payment_failed":
+      return {
+        subject: `Payment for order #${o.orderNumber} did not go through`,
+        text: `${hello}\n\nThe payment for your order #${o.orderNumber} was not completed, so you have not been charged and the order will not be shipped.\n\nYou can place the order again from your cart whenever you like.\n${footer}`,
+      };
+    case "order_delivered":
+      return {
+        subject: `Order #${o.orderNumber} has been delivered`,
+        text: `${hello}\n\nThe carrier reports that your order #${o.orderNumber} has been delivered. We hope you enjoy it!\n\nIf something is missing or damaged, reply to this email with your order number.\n\nEU customers: the 14-day withdrawal period starts on the day of delivery. See our returns policy.\n${footer}`,
+      };
+    case "refund_partial":
+      return {
+        subject: `Partial refund for order #${o.orderNumber}`,
+        text: `${hello}\n\nWe have refunded ${extra.refundAmount ? fmt(extra.refundAmount) : "part of your payment"} for your order #${o.orderNumber}. Depending on your bank it can take 5–10 business days to appear on your statement.\n${footer}`,
       };
     case "order_shipped": {
+      const estimate = o.deliveryEstimate
+        ? `\nEstimated delivery: ${o.deliveryEstimate.minDays}–${o.deliveryEstimate.maxDays} business days (an estimate, not a guaranteed date).\n`
+        : "";
       const tracking = o.shipments.map((s) => `  ${s.carrier}: ${s.trackingNumber}${s.trackingUrl ? `\n  ${s.trackingUrl}` : ""}`).join("\n");
       return {
         subject: `Order #${o.orderNumber} is on its way`,
-        text: `${hello}\n\nGood news: your order #${o.orderNumber} has shipped.\n\nTracking:\n${tracking || "  (tracking details will follow)"}\n\nDelivery to:\n${address}\n${footer}`,
+        text: `${hello}\n\nGood news: your order #${o.orderNumber} has shipped.\n\nTracking:\n${tracking || "  (tracking details will follow)"}\n${estimate}\nDelivery to:\n${address}\n${footer}`,
       };
     }
     case "order_refunded":

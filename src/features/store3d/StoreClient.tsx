@@ -37,6 +37,11 @@ function probe(kind: "webgl2" | "webgl"): boolean {
   return gl !== null;
 }
 
+/** WebGL 2 available (the homepage hero only embeds the live store when this is true). */
+export function canRunStore(): boolean {
+  return detectSupport() === "ok";
+}
+
 function detectSupport(): Exclude<Support, "checking"> {
   if (supportOk || probe("webgl2")) {
     supportOk = true;
@@ -114,7 +119,7 @@ function Fallback({ title, body, children }: { title: string; body: string; chil
   );
 }
 
-class StoreErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+export class StoreErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
