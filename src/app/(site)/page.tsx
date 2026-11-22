@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
@@ -9,6 +10,18 @@ import storeFirstView from "@/assets/hero/store-first-view.webp";
 import { StorePortal } from "@/features/home/StorePortal";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
 import { getCatalog } from "@/lib/catalog/source";
+import { JsonLd } from "@/components/JsonLd";
+import { ProductCard } from "@/components/ProductCard";
+import { categoryPath, isIndexable, organizationLd, siteUrl, websiteLd } from "@/lib/seo/site";
+
+export const metadata: Metadata = {
+  title: { absolute: "WEGO SHIIIP · Online Store & Interactive 3D Supermarket" },
+  description: "Shop real products online at WEGO SHIIIP, by list or by walking an interactive 3D supermarket in your browser. Prices in EUR and USD, delivered across the EU and the USA.",
+  alternates: { canonical: "/" },
+};
+
+/** Public profile URLs for schema.org sameAs (comma-separated, e.g. Instagram/TikTok). Empty = none listed. */
+const SOCIAL = (process.env.NEXT_PUBLIC_SOCIAL_URLS ?? "").split(",").map((s) => s.trim()).filter((s) => s.startsWith("https://"));
 
 // Hero copy is editable in Admin → Website Content (empty fields keep the defaults below).
 export const revalidate = 60;
@@ -50,8 +63,16 @@ const heroLogo = (
 
 export default async function HomePage() {
   const [{ home, stockAllFaces }, { categories, products }] = await Promise.all([getStorefrontSettings(), getCatalog()]);
+  const site = siteUrl();
+  const departments = categories
+    .map((c) => ({ c, items: products.filter((p) => p.categoryId === c.id && p.status === "published") }))
+    .filter((d) => d.items.length > 0);
+  // Real products only on the homepage grid (never mock data presented as stock); in development the sample
+  // catalog is shown, labelled by the product cards / catalog banner.
+  const featured = (products.some(isIndexable) ? products.filter(isIndexable) : products).filter((p) => p.variants.some((v) => v.stockQuantity > 0)).slice(0, 8);
   return (
     <>
+      <JsonLd data={[organizationLd(site, SOCIAL), websiteLd(site)]} />
       <section className="vsw-hero-keep relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
         {/* Phones: the logo comes first, then the store picture, then the copy (the h1 below is screen-reader only there). */}
         <div aria-hidden className="vsw-hero-in relative z-10 mx-auto w-[min(86%,26rem)] pb-6 pt-8 lg:hidden">{heroLogo}</div>
@@ -65,7 +86,7 @@ export default async function HomePage() {
         {/* Copy column: its empty space lets clicks through to the store picture behind it. */}
         <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl flex-col items-start gap-7 px-5 pb-14 pt-8 lg:py-28 [&>*]:pointer-events-auto">
           <h1 className="vsw-hero-in relative w-[min(100%,34rem)] max-lg:sr-only [--d:120ms]">
-            <span className="sr-only">{home.heroTitle || "WEGO SHIIIP."}</span>
+            <span className="sr-only">{home.heroTitle || "WEGO SHIIIP: online store and interactive 3D supermarket"}</span>
             <span className="block max-lg:hidden">{heroLogo}</span>
           </h1>
           <p className="vsw-hero-in flex items-center gap-3 font-display text-xl font-semibold tracking-tight text-cream [--d:360ms] sm:text-2xl">
@@ -106,6 +127,43 @@ export default async function HomePage() {
           ))}
         </div>
       </div>
+
+      {departments.length > 0 && (
+        <section aria-labelledby="shop-departments" className="bg-cream">
+          <div className="mx-auto max-w-6xl px-5 py-20">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Shop by department</p>
+                <h2 id="shop-departments" className="mt-3 font-display text-4xl leading-[1.05] sm:text-5xl">Real products, two ways to shop.</h2>
+                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">Browse the list or walk the aisles of our 3D store: same products, same prices, same cart. Prices in euro (VAT included) for the EU and in US dollars for the USA.</p>
+              </div>
+              <Link href="/catalog" className="btn-dark px-6 py-3">Shop all products</Link>
+            </div>
+            <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {departments.map(({ c, items }) => (
+                <li key={c.id}>
+                  <Link href={categoryPath(c.slug)} className="group flex h-full flex-col rounded-2xl border-2 border-ink bg-white p-5 transition hover:-translate-y-1 hover:bg-amber">
+                    <span className="font-display text-2xl">{c.name}</span>
+                    <span className="mt-1 text-sm text-ink-soft group-hover:text-ink">{items.length} product{items.length === 1 ? "" : "s"}</span>
+                    <span className="mt-4 line-clamp-2 text-sm text-ink-soft group-hover:text-ink">{items.slice(0, 3).map((p) => p.name).join(" · ")}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {featured.length > 0 && (
+              <>
+                <h3 className="mt-16 font-display text-2xl">In stock now</h3>
+                <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                  {featured.map((p) => {
+                    const cat = categories.find((c) => c.id === p.categoryId);
+                    return <li key={p.id} className="flex"><div className="flex w-full flex-col [&>article]:flex-1"><ProductCard product={p} categoryName={cat?.name} /></div></li>;
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-5 py-24">

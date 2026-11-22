@@ -10,7 +10,12 @@ Audited 2026-11-20 (structure, bounds, materials, textures, triangle counts, ort
 |---|---|---|---|
 | `public/models/env/supermarket.opt.glb` | 12.6 MB | 2.3 MB | 211k (unchanged) |
 | `public/models/props/trolley.opt.glb` | 9.5 MB | 0.8 MB | 163k → 32.5k (`--simplify=0.2 --error=0.004`) |
+| `public/models/props/chain.opt.glb` | 9.6 MB FBX + 13 MB PNGs | 0.3 MB | 11k → 2.2k (`--simplify=0.2 --error=0.01 --webp=85`) |
 Previous copies (`supermarket.glb`, `trolley.glb`) are kept until deletion is approved.
+
+**Iron chain** (`3D models/Meshy_AI_Iron_Chain_0927192851_texture.fbx` + base/normal/metallic/roughness PNGs, 2048²; Meshy AI export from the owner): `node tools/assets/fbx-to-glb.mjs <fbx> <tmp.glb> --base=… --normal=… --metallic=… --roughness=… --tex=1024` (FBX → GLB, long axis → +X, 1 m long, textures 1024², metal+rough packed) then `optimize-glb.mjs`. Used as a tiled, instanced segment for the chained-off portal of the new wing.
+
+**Runtime change to supermarket.opt.glb** (file untouched): at load, `env/reshape.ts` drops the old far wall (triangles entirely at x ≥ 14.1) and moves the two fridge banks that stood against it onto the side walls of the new hall (see `env/extension.ts`).
 
 ## Summary
 

@@ -81,7 +81,8 @@ const ACTOR_ALLOWED_TARGETS: Readonly<Record<ActorType, ReadonlySet<OrderStatus>
   system: "any",
   admin: "any",
   customer: new Set<OrderStatus>(["cancelled", "refund_requested"]),
-  payment_webhook: new Set<OrderStatus>(["paid", "failed", "refunded"]),
+  // cancelled: only from pending_payment (transition table), when the provider reports the checkout expired unpaid.
+  payment_webhook: new Set<OrderStatus>(["paid", "failed", "refunded", "cancelled"]),
   supplier_sync: new Set<OrderStatus>(["supplier_accepted", "shipped", "delivered", "failed"]),
 };
 

@@ -23,6 +23,8 @@ export interface PaymentWebhookStore {
   recordUnmatchedPayment(orderId: string, providerId: string, event: PaymentEvent): Promise<void>;
   recordPaymentFinancials(providerId: string, providerPaymentId: string, balance: BalanceFigures): Promise<void>;
   applyRefundUpdate(providerId: string, event: PaymentEvent): Promise<RefundUpdateOutcome>;
+  /** True when this provider session is the order's latest pending checkout (an older expired session must not cancel it). */
+  isCurrentSession(orderId: string, providerId: string, providerSessionId: string): Promise<boolean>;
 }
 
 export type WebhookResult =
@@ -98,6 +100,21 @@ export async function handlePaymentWebhook(
     await store.applyTransition(order.id, audit);
     if (verified?.balance) await store.recordPaymentFinancials(provider.id, event.providerPaymentId, verified.balance);
     return { status: "processed", orderStatus: "paid" };
+  }
+
+  if (event.type === "payment.attempt_failed") {
+    // Already recorded in payment_events (shown on the admin order); the customer can retry on the same payment page.
+    return { status: "ignored", reason: "Payment attempt failed — customer may retry" };
+  }
+
+  if (event.type === "payment.expired") {
+    if (order.status !== "pending_payment") return { status: "ignored", reason: `Order already ${order.status}` };
+    if (!event.providerSessionId || !(await store.isCurrentSession(order.id, provider.id, event.providerSessionId))) {
+      return { status: "ignored", reason: "Not the order's current checkout session" };
+    }
+    const audit = transitionOrder({ from: order.status, to: "cancelled", actor: { type: "payment_webhook", id: provider.id }, reason: "Checkout expired without payment" });
+    await store.applyTransition(order.id, audit);
+    return { status: "processed", orderStatus: "cancelled" };
   }
 
   if (event.type === "payment.failed") {

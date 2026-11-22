@@ -6,7 +6,8 @@ import { databaseUrl, type Db } from "../db/client";
 import { createOrder, OrderError, transitionOrderInDb, type CreateOrderInput } from "../admin/services/orders";
 import type { CurrencyCode } from "../money";
 import { getPaymentProvider, paymentProviderStatuses } from "../payments/registry";
-import type { PaymentProvider } from "../payments/types";
+import type { OrderBreakdown, PaymentProvider } from "../payments/types";
+import { publicStorageUrl } from "../catalog/source-map";
 import { orderUrl } from "./order-link";
 
 /** Stripe Checkout sessions live 24 h; unpaid orders are released an hour after that. */
@@ -50,8 +51,9 @@ export async function startCheckout(
 ): Promise<{ redirectUrl: string; orderId: string; orderNumber: number }> {
   const { provider, siteUrl } = opts;
   const { orderId, orderNumber } = await createOrder(db, { ...input, isTest: provider.isSandbox });
-  const [o] = await db<{ total: number; currency: CurrencyCode; status: string; email: string }[]>`
-    select total, currency, status, email from public.orders where id = ${orderId}`;
+  const [o] = await db<OrderRow[]>`
+    select total, currency, status, email, tax_mode, tax_total, tax_rate_bps, shipping_total, discount_total, discount_code, shipping_method_name
+      from public.orders where id = ${orderId}`;
   if (!o) throw new OrderError("Order not found");
   const confirmation = orderUrl(siteUrl, orderId);
   // Same checkout submitted again after paying (double click, back button): just show the order.
@@ -65,6 +67,7 @@ export async function startCheckout(
     cancelUrl: `${siteUrl}/checkout?cancelled=1`,
     idempotencyKey: `checkout:${orderId}`, // a retry for the same order reuses the same provider session
     label: `WEGO SHIIIP order #${orderNumber}`,
+    breakdown: await orderBreakdown(db, orderId, o),
   });
   const updated = await db`update public.payments set provider_session_id = ${session.providerSessionId}, updated_at = now()
                            where order_id = ${orderId} and provider = ${provider.id} and status = 'pending' returning id`;
@@ -74,6 +77,39 @@ export async function startCheckout(
              on conflict (provider, provider_session_id) do nothing`;
   }
   return { redirectUrl: session.redirectUrl, orderId, orderNumber };
+}
+
+interface OrderRow {
+  total: number; currency: CurrencyCode; status: string; email: string;
+  tax_mode: "inclusive" | "exclusive"; tax_total: number; tax_rate_bps: number | null;
+  shipping_total: number; discount_total: number; discount_code: string | null; shipping_method_name: string | null;
+}
+
+/** Line-by-line breakdown of the SAVED order (server prices) for the payment page. */
+export async function orderBreakdown(db: Db, orderId: string, o: OrderRow): Promise<OrderBreakdown> {
+  const items = await db<{ product_name: string; variant_name: string; unit_price: number; quantity: number; image: string | null; bucket: string | null }[]>`
+    select oi.product_name, oi.variant_name, oi.unit_price, oi.quantity, img.storage_path as image, img.bucket
+      from public.order_items oi
+      left join public.product_variants v on v.id = oi.variant_id
+      left join lateral (select pi.storage_path, pi.bucket from public.product_images pi where pi.product_id = v.product_id
+                         order by pi.is_primary desc, pi.sort_order limit 1) img on true
+     where oi.order_id = ${orderId} order by oi.product_name, oi.variant_name`;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const pct = o.tax_rate_bps ? `${(o.tax_rate_bps / 100).toLocaleString("en", { maximumFractionDigits: 2 })}% ` : "";
+  return {
+    lines: items.map((i) => ({
+      name: !i.variant_name || /^default$/i.test(i.variant_name) ? i.product_name : `${i.product_name} — ${i.variant_name}`,
+      unitAmount: Number(i.unit_price),
+      quantity: Number(i.quantity),
+      imageUrl: i.image && i.bucket ? publicStorageUrl(supabaseUrl, i.bucket, i.image) : null,
+    })),
+    discount: Number(o.discount_total),
+    discountLabel: o.discount_code,
+    shipping: Number(o.shipping_total),
+    shippingLabel: o.shipping_method_name ?? "Shipping",
+    taxAdded: o.tax_mode === "exclusive" ? Number(o.tax_total) : 0,
+    note: o.tax_mode === "inclusive" && Number(o.tax_total) > 0 ? `Prices include ${pct}VAT.` : null,
+  };
 }
 
 /** Releases reserved stock of checkouts that were never paid (state machine: system → cancelled). */

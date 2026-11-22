@@ -1,4 +1,5 @@
 import raw from "./supermarket.layout.json";
+import { extendLayout } from "./extension";
 import type { EnvLayout, Vec3 } from "./types";
 
 /** Measured layout of public/models/env/supermarket.glb (regenerate with tools/assets/build_env.py). */
@@ -13,3 +14,6 @@ export const STORE_CONFIG = {
   /** Flip to true once the benchmark aisle is approved to stock every gondola face. */
   stockAllFaces: false,
 } as const;
+
+/** The store as shoppers walk it: SUPERMARKET with the far wall opened into the new hall + coming-soon wing (./extension). */
+export const STORE_ENV: EnvLayout = extendLayout(SUPERMARKET);

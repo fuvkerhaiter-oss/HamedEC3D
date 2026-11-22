@@ -9,6 +9,7 @@ import { adjustStock, deleteCategory, moveCategory, saveCategory, setIncoming, s
 const refresh = () => {
   expirePublicData(CATALOG_TAG);
   revalidatePath("/catalog/[slug]", "page");
+  revalidatePath("/category/[slug]", "page");
   revalidatePath("/catalog");
   revalidatePath("/store");
   revalidatePath("/");

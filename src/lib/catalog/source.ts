@@ -38,7 +38,7 @@ async function loadCatalog(variantIds?: readonly string[]): Promise<CatalogData>
 
   const sb = createClient(cfg.url, cfg.key, { auth: { persistSession: false, autoRefreshToken: false } });
   const [cats, prods] = await Promise.all([
-    sb.from("categories").select("id,slug,name,sort_order").eq("is_active", true).order("sort_order"),
+    sb.from("categories").select("id,slug,name,description,sort_order").eq("is_active", true).order("sort_order"),
     sb.from("products").select(PRODUCT_SELECT).eq("status", "published").is("deleted_at", null).order("name"),
   ]);
   const hint = (msg: string) =>
@@ -48,7 +48,7 @@ async function loadCatalog(variantIds?: readonly string[]): Promise<CatalogData>
   if (cats.error) throw new Error(`Failed to load categories: ${hint(cats.error.message)}`);
   if (prods.error) throw new Error(`Failed to load products: ${hint(prods.error.message)}`);
 
-  const categories: Category[] = ((cats.data ?? []) as { id: unknown; slug: unknown; name: unknown }[]).map((c) => ({ id: String(c.id), slug: String(c.slug), name: String(c.name) }));
+  const categories: Category[] = ((cats.data ?? []) as { id: unknown; slug: unknown; name: unknown; description?: unknown }[]).map((c) => ({ id: String(c.id), slug: String(c.slug), name: String(c.name), description: typeof c.description === "string" ? c.description : "" }));
   const products = ((prods.data ?? []) as unknown as ProductRow[]).map((r) => mapProductRow(r, cfg.url));
   return { categories, products, source: "supabase" };
 }

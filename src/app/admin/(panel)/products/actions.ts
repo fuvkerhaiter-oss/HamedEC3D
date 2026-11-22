@@ -15,6 +15,7 @@ import {
 function refreshStorefront(productId?: string) {
   expirePublicData(CATALOG_TAG);
   revalidatePath("/catalog/[slug]", "page");
+  revalidatePath("/category/[slug]", "page");
   revalidatePath("/catalog");
   revalidatePath("/store");
   revalidatePath("/");

@@ -36,6 +36,9 @@ function memoryStore(status: OrderStatus, total: Money) {
     async applyRefundUpdate() {
       return "unknown" as const;
     },
+    async isCurrentSession(_o, _p, sessionId) {
+      return sessionId === "sess_current";
+    },
   };
   return { store, order, audits };
 }
@@ -107,4 +110,31 @@ test("failed payment and refund flow", async () => {
   const r = p.buildWebhook({ ...succeeded, type: "refund.succeeded" });
   await handlePaymentWebhook(p, r.rawBody, r.headers, refund.store);
   assert.equal(refund.order.status, "refunded");
+});
+
+test("expired checkout cancels the pending order (releases stock) only for its current session", async () => {
+  const p = sim();
+  const { store, order } = memoryStore("pending_payment", money(1999, "USD"));
+  const old = p.buildWebhook({ ...succeeded, type: "payment.expired", providerSessionId: "sess_old" });
+  assert.equal((await handlePaymentWebhook(p, old.rawBody, old.headers, store)).status, "ignored");
+  assert.equal(order.status, "pending_payment");
+  const cur = p.buildWebhook({ ...succeeded, type: "payment.expired", providerSessionId: "sess_current" });
+  assert.deepEqual(await handlePaymentWebhook(p, cur.rawBody, cur.headers, store), { status: "processed", orderStatus: "cancelled" });
+  assert.equal(order.status, "cancelled");
+});
+
+test("expired event never cancels a paid order", async () => {
+  const p = sim();
+  const { store, order } = memoryStore("paid", money(1999, "USD"));
+  const ev = p.buildWebhook({ ...succeeded, type: "payment.expired", providerSessionId: "sess_current" });
+  assert.equal((await handlePaymentWebhook(p, ev.rawBody, ev.headers, store)).status, "ignored");
+  assert.equal(order.status, "paid");
+});
+
+test("a declined card attempt keeps the order open for a retry", async () => {
+  const p = sim();
+  const { store, order } = memoryStore("pending_payment", money(1999, "USD"));
+  const ev = p.buildWebhook({ ...succeeded, type: "payment.attempt_failed", failureMessage: "Your card was declined." });
+  assert.equal((await handlePaymentWebhook(p, ev.rawBody, ev.headers, store)).status, "ignored");
+  assert.equal(order.status, "pending_payment");
 });

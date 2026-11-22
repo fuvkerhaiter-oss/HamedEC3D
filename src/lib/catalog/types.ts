@@ -7,6 +7,8 @@ export interface Category {
   id: string;
   slug: string;
   name: string;
+  /** Admin-written intro (Admin → Categories). Empty/absent = none written yet. */
+  description?: string;
 }
 
 export interface ProductVariant {
@@ -43,6 +45,13 @@ export interface Product {
   variants: ProductVariant[];
   /** True for development mock data. Must never be published to a live store. */
   isMock: boolean;
+  /** Manufacturer / brand (admin field). Absent = not set: never invent one. */
+  brand?: string | null;
+  /** Optional search-result title / description written in the admin ("Google title"). */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  /** ISO timestamp of the last product edit (sitemap lastmod). */
+  updatedAt?: string | null;
   /** Admin-configured 3D shelf mapping (absent = automatic placement by category). */
   shelf?: ShelfPlacement;
 }

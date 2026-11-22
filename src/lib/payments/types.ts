@@ -16,6 +16,24 @@ export interface CreateSessionInput {
   idempotencyKey: string;
   /** Shown to the customer on the payment page, e.g. "WEGO SHIIIP order #1042". */
   label?: string;
+  /**
+   * Server-side order breakdown (from the saved order, never the client). When given and it adds up exactly to
+   * `amount`, the provider shows every product line; otherwise it falls back to one line for `amount`.
+   */
+  breakdown?: OrderBreakdown;
+}
+
+export interface OrderBreakdown {
+  lines: { name: string; unitAmount: number; quantity: number; imageUrl?: string | null }[];
+  /** Order-level discount (coupon), minor units, ≥ 0. */
+  discount: number;
+  discountLabel?: string | null;
+  shipping: number;
+  shippingLabel: string;
+  /** Tax ADDED on top (US, exclusive). 0 for EU prices that already include VAT. */
+  taxAdded: number;
+  /** Shown on the payment page, e.g. "Prices include 22% VAT". */
+  note?: string | null;
 }
 
 export interface PaymentSession {
@@ -26,12 +44,20 @@ export interface PaymentSession {
 export interface PaymentEvent {
   /** Provider's unique event id — used to deduplicate webhook deliveries. */
   eventId: string;
-  type: "payment.succeeded" | "payment.failed" | "refund.succeeded" | "refund.updated";
+  /**
+   * payment.attempt_failed: one card attempt was declined; the hosted checkout lets the customer retry, so the order stays open.
+   * payment.expired: the checkout session expired unpaid → the order is cancelled and its stock released.
+   */
+  type: "payment.succeeded" | "payment.failed" | "payment.attempt_failed" | "payment.expired" | "refund.succeeded" | "refund.updated";
   /** null when the provider event doesn't carry it (e.g. refunds); resolved via providerPaymentId. */
   orderId: string | null;
   providerPaymentId: string;
   amount: Money;
   occurredAt: string;
+  /** The provider checkout session the event belongs to, when known. */
+  providerSessionId?: string | null;
+  /** payment.attempt_failed: provider's reason (e.g. "Your card was declined."). */
+  failureMessage?: string | null;
   /** refund.updated only: the provider refund and its current status. */
   refund?: { providerRefundId: string; status: ProviderRefundStatus; localRefundId?: string | null };
 }

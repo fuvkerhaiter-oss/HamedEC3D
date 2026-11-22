@@ -153,4 +153,25 @@ Certified email (PEC): [PEC ADDRESS]
 
 Responsible for content: [NAME]`,
   },
+  {
+    // Trust page for customers and search engines. Only true statements: replace every [bracket], delete
+    // anything that is not true for the business, never add invented awards, numbers or testimonials.
+    slug: "about",
+    title: "About WEGO SHIIIP",
+    body: `TEMPLATE — replace every [bracketed] part with true details, remove what does not apply, then publish.
+
+WEGO SHIIIP is an online store based in [CITY], Italy, run by [LEGAL COMPANY NAME]. Our motto is "Happy Family, Happy Animals": [ONE OR TWO SENTENCES IN YOUR OWN WORDS ABOUT WHY YOU STARTED THE SHOP AND WHO IT IS FOR].
+
+# Two ways to shop
+You can browse our catalog like any online store, or walk the aisles of our interactive 3D supermarket right in your browser, on a computer or a phone. Both show the same products, prices and stock, and share the same cart.
+
+# What we sell
+[DESCRIBE THE PRODUCT RANGE YOU REALLY STOCK, E.G. THE DEPARTMENTS IN THE CATALOG.]
+
+# Where we deliver
+We deliver to the European Union (prices in euro, VAT included) and the United States (prices in US dollars, sales tax added at checkout where due). [SAY WHO SHIPS THE ORDERS: YOU, OR PARTNER SUPPLIERS, AND FROM WHERE.] Delivery options and times for your address are shown at checkout before you pay.
+
+# Contact
+Questions about an order or a product? Use our Help & contact page or write to [SUPPORT EMAIL]. [REGISTERED ADDRESS / VAT NUMBER, AS IN THE LEGAL NOTICE.]`,
+  },
 ];

@@ -5,6 +5,7 @@ import { ContactForm, OrderLookupForm } from "@/features/support/SupportForms";
 export const metadata: Metadata = {
   title: "Help & contact",
   description: "Track your order, read our shipping and returns policies, or send a message to the WEGO SHIIIP team.",
+  alternates: { canonical: "/contact" },
 };
 
 const FAQ = [

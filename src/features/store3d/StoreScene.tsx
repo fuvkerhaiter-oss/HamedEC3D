@@ -10,10 +10,12 @@ import { priceIn, type Category, type Product } from "@/lib/catalog/types";
 import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { ASSETS } from "./assets/registry";
+import { reshapeSupermarket } from "./env/reshape";
 import type { Box, EnvLayout } from "./env/types";
 import { useInteractable } from "./interactables";
 import type { ItemPlacement, PriceTag, StoreLayout } from "./layout";
 import { useStoreUi, type InteractionTarget } from "./ui-store";
+import { NewWing } from "./wing/NewWing";
 
 export interface StoreCatalog {
   categories: Category[];
@@ -35,6 +37,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
     <>
       <Lighting env={env} lowPower={lowPower} />
       <SupermarketModel />
+      <NewWing env={env} lowPower={lowPower} />
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {
         const placements = layout.items[p.id];
@@ -59,6 +62,8 @@ const FLOOR_MATERIAL = "Material";
 function SupermarketModel() {
   const a = ASSETS.supermarket;
   const { scene } = useGLTF(a.url);
+  // Far wall out, its fridge banks moved into the new hall (once per cached scene; see env/extension.ts).
+  useMemo(() => reshapeSupermarket(scene), [scene]);
   useLayoutEffect(() => {
     scene.traverse((o) => {
       const m = o as THREE.Mesh;

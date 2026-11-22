@@ -5,10 +5,12 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { isCurrencyCode, money, type Money } from "../money";
-import { WebhookVerificationError, type PaymentEvent, type PaymentProvider, type ProviderRefundStatus, type VerifiedPayment } from "./types";
+import { WebhookVerificationError, type OrderBreakdown, type PaymentEvent, type PaymentProvider, type ProviderRefundStatus, type VerifiedPayment } from "./types";
 
 const API = "https://api.stripe.com/v1";
 const TOLERANCE_SECONDS = 300;
+/** Stripe allows 30 min – 24 h. 23 h keeps it inside the 24 h idempotency-key window, so a retry never gets an expired session. */
+export const SESSION_TTL_SECONDS = 23 * 3600;
 
 export interface StripeConfig {
   secretKey: string;
@@ -54,7 +56,7 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
     isSandbox: cfg.secretKey.includes("_test_"),
 
     async createSession(input) {
-      // One line for the server-computed order total, so Stripe charges exactly what we validated.
+      const cur = input.amount.currency.toLowerCase();
       const f = new URLSearchParams({
         mode: "payment",
         success_url: input.successUrl,
@@ -63,11 +65,49 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
         client_reference_id: input.orderId,
         "metadata[order_id]": input.orderId,
         "payment_intent_data[metadata][order_id]": input.orderId,
-        "line_items[0][quantity]": "1",
-        "line_items[0][price_data][currency]": input.amount.currency.toLowerCase(),
-        "line_items[0][price_data][unit_amount]": String(input.amount.amount),
-        "line_items[0][price_data][product_data][name]": input.label ?? `Order ${input.orderId}`,
+        billing_address_collection: "required",
+        // Session lifetime: unpaid orders are released after it (checkout.session.expired).
+        expires_at: String(now() + SESSION_TTL_SECONDS),
       });
+      if (input.label) f.set("payment_intent_data[description]", input.label);
+      const b = input.breakdown && breakdownTotal(input.breakdown) === input.amount.amount ? input.breakdown : null;
+      if (b) {
+        // Every product line from the saved order (server prices), so the customer sees exactly what they buy.
+        let i = 0;
+        for (const l of b.lines) {
+          f.set(`line_items[${i}][quantity]`, String(l.quantity));
+          f.set(`line_items[${i}][price_data][currency]`, cur);
+          f.set(`line_items[${i}][price_data][unit_amount]`, String(l.unitAmount));
+          f.set(`line_items[${i}][price_data][product_data][name]`, l.name.slice(0, 250));
+          if (l.imageUrl?.startsWith("https://")) f.set(`line_items[${i}][price_data][product_data][images][0]`, l.imageUrl);
+          i++;
+        }
+        if (b.taxAdded > 0) {
+          f.set(`line_items[${i}][quantity]`, "1");
+          f.set(`line_items[${i}][price_data][currency]`, cur);
+          f.set(`line_items[${i}][price_data][unit_amount]`, String(b.taxAdded));
+          f.set(`line_items[${i}][price_data][product_data][name]`, "Sales tax");
+        }
+        f.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
+        f.set("shipping_options[0][shipping_rate_data][display_name]", b.shippingLabel.slice(0, 100) || "Shipping");
+        f.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", String(b.shipping));
+        f.set("shipping_options[0][shipping_rate_data][fixed_amount][currency]", cur);
+        if (b.discount > 0) {
+          // Single-use coupon for exactly the discount the server validated (Checkout has no negative lines).
+          const c = await call("POST", "/coupons", new URLSearchParams({
+            amount_off: String(b.discount), currency: cur, duration: "once", max_redemptions: "1",
+            name: (b.discountLabel || "Discount").slice(0, 40), "metadata[order_id]": input.orderId,
+          }), `${input.idempotencyKey}:coupon`);
+          f.set("discounts[0][coupon]", String(c.id));
+        }
+        if (b.note) f.set("custom_text[submit][message]", b.note.slice(0, 1200));
+      } else {
+        // Fallback: one line for the server-computed order total, so Stripe charges exactly what we validated.
+        f.set("line_items[0][quantity]", "1");
+        f.set("line_items[0][price_data][currency]", cur);
+        f.set("line_items[0][price_data][unit_amount]", String(input.amount.amount));
+        f.set("line_items[0][price_data][product_data][name]", input.label ?? `Order ${input.orderId}`);
+      }
       const session = await call("POST", "/checkout/sessions", f, input.idempotencyKey);
       return { providerSessionId: String(session.id), redirectUrl: String(session.url) };
     },
@@ -101,6 +141,13 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
       return { refundId: String(r.id), status: mapRefundStatus(r.status) };
     },
   };
+}
+
+/** What Stripe will charge for a breakdown: Σ unit×qty + added tax + shipping − discount. */
+export function breakdownTotal(b: OrderBreakdown): number {
+  const items = b.lines.reduce((s, l) => s + l.unitAmount * l.quantity, 0);
+  if (b.discount < 0 || b.discount > items + b.taxAdded) return Number.NaN; // coupon can't exceed the items
+  return items + b.taxAdded + b.shipping - b.discount;
 }
 
 export function verifyStripeSignature(rawBody: string, header: string | null, secret: string, nowSeconds: number): void {
@@ -172,9 +219,19 @@ export function mapStripeEvent(event: { id: string; type: string; created: numbe
       if (o.payment_status !== "paid") return null;
     // falls through
     case "checkout.session.async_payment_succeeded":
-      return { eventId: event.id, type: "payment.succeeded", orderId, providerPaymentId: String(o.payment_intent), amount: toMoney(o.amount_total, o.currency), occurredAt };
+      return { eventId: event.id, type: "payment.succeeded", orderId, providerPaymentId: String(o.payment_intent), amount: toMoney(o.amount_total, o.currency), occurredAt, providerSessionId: String(o.id) };
     case "checkout.session.async_payment_failed":
-      return { eventId: event.id, type: "payment.failed", orderId, providerPaymentId: String(o.payment_intent), amount: toMoney(o.amount_total, o.currency), occurredAt };
+      return { eventId: event.id, type: "payment.failed", orderId, providerPaymentId: String(o.payment_intent), amount: toMoney(o.amount_total, o.currency), occurredAt, providerSessionId: String(o.id) };
+    case "checkout.session.expired":
+      if (o.payment_status === "paid") return null;
+      return { eventId: event.id, type: "payment.expired", orderId, providerPaymentId: typeof o.payment_intent === "string" ? o.payment_intent : "", amount: toMoney(o.amount_total, o.currency), occurredAt, providerSessionId: String(o.id) };
+    case "payment_intent.payment_failed": {
+      const err = (o.last_payment_error ?? {}) as { message?: string; code?: string; decline_code?: string };
+      return {
+        eventId: event.id, type: "payment.attempt_failed", orderId: meta.order_id ?? null, providerPaymentId: String(o.id), amount: toMoney(o.amount, o.currency), occurredAt,
+        failureMessage: [err.message, err.decline_code ?? err.code].filter(Boolean).join(" — ").slice(0, 300) || null,
+      };
+    }
     case "charge.refunded":
       // Only full refunds move the order to `refunded`; partial refunds are handled by admin.
       if (o.refunded !== true) return null;

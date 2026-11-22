@@ -41,7 +41,7 @@ export function pgWebhookStore(db: Db, opts: { isTest: boolean }): PaymentWebhoo
       const ev = current?.event;
       const providerId = current?.providerId ?? "unknown";
       if (audit.toStatus === "paid" && ev) await upsertSucceededPayment(db, orderId, providerId, ev, opts.isTest);
-      if (audit.toStatus === "failed") {
+      if (audit.toStatus === "failed" || audit.toStatus === "cancelled") {
         await db`update public.payments set status = 'failed' where order_id = ${orderId} and provider = ${providerId} and status = 'pending'`;
       }
       if (audit.toStatus === "refunded") {
@@ -54,6 +54,12 @@ export function pgWebhookStore(db: Db, opts: { isTest: boolean }): PaymentWebhoo
       await transitionOrderInDb(db, orderId, audit.toStatus, { type: audit.actorType, id: audit.actorId ?? undefined }, {
         reason: audit.reason ?? undefined, evidence: audit.evidence,
       });
+    },
+    async isCurrentSession(orderId, providerId, providerSessionId) {
+      const [p] = await db<{ provider_session_id: string | null }[]>`
+        select provider_session_id from public.payments where order_id = ${orderId} and provider = ${providerId} and status = 'pending'
+         order by updated_at desc nulls last limit 1`;
+      return p?.provider_session_id === providerSessionId;
     },
     async flagForReview(orderId, reason, dedupeKey) {
       await notify(db, {

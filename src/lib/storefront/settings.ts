@@ -62,11 +62,12 @@ export const getPublishedPage = cache(async (slug: string): Promise<PublishedPag
   return row ? { slug: row.slug, title: row.title, body: row.published_body, publishedAt: row.published_at?.toISOString() ?? null } : null;
 });
 
-async function loadPublishedPages(): Promise<{ slug: string; title: string }[]> {
+async function loadPublishedPages(): Promise<{ slug: string; title: string; updatedAt: string | null }[]> {
   if (!isDbConfigured()) return [];
   try {
-    return await getSql()<{ slug: string; title: string }[]>`
-      select slug, title from public.cms_pages where status = 'published' and published_body is not null order by title`;
+    // updatedAt as text: the shared cache stores JSON (a Date would come back as a string anyway).
+    return await getSql()<{ slug: string; title: string; updatedAt: string | null }[]>`
+      select slug, title, to_char(published_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt" from public.cms_pages where status = 'published' and published_body is not null order by title`;
   } catch {
     return [];
   }

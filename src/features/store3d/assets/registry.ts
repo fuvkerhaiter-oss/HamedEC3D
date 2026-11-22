@@ -40,6 +40,17 @@ export const ASSETS = {
     castShadow: true,
     receiveShadow: true,
   },
+  chain: {
+    id: "chain",
+    url: "/models/props/chain.opt.glb",
+    purpose: "Iron chain segment (1 m along +X) tiled along the chained-off coming-soon portal of the new wing",
+    source: "Meshy_AI_Iron_Chain_0927192851_texture.fbx (+ PBR PNGs), converted by tools/assets/fbx-to-glb.mjs",
+    scale: 1,
+    rotation: [0, 0, 0],
+    position: [0, 0, 0],
+    castShadow: true,
+    receiveShadow: false,
+  },
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetId = keyof typeof ASSETS;

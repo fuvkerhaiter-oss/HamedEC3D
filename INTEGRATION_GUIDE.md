@@ -37,7 +37,7 @@ npm run test:unit
 ## Stripe (test mode first)
 1. Dashboard → Developers → API keys: copy `sk_test_…` / `pk_test_…` into `.env.local`.
 2. Local webhooks: `stripe listen --forward-to localhost:3000/api/webhooks/stripe` → copy the `whsec_…` into `STRIPE_WEBHOOK_SECRET`.
-3. Production webhook endpoint `https://<domain>/api/webhooks/stripe`, events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `refund.created`, `refund.updated`, `refund.failed` (per-refund status for partial refunds and failures). The webhook re-checks every payment with the Stripe API (PaymentIntent + balance transaction for actual fees), so the secret key must be able to read PaymentIntents.
+3. Production webhook endpoint `https://<domain>/api/webhooks/stripe`, events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` (cancels the unpaid order and frees its stock), `payment_intent.payment_failed` (declined attempts, shown on the admin order; the order stays open for a retry), `charge.refunded`, `refund.created`, `refund.updated`, `refund.failed` (per-refund status for partial refunds and failures). The webhook re-checks every payment with the Stripe API (PaymentIntent + balance transaction for actual fees), so the secret key must be able to read PaymentIntents.
 4. Enable the payment methods you want for EU/US in the Stripe Dashboard (Checkout shows what's enabled).
 5. Live keys are refused by the code until the account is activated and `allowLive` is set deliberately.
 
@@ -53,7 +53,7 @@ Implement `SupplierAdapter` per supplier from its official API docs; declare onl
 
 ## Production readiness checklist
 Run `npm run check:env` in the production environment (prints variable NAMES with problems, never values; exit 1 = not ready).
-- **Env (Vercel → Production):** `NEXT_PUBLIC_SITE_URL` (https), `DATABASE_URL` (Supabase pooled, not localhost), `ORDER_LINK_SECRET` (32+ random), `CRON_SECRET` (16+), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (+ `STRIPE_ALLOW_LIVE=true` only after the test-mode run), `RESEND_API_KEY` + `EMAIL_FROM` (verified domain), `SUPPORT_EMAIL`, Supabase URL/keys. Never set `PAYMENT_PROVIDER=dev-simulator` there. Use separate Stripe/Supabase projects (or at least test keys) for Preview deployments.
+- **Env (Vercel → Production):** `NEXT_PUBLIC_SITE_URL` (https), `DATABASE_URL` (Supabase pooled, not localhost), `ORDER_LINK_SECRET` (32+ random), `CRON_SECRET` (16+), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (+ `STRIPE_ALLOW_LIVE=true` only after the test-mode run), `RESEND_API_KEY` + `EMAIL_FROM` (verified domain), `SUPPORT_EMAIL`, Supabase URL/keys. Never set `PAYMENT_PROVIDER=dev-simulator` there. SEO (optional): `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`, `NEXT_PUBLIC_SOCIAL_URLS` (comma-separated https profile URLs) — see SEO_STRATEGY.md §8. Use separate Stripe/Supabase projects (or at least test keys) for Preview deployments.
 - **Migrations:** apply `supabase/migrations/*` in order (`supabase db push`); all Phase 1/2 migrations are additive. Take a backup first.
 - **Backups:** enable Supabase daily backups (Pro) and Point-in-Time Recovery for a live shop; test one restore into a separate project.
 - **Stripe:** webhook endpoint + events listed above; one test-mode order, partial refund and full refund end-to-end before going live.

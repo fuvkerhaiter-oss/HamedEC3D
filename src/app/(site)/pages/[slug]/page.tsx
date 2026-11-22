@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublishedPage } from "@/lib/storefront/settings";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { metaDescription } from "@/lib/seo/site";
 
 export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const page = await getPublishedPage((await params).slug);
-  return { title: page?.title ?? "Page" };
+  if (!page) return { title: "Page" };
+  // First real paragraph (not a heading) as the description.
+  const first = page.body.split(/\r?\n\s*\r?\n/).map((b) => b.trim()).find((b) => b && !b.startsWith("#")) ?? page.title;
+  return { title: page.title, description: metaDescription(first), alternates: { canonical: `/pages/${page.slug}` } };
 }
 
 /** Published CMS page (Admin → Website Content). Plain text: blank lines = paragraphs, "# " = heading. Rendered as text (no HTML injection). */
@@ -16,6 +21,7 @@ export default async function CmsPage({ params }: { params: Promise<{ slug: stri
   const blocks = page.body.split(/\r?\n\s*\r?\n/).map((b) => b.trim()).filter(Boolean);
   return (
     <article className="mx-auto max-w-3xl px-5 py-14">
+      <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: page.title, path: `/pages/${page.slug}` }]} className="mb-6" />
       <p className="eyebrow text-brand">WEGO SHIIIP</p>
       <h1 className="mt-3 font-display text-5xl leading-none">{page.title}</h1>
       <div className="mt-8 space-y-4 leading-relaxed text-ink-soft">

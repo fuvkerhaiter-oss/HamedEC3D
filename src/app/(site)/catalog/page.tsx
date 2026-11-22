@@ -9,8 +9,19 @@ import { catalogHref, parseCatalogQuery, queryCatalog } from "@/lib/catalog/quer
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
-  const q = parseCatalogQuery(await searchParams).q;
-  return { title: q ? `“${q}” · Catalog` : "Catalog" };
+  const params = await searchParams;
+  const query = parseCatalogQuery(params);
+  const narrowed = Object.keys(params).some((k) => k !== "market"); // any search / filter / sort
+  // Only the plain /catalog is indexed. Search, filter and sort variants are noindex (followed) and point
+  // their canonical at the clean page: /category/<slug> when only a category is chosen, else /catalog.
+  const onlyCategory = query.category && Object.keys(params).every((k) => k === "category" || k === "market");
+  const canonical = onlyCategory ? `/category/${query.category}` : "/catalog";
+  return {
+    title: query.q ? `“${query.q}” · Search` : "Shop All Products Online",
+    description: "Browse every WEGO SHIIIP product: search, filter by price and stock, and order online with delivery across the EU and the USA. Prices in EUR and USD.",
+    alternates: { canonical },
+    ...(narrowed ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
 export default async function CatalogPage({ searchParams }: { searchParams: SearchParams }) {
@@ -53,6 +64,16 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
           <div className="mt-4">
             <CatalogSearchBar query={query} categories={catalog.categories} />
           </div>
+          {/* Crawlable department links (the filter panel uses query-string URLs that are not indexed). */}
+          {catalog.categories.length > 0 && (
+            <nav aria-label="Departments" className="mt-3">
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
+                {catalog.categories.filter((c) => catalog.products.some((p) => p.categoryId === c.id)).map((c) => (
+                  <li key={c.id}><Link href={`/category/${c.slug}`} className="text-white/80 hover:text-white hover:underline">{c.name}</Link></li>
+                ))}
+              </ul>
+            </nav>
+          )}
           {catalog.source === "mock" && (
             <p className="mt-3 text-xs text-white/70">
               <span className="font-semibold text-white">Sample catalog:</span> these are development sample products, not real listings.

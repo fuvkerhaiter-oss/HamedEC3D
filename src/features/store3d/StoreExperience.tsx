@@ -7,7 +7,7 @@ import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } fr
 import { rectsFromBoxes } from "./collision";
 import { ASSETS } from "./assets/registry";
 import { KEYMAP } from "./controls";
-import { STORE_CONFIG, SUPERMARKET } from "./env/supermarket";
+import { STORE_CONFIG, STORE_ENV } from "./env/supermarket";
 import { Hud } from "./hud/Hud";
 import { LoadingScreen } from "./hud/LoadingScreen";
 import { RotateHint } from "./hud/RotateHint";
@@ -29,7 +29,7 @@ import { buildTrolleyCatalog } from "./trolley/visuals";
 import { LOCK_ERROR_MESSAGE, useStoreUi } from "./ui-store";
 
 /** Walls and fixtures the shopper and trolley collide with (flat floor; see ./collision). */
-const OBSTACLES = rectsFromBoxes([...SUPERMARKET.walls, ...SUPERMARKET.fixtures]);
+const OBSTACLES = rectsFromBoxes([...STORE_ENV.walls, ...STORE_ENV.fixtures]);
 
 // Start downloading the imported models as soon as this bundle loads.
 useGLTF.preload(ASSETS.supermarket.url);
@@ -39,17 +39,18 @@ useGLTF.preload(ASSETS.trolley.url);
 function InspectCamera() {
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     // Dev-only handle for browser testing (touch input can't be driven by a real thumb in automation).
-    (window as unknown as { __vsw?: unknown }).__vsw = { camera, gl, ui: useStoreUi, registry: interactionRegistry };
+    (window as unknown as { __vsw?: unknown }).__vsw = { camera, gl, scene, ui: useStoreUi, registry: interactionRegistry };
     const cam = new URLSearchParams(window.location.search).get("cam");
     if (!cam) return;
     const [x = 0, y = 1.6, z = 0, yaw = 0, pitch = 0] = cam.split(",").map(Number);
     camera.position.set(x, y, z);
     camera.rotation.set((pitch * Math.PI) / 180, (yaw * Math.PI) / 180, 0, "YXZ");
     useStoreUi.setState({ inspect: true });
-  }, [camera, gl]);
+  }, [camera, gl, scene]);
   return null;
 }
 
@@ -85,7 +86,7 @@ function SceneReady() {
  */
 export default function StoreExperience({ catalog, embedded = false }: { catalog: StoreCatalog; embedded?: boolean }) {
   const layout = useMemo(
-    () => buildStoreLayout(catalog.categories, catalog.products, SUPERMARKET, (catalog.stockAllFaces ?? STORE_CONFIG.stockAllFaces) ? "all" : STORE_CONFIG.benchmarkFaces),
+    () => buildStoreLayout(catalog.categories, catalog.products, STORE_ENV, (catalog.stockAllFaces ?? STORE_CONFIG.stockAllFaces) ? "all" : STORE_CONFIG.benchmarkFaces),
     [catalog],
   );
   const trolleyCatalog = useMemo(() => buildTrolleyCatalog(catalog), [catalog]);
@@ -212,7 +213,7 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
           <color attach="background" args={["#e9e4da"]} />
           <fog attach="fog" args={["#e9e4da", 25, 60]} />
           <Suspense fallback={null}>
-            <StoreScene env={SUPERMARKET} layout={layout} catalog={catalog} lowPower={lowPower} />
+            <StoreScene env={STORE_ENV} layout={layout} catalog={catalog} lowPower={lowPower} />
             <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} obstacles={OBSTACLES} trolley={<Trolley tc={trolleyCatalog} />} />
             <RemotePlayers tc={trolleyCatalog} />
             <FlightLayer tc={trolleyCatalog} />

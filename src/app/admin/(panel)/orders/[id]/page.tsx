@@ -200,11 +200,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             {d.payments.length === 0 ? <p className="text-sm text-ink-soft">No payment recorded.</p> : d.payments.map((p) => (
               <div key={p.id} className="text-sm">
                 <p className="flex flex-wrap items-center gap-2"><span className="font-medium capitalize">{p.provider}</span><StatusBadge status={p.status} />{p.is_test && <Badge tone="amber">test mode</Badge>}</p>
-                <p className="mt-1 font-mono text-xs text-ink-soft">{p.provider_payment_id ?? "—"}</p>
+                <p className="mt-1 font-mono text-xs text-ink-soft" title="Payment (PaymentIntent) id">{p.provider_payment_id ?? "—"}</p>
+                {p.provider_session_id && <p className="font-mono text-xs text-ink-soft" title="Checkout session id">{p.provider_session_id}</p>}
                 <p className="mt-1 font-mono">{fmtMoney(p.amount, p.currency)}{p.refunded_amount > 0 && <span className="text-ink-soft"> · refunded {fmtMoney(p.refunded_amount, p.currency)}</span>}</p>
                 <p className="text-xs text-ink-soft">Payment fee: {p.fee_amount === null ? "unknown" : fmtMoney(p.fee_amount, p.currency)}</p>
               </div>
             ))}
+            {d.failedAttempts.length > 0 && (
+              <div className="mt-3 border-t border-line pt-3 text-xs">
+                <p className="font-medium">Declined card attempts ({d.failedAttempts.length})</p>
+                <ul className="mt-1 space-y-0.5 text-ink-soft">{d.failedAttempts.map((a) => <li key={a.id}>{a.received_at.toLocaleString("en-GB")} · {a.message ?? "Payment failed"}</li>)}</ul>
+              </div>
+            )}
             {d.refunds.length > 0 && (
               <ul className="mt-3 space-y-1 border-t border-line pt-3 text-xs">
                 {d.refunds.map((r) => <li key={r.id} className="flex flex-wrap gap-2"><StatusBadge status={r.status} /><span className="font-mono">{fmtMoney(r.amount, r.currency)}</span><span className="text-ink-soft">{r.reason}</span>{r.error && <span className="text-red-700">{r.error}</span>}</li>)}

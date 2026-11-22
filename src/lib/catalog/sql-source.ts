@@ -11,12 +11,13 @@ export async function loadCatalogSql(db: Db, supabaseUrl: string, variantIds?: r
   const only = variantIds ? [...new Set(variantIds)].slice(0, 500) : null;
   if (only && only.length === 0) return { categories: [], products: [] };
   // Pricing reads (variant filter) do not need the category list.
-  const cats = only ? [] : await db<{ id: string; slug: string; name: string }[]>`
-    select id, slug, name from public.categories where is_active order by sort_order, name`;
+  const cats = only ? [] : await db<{ id: string; slug: string; name: string; description: string }[]>`
+    select id, slug, name, description from public.categories where is_active order by sort_order, name`;
   const rows = await db<{ row: ProductRow }[]>`
     select json_build_object(
       'id', p.id, 'slug', p.slug, 'name', p.name, 'description', p.description, 'status', p.status,
       'is_mock', p.is_mock, 'category_id', p.category_id,
+      'brand', p.brand, 'seo_title', p.seo_title, 'seo_description', p.seo_description, 'updated_at', p.updated_at,
       'product_variants', coalesce((
         select json_agg(json_build_object(
           'id', v.id, 'sku', v.sku, 'name', v.name, 'attributes', v.attributes, 'is_active', v.is_active, 'sort_order', v.sort_order,
@@ -38,7 +39,7 @@ export async function loadCatalogSql(db: Db, supabaseUrl: string, variantIds?: r
       ${only ? db`and exists (select 1 from public.product_variants fv where fv.product_id = p.id and fv.id::text = any(${only}))` : db``}
     order by p.name`;
   return {
-    categories: cats.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
+    categories: cats.map((c) => ({ id: c.id, slug: c.slug, name: c.name, description: c.description ?? "" })),
     products: rows.map((r) => mapProductRow(r.row, supabaseUrl)),
   };
 }

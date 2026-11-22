@@ -4,6 +4,8 @@ import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
 import { getStorefrontSettings, listPublishedPages } from "@/lib/storefront/settings";
+import { getCatalog } from "@/lib/catalog/source";
+import { GUIDES } from "@/lib/content/guides";
 
 function Logo({ dark = false }: { dark?: boolean }) {
   return (
@@ -26,7 +28,10 @@ const NAV = [
 ];
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [{ home }, pages] = await Promise.all([getStorefrontSettings(), listPublishedPages()]);
+  const [{ home }, pages, catalog] = await Promise.all([getStorefrontSettings(), listPublishedPages(), getCatalog().catch(() => null)]);
+  // Crawlable links to every department that has products (the 3D store and filters are not crawlable paths).
+  const departments = catalog ? catalog.categories.filter((c) => catalog.products.some((p) => p.categoryId === c.id)) : [];
+  const footerShop = [...NAV.filter((n) => n.href !== "/contact"), ...departments.map((c) => ({ href: `/category/${c.slug}`, label: c.name })), ...(GUIDES.length ? [{ href: "/guides", label: "Guides" }] : [])];
   return (
     <div className="flex min-h-dvh flex-col">
       {home.announcement && <p className="bg-ink px-5 py-2 text-center text-[13px] font-medium tracking-wide text-white"><span aria-hidden className="mr-2 inline-block h-1.5 w-1.5 -translate-y-px rounded-full bg-amber align-middle" />{home.announcement}</p>}
@@ -57,7 +62,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">Shop</p>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {NAV.map((n) => (
+              {footerShop.map((n) => (
                 <li key={n.href}><Link href={n.href} className="text-white/80 transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">{n.label}</Link></li>
               ))}
             </ul>
@@ -67,6 +72,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             <ul className="mt-4 space-y-2.5 text-sm text-white/80">
               <li>European Union · EUR</li>
               <li>United States · USD</li>
+              <li><Link href="/contact" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Help, order tracking & contact</Link></li>
             </ul>
             {pages.length > 0 && (
               <ul className="mt-6 space-y-2.5 text-sm">

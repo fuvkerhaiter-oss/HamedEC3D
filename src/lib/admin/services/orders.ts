@@ -309,7 +309,7 @@ export async function getOrderDetail(db: Db, id: string) {
     base_currency: CurrencyCode | null; fx_rate_to_base: string | null; user_id: string | null; updated_at: Date;
   })[]>`select o.*, o.fx_rate_to_base::text as fx_rate_to_base from public.orders o where o.id = ${id}`;
   if (!order) return null;
-  const [items, events, notes, shipments, payments, refunds, supplierOrders, invoice, reservations] = await Promise.all([
+  const [items, events, notes, shipments, payments, refunds, supplierOrders, invoice, reservations, failedAttempts] = await Promise.all([
     db<{ id: string; variant_id: string | null; product_name: string; variant_name: string; sku: string; unit_price: number; quantity: number; line_total: number }[]>`
       select * from public.order_items where order_id = ${id} order by sku`,
     db<{ id: number; from_status: string | null; to_status: string; actor_type: string; actor_id: string | null; reason: string | null; evidence: Record<string, unknown>; created_at: Date }[]>`
@@ -318,7 +318,7 @@ export async function getOrderDetail(db: Db, id: string) {
       select n.*, u.email as admin_email from public.order_notes n left join public.admin_users u on u.id = n.admin_user_id where n.order_id = ${id} order by n.created_at`,
     db<{ id: string; carrier: string; tracking_number: string; tracking_url: string | null; status: string; shipped_at: Date | null; delivered_at: Date | null; notes: string }[]>`
       select * from public.shipments where order_id = ${id} order by shipped_at nulls last`,
-    db<{ id: string; provider: string; provider_payment_id: string | null; status: string; amount: number; currency: CurrencyCode; refunded_amount: number; fee_amount: number | null; is_test: boolean; created_at: Date }[]>`
+    db<{ id: string; provider: string; provider_payment_id: string | null; provider_session_id: string | null; status: string; amount: number; currency: CurrencyCode; refunded_amount: number; fee_amount: number | null; is_test: boolean; created_at: Date }[]>`
       select * from public.payments where order_id = ${id} order by created_at`,
     db<{ id: string; amount: number; currency: CurrencyCode; reason: string; status: string; provider: string | null; provider_refund_id: string | null; error: string | null; created_at: Date }[]>`
       select * from public.refunds where order_id = ${id} order by created_at`,
@@ -326,8 +326,11 @@ export async function getOrderDetail(db: Db, id: string) {
       select so.*, s.name as supplier_name from public.supplier_orders so join public.suppliers s on s.id = so.supplier_id where so.order_id = ${id} order by so.created_at`,
     db<{ invoice_number: string; issued_at: Date }[]>`select invoice_number, issued_at from public.invoices where order_id = ${id}`,
     db<{ variant_id: string; quantity: number; status: string }[]>`select variant_id, quantity, status from public.inventory_reservations where order_id = ${id}`,
+    db<{ id: string; message: string | null; received_at: Date }[]>`
+      select id, payload->>'failureMessage' as message, received_at from public.payment_events
+       where order_id = ${id} and event_type = 'payment.attempt_failed' order by received_at desc limit 10`,
   ]);
-  return { order, items, events, notes, shipments, payments, refunds, supplierOrders, invoice: invoice[0] ?? null, reservations };
+  return { order, items, events, notes, shipments, payments, refunds, supplierOrders, invoice: invoice[0] ?? null, reservations, failedAttempts };
 }
 
 // ───────────────────────── Notes & shipments ─────────────────────────

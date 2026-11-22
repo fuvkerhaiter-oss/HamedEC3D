@@ -116,6 +116,7 @@ function store(status: OrderStatus, total: Money) {
     async recordUnmatchedPayment() { log.unmatched++; },
     async recordPaymentFinancials(_p, _id, b) { log.financials.push(b); },
     async applyRefundUpdate() { return "unknown"; },
+    async isCurrentSession() { return true; },
   };
   return { s, order, log };
 }

@@ -6,7 +6,7 @@ import type { Product } from "./types";
 export const DEFAULT_PLACEHOLDER_HEIGHT_M = 0.25;
 
 export const PRODUCT_SELECT =
-  "id,slug,name,description,status,is_mock,category_id," +
+  "id,slug,name,description,status,is_mock,category_id,brand,seo_title,seo_description,updated_at," +
   "product_variants(id,sku,name,attributes,is_active,sort_order,variant_prices(currency,amount),inventory(quantity,reserved))," +
   "product_3d_assets(storage_path,height_m,is_primary)," +
   "product_images(storage_path,alt,sort_order,bucket,is_primary,width,height)," +
@@ -23,6 +23,10 @@ export interface ProductRow {
   status: Product["status"];
   is_mock: boolean;
   category_id: string | null;
+  brand?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  updated_at?: string | null;
   product_variants: {
     id: string;
     sku: string;
@@ -69,6 +73,10 @@ export function mapProductRow(row: ProductRow, supabaseUrl: string): Product {
     categoryId: row.category_id ?? "",
     status: row.status,
     isMock: row.is_mock,
+    brand: row.brand?.trim() || null,
+    seoTitle: row.seo_title?.trim() || null,
+    seoDescription: row.seo_description?.trim() || null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
     imageUrl: gallery[0]?.url ?? null,
     gallery,
     asset: {
