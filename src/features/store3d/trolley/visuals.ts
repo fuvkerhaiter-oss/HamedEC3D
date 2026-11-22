@@ -13,12 +13,13 @@ export interface TrolleyCatalog {
   productOfVariant: ReadonlyMap<string, string>;
 }
 
-export function buildTrolleyCatalog(catalog: StoreCatalog): TrolleyCatalog {
+/** `colors` = the shelf layout's per-product colours, so a product looks the same on the shelf and in any trolley. */
+export function buildTrolleyCatalog(catalog: StoreCatalog, colors: Readonly<Record<string, string>> = {}): TrolleyCatalog {
   const cat = new Map(catalog.categories.map((c, i) => [c.id, categoryColor(c.slug, i)]));
   const visuals = new Map<string, { color: string; h: number; w: number }>();
   const productOfVariant = new Map<string, string>();
   for (const p of catalog.products) {
-    visuals.set(p.id, { color: cat.get(p.categoryId) ?? categoryColor(undefined), ...productItemDims(p.asset.heightMeters) });
+    visuals.set(p.id, { color: colors[p.id] ?? cat.get(p.categoryId) ?? categoryColor(undefined), ...productItemDims(p.asset.heightMeters) });
     for (const v of p.variants) productOfVariant.set(v.id, p.id);
   }
   return { visuals, productOfVariant };

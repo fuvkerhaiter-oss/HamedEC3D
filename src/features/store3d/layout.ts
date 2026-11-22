@@ -3,6 +3,7 @@
  * measured gondola faces (boards × bays), with facings, depth rows, price tags and aisle signs.
  * No three.js imports, so it is unit-testable.
  */
+import { assignProductColors } from "../../lib/catalog/colors";
 import type { Category, Product } from "../../lib/catalog/types";
 import type { EnvLayout, ShelfFace, Vec3 } from "./env/types";
 
@@ -35,6 +36,8 @@ export interface StoreLayout {
   stockedFaces: string[];
   /** Products with no shelf space in the stocked faces (still sold via catalog/search). */
   unplaced: string[];
+  /** productId -> box colour; different products next to each other on a face never share one. */
+  colors: Record<string, string>;
 }
 
 export const PLACEMENT = {
@@ -107,6 +110,13 @@ export function buildStoreLayout(
   const items: Record<string, ItemPlacement[]> = {};
   const priceTags: PriceTag[] = [];
   const shelved = new Set<string>();
+  const colorOrder: string[] = [];
+  const neighbours = new Map<string, Set<string>>();
+  const link = (a: string | undefined, b: string | undefined) => {
+    if (!a || !b || a === b) return;
+    (neighbours.get(a) ?? neighbours.set(a, new Set()).get(a)!).add(b);
+    (neighbours.get(b) ?? neighbours.set(b, new Set()).get(b)!).add(a);
+  };
 
   faces.forEach((face, fi) => {
     const list = faceLists[fi]!;
@@ -124,10 +134,16 @@ export function buildStoreLayout(
 
     // Vertical blocking: walk spans column by column, each product takes a contiguous run of blocks.
     let block = 0;
-    spans.forEach(([a, b]) => {
-      face.boards.forEach((boardY) => {
+    const grid: string[][] = []; // [span][board] productId, for neighbour colouring
+    spans.forEach(([a, b], si) => {
+      const col: string[] = (grid[si] = []);
+      face.boards.forEach((boardY, bi) => {
         const product = list[Math.floor((block * list.length) / blocks)]!;
         block++;
+        col[bi] = product.id;
+        colorOrder.push(product.id);
+        link(product.id, col[bi - 1]); // board below, same span
+        link(product.id, grid[si - 1]?.[bi]); // span to the left, same board
         const { h, w } = productItemDims(product.asset.heightMeters);
         const span = b - a;
         const pitch = w + PLACEMENT.facingGap;
@@ -161,6 +177,7 @@ export function buildStoreLayout(
     signs: aisleSigns(env, faces, faceCats),
     stockedFaces: faces.map((f) => f.id),
     unplaced: visible.filter((p) => !shelved.has(p.id)).map((p) => p.id),
+    colors: assignProductColors(colorOrder, neighbours),
   };
 }
 

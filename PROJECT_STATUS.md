@@ -1,5 +1,18 @@
 # Project Status
 
+## Distinct box colour per product on the 3D shelves (2026-11-22)
+- Before, every product in a category shared one box colour, so neighbouring products (different name and price) looked identical. Now `buildStoreLayout` returns `colors` (productId → colour). `assignProductColors` in `lib/catalog/colors.ts` builds it with pure, deterministic greedy colouring over the shelf neighbours: blocks next to each other on the same face (same bay span with the board above or below, or the next span on the same board). It uses a 12-colour `PRODUCT_PALETTE`, with golden-angle hues past that.
+- The same colour is used on the shelf (`StoreScene`), in your trolley and flights, and in other shoppers' baskets (`buildTrolleyCatalog(catalog, layout.colors)`). The category colour is only a fallback. `ProductPeek`'s UI accent still uses the category colour. Product photo faces are unchanged.
+- New test `tests/unit/product-colors.test.ts` rebuilds the neighbours independently from the price tags of the real layout (bench, all faces, a crowded single category) and checks that no two different neighbours share a colour.
+- Checked on the dev server (`/store?cam=-2.8,1.3,-0.3,0,-5`, face L1N): each bay is now a different colour, photos still show, and there were no console errors. typecheck/lint clean · unit 155/155 · build OK.
+
+## 5 demo bot shoppers in the 3D store (2026-11-22)
+- `store3d/bots/bots.ts` (pure, tested in `tests/unit/store-bots.test.ts`): walkable grid from the shopper's own colliders (incl. extended hall, moved fridges, pillars, chains) + flood fill from spawn, A* + string pulling, every move through `collision.step` with the same body+trolley shape. Modes: walk (waddle), look at shelves, spin, hops, "Oops!" bump with each other / keep a gap from the real shopper, dance in front of the COMING SOON chains (bot-only no-go zone under the floating updates board). Seeded RNG.
+- `store3d/bots/BotShoppers.tsx`: reuses the multiplayer avatar geometry (now exported from `multiplayer/RemotePlayers.tsx`) + trolley GLB clone, antenna, tags "Bot · Lulu / Bobo / Pip / Zaza / Momo" + "demo bot · not a real shopper", speech lines. One `useFrame` for all 5, shared geometry, no per-frame allocations, no shadows on lowPower. No cart/order/stock/price access, no network.
+- Runners (same day): per-persona `dash` chance; Pip (the sprinter, up to ~3.7 m/s), Lulu and Bobo break into 2–5 s runs (×2.2 speed, quicker turns, lean forward, bouncy stride, arms pumping, "Zoom!"/"Coming through!"); Zaza and Momo never run. A bump ends a run. Same grid + collision, unit-tested (unit 151/151).
+- Switch `NEXT_PUBLIC_STORE_BOTS` (`on`/`off`); unset = on in `next dev`, off in production. Mounted in `StoreExperience` only while playing (not the homepage hero preview). Documented in `.env.example`.
+- Checked on the running dev server (:3000) in a phone-sized pane: 5 bots moving, emoting, no console errors, ~40 fps in the pane. typecheck/lint clean · unit 150/150 · build OK. Not checked on a real phone.
+
 ## SEO foundation (2026-11-22)
 - Full audit, keyword map, structured-data check, external setup and 90-day plan: **SEO_STRATEGY.md**.
 - New `lib/seo/site.ts` (canonical origin incl. Vercel fallback, meta descriptions, JSON-LD builders, tests `tests/unit/seo.test.ts`), `components/JsonLd.tsx`, `components/Breadcrumbs.tsx` (visible + BreadcrumbList).

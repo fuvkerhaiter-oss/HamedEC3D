@@ -29,8 +29,9 @@ const center = (b: Box) => b.min.map((v, i) => (v + b.max[i]!) / 2) as [number, 
 export function StoreScene({ env, layout, catalog, lowPower = false }: { env: EnvLayout; layout: StoreLayout; catalog: StoreCatalog; lowPower?: boolean }) {
   const colorOf = useMemo(() => {
     const cat = new Map(catalog.categories.map((c, i) => [c.id, categoryColor(c.slug, i)]));
-    return (p: Product) => cat.get(p.categoryId) ?? categoryColor(undefined);
-  }, [catalog.categories]);
+    // Per-product colour from the layout (neighbours on a shelf differ); category colour only as a fallback.
+    return (p: Product) => layout.colors[p.id] ?? cat.get(p.categoryId) ?? categoryColor(undefined);
+  }, [catalog.categories, layout.colors]);
   const productById = useMemo(() => new Map(catalog.products.map((p) => [p.id, p])), [catalog.products]);
 
   return (

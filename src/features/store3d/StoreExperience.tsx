@@ -6,6 +6,8 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } from "@react-three/drei";
 import { rectsFromBoxes } from "./collision";
 import { ASSETS } from "./assets/registry";
+import { BotShoppers } from "./bots/BotShoppers";
+import { botsEnabled } from "./bots/bots";
 import { KEYMAP } from "./controls";
 import { STORE_CONFIG, STORE_ENV } from "./env/supermarket";
 import { Hud } from "./hud/Hud";
@@ -30,6 +32,9 @@ import { LOCK_ERROR_MESSAGE, useStoreUi } from "./ui-store";
 
 /** Walls and fixtures the shopper and trolley collide with (flat floor; see ./collision). */
 const OBSTACLES = rectsFromBoxes([...STORE_ENV.walls, ...STORE_ENV.fixtures]);
+/** Demo bot shoppers: on in `next dev`, off in production unless NEXT_PUBLIC_STORE_BOTS=on (see ./bots/bots). */
+const BOTS = botsEnabled(process.env.NEXT_PUBLIC_STORE_BOTS, process.env.NODE_ENV);
+const BOT_SPAWN: [number, number] = [STORE_CONFIG.spawn[0], STORE_CONFIG.spawn[2]];
 
 // Start downloading the imported models as soon as this bundle loads.
 useGLTF.preload(ASSETS.supermarket.url);
@@ -89,7 +94,7 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
     () => buildStoreLayout(catalog.categories, catalog.products, STORE_ENV, (catalog.stockAllFaces ?? STORE_CONFIG.stockAllFaces) ? "all" : STORE_CONFIG.benchmarkFaces),
     [catalog],
   );
-  const trolleyCatalog = useMemo(() => buildTrolleyCatalog(catalog), [catalog]);
+  const trolleyCatalog = useMemo(() => buildTrolleyCatalog(catalog, layout.colors), [catalog, layout.colors]);
   const setLocked = useStoreUi((s) => s.setLocked);
   // Phones/tablets: render budget decided once at mount (GL context options can't change later).
   // iOS (all browsers there are WebKit) gets the tightest budget: Safari kills a WebGL tab at a much lower
@@ -216,6 +221,7 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
             <StoreScene env={STORE_ENV} layout={layout} catalog={catalog} lowPower={lowPower} />
             <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} obstacles={OBSTACLES} trolley={<Trolley tc={trolleyCatalog} />} />
             <RemotePlayers tc={trolleyCatalog} />
+            {BOTS && playing && <BotShoppers env={STORE_ENV} obstacles={OBSTACLES} spawn={BOT_SPAWN} lowPower={lowPower} />}
             <FlightLayer tc={trolleyCatalog} />
             <Interactor />
             <PeekTracker />

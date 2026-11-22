@@ -11,29 +11,29 @@ import { remotePoses, sendPose, setListener, setMyBasket, setVoicePosition, useN
 
 const EYE_HEIGHT = 1.6; // poses are camera positions; feet are this far below
 /** Same place as my own trolley: in front of the shopper, origin on the floor (avatar-local, front = -Z). */
-const TROLLEY_Z = TROLLEY.offsetFromPlayer[2];
+export const TROLLEY_Z = TROLLEY.offsetFromPlayer[2];
 const dir = new THREE.Vector3();
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // Arms reach from the shoulders to the trolley handle.
-const SHOULDER = { y: 1.15, z: -0.12 };
-const HAND = { y: 0.98, z: TROLLEY_Z + 0.5 };
-const ARM = {
+export const SHOULDER = { y: 1.15, z: -0.12 };
+export const HAND = { y: 0.98, z: TROLLEY_Z + 0.5 };
+export const ARM = {
   len: Math.hypot(HAND.y - SHOULDER.y, HAND.z - SHOULDER.z),
   tilt: Math.atan2(HAND.z - SHOULDER.z, HAND.y - SHOULDER.y),
   mid: [(SHOULDER.y + HAND.y) / 2, (SHOULDER.z + HAND.z) / 2] as const,
 };
 
 // Shared geometry for every avatar (no per-avatar allocations).
-const GEO = {
+export const GEO = {
   body: new THREE.CapsuleGeometry(0.28, 0.75, 4, 12),
   head: new THREE.SphereGeometry(0.2, 20, 14),
   eye: new THREE.SphereGeometry(0.03, 8, 6),
   ring: new THREE.TorusGeometry(0.34, 0.025, 6, 32),
   arm: new THREE.CapsuleGeometry(0.055, 1, 3, 8),
 };
-const SKIN = new THREE.MeshStandardMaterial({ color: "#f1c9a5", roughness: 0.7 });
-const EYE = new THREE.MeshBasicMaterial({ color: "#111513" });
+export const SKIN = new THREE.MeshStandardMaterial({ color: "#f1c9a5", roughness: 0.7 });
+export const EYE = new THREE.MeshBasicMaterial({ color: "#111513" });
 const MIC = new THREE.MeshBasicMaterial({ color: "#3bdc7a" });
 
 /** Other shoppers in my room (each pushing a trolley with what they picked) + sends my own pose and basket. */
