@@ -4,6 +4,7 @@ import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 import feature1 from "@/assets/home/feature-1.webp";
 import feature2 from "@/assets/home/feature-2.webp";
 import feature3 from "@/assets/home/feature-3.webp";
+import doorsOpenBanner from "@/assets/home/doors-open-banner.webp";
 import storeFirstView from "@/assets/hero/store-first-view.webp";
 import { StorePortal } from "@/features/home/StorePortal";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
@@ -164,21 +165,18 @@ export default async function HomePage() {
 
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-5 py-24">
-          <div className="relative overflow-hidden rounded-3xl bg-amber px-8 py-14 text-ink sm:px-14 sm:py-16">
-            <div aria-hidden className="absolute inset-y-0 right-0 hidden w-3 bg-brand lg:block" />
-            <div className="relative flex flex-col items-start gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Doors are open</p>
-                <h2 className="mt-4 max-w-2xl font-display text-4xl leading-[1.02] sm:text-6xl">Your next shop is a walk away.</h2>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-3">
-                <Link href="/store" className="btn-dark group px-7 py-4">
-                  Enter the store
-                  <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-                </Link>
-                <Link href="/catalog" className="btn-outline px-7 py-4">Browse the catalog</Link>
-              </div>
-            </div>
+          {/* 3D "Doors are open" banner (src/assets/home/doors-open-banner.webp). Its buttons are part of the artwork;
+              real links sit exactly over them (positions in % of the image, measured from the file). */}
+          <div className="relative transition duration-300 hover:-translate-y-1">
+            <h2 className="sr-only">Doors are open. Your next shop is a walk away.</h2>
+            <Image
+              src={doorsOpenBanner}
+              alt=""
+              sizes="(min-width: 1152px) 1104px, 96vw"
+              className="h-auto w-full drop-shadow-[0_18px_28px_rgb(17_21_19/0.18)]"
+            />
+            <Link href="/store" aria-label="Enter the store" className="absolute rounded-full outline-none transition hover:bg-white/10 hover:shadow-[0_0_0_3px_rgb(17_21_19/0.25)] focus-visible:shadow-[0_0_0_3px_#111513] active:scale-[0.98] left-[56.2%] top-[53.1%] h-[21.6%] w-[19.1%] max-sm:top-[44%] max-sm:h-[40%]" />
+            <Link href="/catalog" aria-label="Browse the catalog" className="absolute rounded-full outline-none transition hover:bg-white/10 hover:shadow-[0_0_0_3px_rgb(17_21_19/0.25)] focus-visible:shadow-[0_0_0_3px_#111513] active:scale-[0.98] left-[76.4%] top-[52.9%] h-[22%] w-[18.5%] max-sm:top-[44%] max-sm:h-[40%]" />
           </div>
         </div>
       </section>
