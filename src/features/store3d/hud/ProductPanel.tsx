@@ -8,6 +8,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
 import { priceIn, stockStatus, type Product } from "@/lib/catalog/types";
 import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { PhotoSlideshow } from "./PhotoSlideshow";
 
 const STOCK = {
   in_stock: { label: "In stock", cls: "text-brand" },
@@ -34,6 +35,7 @@ export function ProductPanel({
   const primary = useRef<HTMLButtonElement>(null);
   const added = useRef(false); // a fast double click/tap must not add twice before the panel unmounts
 
+  const gallery = product.gallery ?? [];
   const variant = product.variants.find((v) => v.id === variantId);
   const price = variant ? priceIn(variant, market.currency) : null;
   const stock = variant ? stockStatus(variant) : "out_of_stock";
@@ -64,7 +66,9 @@ export function ProductPanel({
     <div ref={dialog} className="fixed inset-0 z-30 flex overflow-y-auto overscroll-contain bg-ink/50 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="product-title">
       <div className="m-auto grid w-full max-w-3xl overflow-hidden rounded-3xl bg-cream shadow-2xl md:grid-cols-2 short:grid-cols-[2fr_3fr]">
         <div className="relative min-h-44 bg-sand sm:min-h-56 short:min-h-0">
-          {product.imageUrl ? (
+          {gallery.length > 1 ? (
+            <PhotoSlideshow key={product.id} images={gallery} sizes="(min-width: 768px) 50vw, 100vw" controls keyTarget={dialog} />
+          ) : product.imageUrl ? (
             <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt={product.name} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
           ) : (
             <div className="flex h-full min-h-44 flex-col items-center justify-center gap-2 p-6 text-center text-ink-soft sm:min-h-56">

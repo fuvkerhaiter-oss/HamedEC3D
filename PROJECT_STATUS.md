@@ -1,5 +1,11 @@
 # Project Status
 
+## Product photo slideshow in the 3D store popups (2026-11-22)
+- Admin already had everything (product page → "Images": upload several, drag/← → to reorder, "Set main", delete, alt text; plus Admin → Product photos for bulk upload). No admin changes.
+- `store3d/hud/PhotoSlideshow.tsx` (+ pure `slideshow.ts`, unit tested): peek card and product dialog crossfade through `product.gallery` (main photo first) every 2.8 s, looping; dots; dialog also has prev/next buttons, swipe (touch, `pan-y`), ←/→ only while focus is inside the dialog. Pauses on mouse hover/focus, waits for the next photo to load, stops when the popup closes, restarts from the main photo per product, no auto-advance with reduced motion. Screen readers: alt text on the visible photo, "Photo x of N" live only while paused. 0–1 photos: unchanged markup.
+- Egress: same `next/image` + `canOptimize` + `sizes`; only visible, fading-out and NEXT photo mounted; no new DB reads.
+- Verified in the browser (desktop + phone landscape) with a temporary 3-photo local product (removed afterwards); typecheck/lint clean · unit 117/117 · build OK. Not tested on a real iPhone.
+
 ## Phase 3 3D experience, UX & visual polish (2026-11-21)
 Status: **PARTIAL** — measured asset/perf wins, visual + a11y + error-state fixes, tests green; real product models, real-device (iPhone/Android) and low-end GPU tests still open.
 - **Assets** (`tools/assets/optimize-glb.mjs`, meshoptimizer dev tool, no runtime dependency): `supermarket.opt.glb` 12.6 → 2.3 MB, `trolley.opt.glb` 9.5 → 0.8 MB (162k → 32k tris, simplified 0.2 at 0.4 % error), meshopt-compressed geometry, 8-bit normals, WebP textures (same resolution). Visual diff vs. old files: mean pixel difference 0.2–4 / 255. Registry points to the .opt files; the old `supermarket.glb` / `trolley.glb` are kept until the owner approves deleting them.

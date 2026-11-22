@@ -15,6 +15,7 @@
     "test:db": "tsx tools/db/run-sql-tests.ts",
     "db:local": "tsx tools/db/local-db.ts",
     "admin:create": "tsx tools/admin/create-admin.ts",
+    "admin:sql": "tsx tools/admin/admin-sql.ts",
     "db:seed-test-orders": "tsx tools/db/seed-test-orders.ts",
     "db:migrate": "tsx tools/db/migrate.ts",
     "content:legal": "tsx --env-file-if-exists=.env.local tools/content/seed-legal-pages.ts",

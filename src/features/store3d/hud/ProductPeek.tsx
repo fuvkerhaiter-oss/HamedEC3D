@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { onPeekFrame } from "../peek/PeekTracker";
 import type { StoreCatalog } from "../StoreScene";
 import { useStoreUi } from "../ui-store";
+import { PhotoSlideshow } from "./PhotoSlideshow";
 import "./product-peek.css";
 
 /** Look at a product this long before the card opens (sweeping the view across a shelf stays calm). */
@@ -115,6 +116,7 @@ function PeekCallout({ product, catalog, leaving }: { product: Product; catalog:
     return () => onPeekFrame(null);
   }, []);
 
+  const gallery = product.gallery ?? [];
   const options = product.variants.map((v) => v.name);
   const stock = STOCK[info.stock];
 
@@ -141,7 +143,9 @@ function PeekCallout({ product, catalog, leaving }: { product: Product; catalog:
             >
               <div className="vsw-peek-bg" />
               <div className="vsw-peek-media">
-                {product.imageUrl ? (
+                {gallery.length > 1 ? (
+                  <PhotoSlideshow key={product.id} images={gallery} sizes="(max-width: 640px) 110px, 340px" decorative active={!leaving} />
+                ) : product.imageUrl ? (
                   <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt="" fill sizes="(max-width: 640px) 110px, 340px" className="object-cover" />
                 ) : (
                   <span className="vsw-peek-initial" aria-hidden>{product.name.slice(0, 1)}</span>
