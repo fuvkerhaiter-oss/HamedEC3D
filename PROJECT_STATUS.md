@@ -1,5 +1,11 @@
 # Project Status
 
+## Full legal texts: Terms of Sale, Privacy Policy, Returns & Refunds (2026-11-22)
+- New full templates in `tools/content/legal/{terms,privacy,returns}.ts` (≈3.6k / 2.7k / 1.7k words), used by `legal-templates.ts` → `npm run content:legal`. Written for how the store really works: Stripe (fraud screening disclosed), Supabase/Vercel/Resend, dropshipping suppliers incl. non-EU (art. 49(1)(b) + SCCs), P2P voice rooms (IP visible to peers + Google STUN), demo bots, supporters wall (consent), reviews. EU: 14-day withdrawal + Annex I(B) model form, 2-year guarantee, 30-day omnibus price rule, GPSR, ADR (no ODR link: the platform closed in July 2025). US: CCPA/CPRA + state-law section, GPC honoured, AAA arbitration with 30-day opt-out and class waiver (clickwrap via the checkout terms checkbox).
+- `npm run content:legal -- --refresh-drafts` replaces the draft text of never-published template pages (overwrites unpublished edits); published pages are never touched.
+- Owner: fill every [BRACKET] (company, emails, EU return address, return-cost choice, IOSS/US duties, US state law, retention), have a lawyer review, publish. **Gap:** EU law requires an online "withdraw from contract" function since 19 June 2026 (CRD art. 11a); the returns text references one in brackets but the site has none yet. Keep the "we never sell / no analytics" statements true.
+- typecheck/lint clean. Not rendered in the browser (pages come from the DB; the :3000 server can't reach its database).
+
 ## Dropshipping automation engine (2026-11-22)
 - Full write-up: `DROPSHIPPING.md` (audit, status mapping, setup, env vars, checklist, limits). Migration `20261125000001_dropshipping_automation.sql` (additive) — push BEFORE deploying (webhook writes `fulfillment_jobs`).
 - Paid order → one job (same tx) → worker (`lib/fulfillment/worker.ts`; `after()` of webhook + `/api/cron/fulfillment`) with kill switch, payment re-check, address/country, live stock+price, backups by priority, margin/limit rules → idempotent supplier order → supplier-payment pending alert. Tracking sync (`tracking-sync.ts`) → shipped/delivered + `tracking_events`. Admin `/admin/dropshipping` (KPIs, profit, exception queue, retry/handled, rules, kill switch, supplier health, log). Customer order page shows tracking events.
