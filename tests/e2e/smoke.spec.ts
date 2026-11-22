@@ -84,7 +84,7 @@ test("3D store loads the environment and trolley GLBs and shows the entry overla
 
   await page.goto("/store");
   await expect(page.locator("canvas")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("button", { name: "Click to enter" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Enter the store" })).toBeVisible({ timeout: 60_000 });
   // The loading shell fades out (stays mounted with aria-hidden) once the scene and GLBs are ready.
   await expect(page.locator(".vsw-load")).toHaveAttribute("aria-hidden", "true", { timeout: 60_000 });
 
@@ -103,7 +103,7 @@ test.describe("3D store on a phone (touch emulation)", () => {
     // Portrait phone: the rotate prompt shows first and can be skipped.
     await page.getByRole("button", { name: "Continue in portrait" }).tap({ timeout: 30_000 }); // a touch, like a real phone
     await expect(page.getByRole("dialog", { name: "Rotate your phone" })).toBeHidden();
-    const enter = page.getByRole("button", { name: "Tap to enter" });
+    const enter = page.getByRole("button", { name: "Enter the store" });
     await expect(enter).toBeVisible({ timeout: 60_000 });
     await expect(page.locator(".vsw-load")).toHaveAttribute("aria-hidden", "true", { timeout: 60_000 });
 
@@ -122,7 +122,7 @@ test.describe("3D store on a phone (touch emulation)", () => {
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
 
     await page.getByRole("button", { name: "Pause" }).tap();
-    await expect(page.getByRole("button", { name: "Tap to enter" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Resume shopping" })).toBeVisible(); // paused after entering
     expect(errors).toEqual([]);
   });
 });

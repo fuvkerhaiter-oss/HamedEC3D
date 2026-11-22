@@ -1,18 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { unlockVoiceAudio } from "../multiplayer/net";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
 import { useCart } from "@/features/cart/cart-store";
 import { interactWithTarget, openCartFromStore } from "../actions";
-import { isMusicMuted, setMusicDucked, startStoreMusic, stopStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
-import { getSensitivity, resetTouchInput, SENSITIVITY_LEVELS, setSensitivity, type SensitivityId } from "../input/touch-input";
+import { isMusicMuted, setMusicDucked, stopStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
 import type { StoreCatalog } from "../StoreScene";
 import { addToTrolley } from "../trolley/addToTrolley";
 import { useStoreUi } from "../ui-store";
 import { ProductPanel } from "./ProductPanel";
+import { PauseMenu } from "./PauseMenu";
 import { ProductPeek } from "./ProductPeek";
 import { TouchControls } from "./TouchControls";
 
@@ -141,103 +139,6 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
         />
       )}
     </>
-  );
-}
-
-function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter: () => void }) {
-  const [sens, setSens] = useState<SensitivityId>(getSensitivity);
-  const lockError = useStoreUi((s) => s.lockError);
-
-  const enter = () => {
-    resetTouchInput();
-    unlockVoiceAudio();
-    startStoreMusic(); // inside the click: browsers only allow audio after a user gesture
-    if (touchMode) {
-      // Immersive on Android/iPad; unsupported (iPhone) or refused → stays in the browser UI.
-      const root = document.documentElement;
-      if (!document.fullscreenElement && root.requestFullscreen) {
-        root
-          .requestFullscreen({ navigationUI: "hide" })
-          // Android phones: hold landscape while in the store (needs fullscreen; iPhone ignores it → RotateHint).
-          .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape"))
-          .catch(() => {});
-      }
-    }
-    onEnter();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-20 flex overflow-y-auto bg-ink/55 p-4 backdrop-blur-sm"
-    >
-      <div className="m-auto w-full max-w-md rounded-3xl bg-cream p-6 text-center shadow-2xl sm:p-8 short:grid short:max-w-3xl short:grid-cols-2 short:items-center short:gap-x-8 short:p-6">
-        <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">WEGO SHIIIP</p>
-        <h1 className="mt-2 font-display text-3xl sm:text-4xl">Welcome in</h1>
-        {touchMode ? (
-          <>
-            <dl className="mx-auto mt-5 grid max-w-xs grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-left text-sm short:mt-4">
-              <dt className="font-medium">Left thumb</dt><dd className="text-ink-soft">Walk · push to the edge to run</dd>
-              <dt className="font-medium">Right thumb</dt><dd className="text-ink-soft">Drag to look around</dd>
-              <dt className="font-medium">✋ button</dt><dd className="text-ink-soft">Inspect the product in front of you</dd>
-              <dt className="font-medium">Cart</dt><dd className="text-ink-soft">Review your cart</dd>
-            </dl>
-            <fieldset className="mt-5">
-              <legend className="mb-2 text-xs uppercase tracking-wider text-ink-soft">Look sensitivity</legend>
-              <div className="inline-flex rounded-full border border-sand bg-white/60 p-1">
-                {SENSITIVITY_LEVELS.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    aria-pressed={sens === l.id}
-                    onClick={() => {
-                      setSensitivity(l.id);
-                      setSens(l.id);
-                    }}
-                    className={`rounded-full px-4 py-2 text-sm transition ${sens === l.id ? "bg-ink text-cream" : "text-ink-soft"}`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          </>
-        ) : (
-          <dl className="mx-auto mt-6 grid max-w-xs grid-cols-2 gap-x-4 gap-y-2 text-left text-sm">
-            <dt className="font-medium">Mouse</dt><dd className="text-ink-soft">Look around</dd>
-            <dt className="font-medium">W A S D</dt><dd className="text-ink-soft">Walk</dd>
-            <dt className="font-medium">Shift</dt><dd className="text-ink-soft">Run</dd>
-            <dt className="font-medium">E</dt><dd className="text-ink-soft">Pick up a product</dd>
-            <dt className="font-medium">C</dt><dd className="text-ink-soft">Open cart</dd>
-            <dt className="font-medium">M</dt><dd className="text-ink-soft">Music on / off</dd>
-            <dt className="font-medium">V</dt><dd className="text-ink-soft">Mic on / off (talk)</dd>
-            <dt className="font-medium">Esc</dt><dd className="text-ink-soft">Pause</dd>
-          </dl>
-        )}
-        </div>
-        <div>
-        <button autoFocus onClick={enter} className="mt-6 w-full rounded-full bg-ink py-3.5 font-medium text-cream transition hover:bg-ink-soft sm:mt-8 short:mt-0">
-          {touchMode ? "Tap to enter" : "Click to enter"}
-        </button>
-        {lockError && !touchMode && (
-          <p role="alert" className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-800">{lockError}</p>
-        )}
-        <div className="mt-4 flex justify-center gap-6 text-sm">
-          <Link href="/catalog" className="py-1 underline">Shop the list view</Link>
-          <Link
-            href="/"
-            className="py-1 underline"
-            onClick={(e) => {
-              const leave = useStoreUi.getState().onLeave; // homepage embed: glide back to the hero
-              if (leave) { e.preventDefault(); leave(); }
-            }}
-          >
-            Leave store
-          </Link>
-        </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

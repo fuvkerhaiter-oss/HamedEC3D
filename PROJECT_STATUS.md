@@ -6,6 +6,11 @@
 - Restyled: nav hover (yellow underline), announcement bar, footer (dark green + black bar), home sections below the hero (feature grid, dark "How it works", yellow closing CTA), catalog header band (green, yellow search), product cards, product page (category pill, trust row), cart drawer, help page, error/404 buttons.
 - Checked in the browser (home, catalog, product, cart). typecheck + lint clean on the changed files. `next build` compiles but its type-check stops on another session's temp file `tools/_tmp_walk.ts`. Not changed by this pass.
 
+## 3D store start / pause screen redesigned (2026-11-22)
+- Owner's screenshot: key names and the title were invisible and the layout looked unfinished. New `store3d/hud/PauseMenu.tsx` (moved out of Hud.tsx), explicit colors (it sits over the 3D scene): brand header, "Welcome in / Enter the store" first, "Paused / Resume shopping" after entering; desktop legend with real keycaps (W A S D, Shift, E, C, M, V, Esc + mouse) in two columns; phones get icon rows for the thumbs/✋/cart; Settings card (Music switch, look sensitivity on touch); "List view" / "Leave store" buttons. Landscape phones: two columns with the main button at the top right; the room name panel is hidden on phones while paused so it no longer covers the card.
+- Checked in Edge: desktop (first + paused), Pixel 7 landscape and portrait (tap) — main button always on screen, no errors. e2e smoke updated to the new button names, 8/8; typecheck/lint clean.
+- Not changed: on narrow portrait phones the room pill and the top-right buttons (music, EU/US, cart) still crowd each other (pre-existing).
+
 ## 3D store popups show whole product photos (2026-11-22)
 - Peek card (340×170) and product dialog used `object-cover`, cropping square product photos (text/infographics cut off). Now `object-contain` on white (`.vsw-peek-media-photo`, slideshow layers `bg-white`), peek photo 170 → 200 px, dialog photo min height 56 → 72 (sm). Placeholder/initial letter unchanged.
 - Checked in Edge on the real store (peek + dialog): whole photo visible, no errors. typecheck/lint clean, e2e smoke 8/8.

@@ -83,7 +83,7 @@ export function RoomHud() {
       {micError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">{micError}</p>}
 
       {!locked && status === "online" && (
-        <div className="rounded-2xl bg-ink/70 p-3 text-xs shadow-lg ring-1 ring-cream/20 backdrop-blur">
+        <div className="rounded-2xl bg-ink/70 p-3 text-xs shadow-lg ring-1 ring-cream/20 backdrop-blur max-sm:hidden short:hidden">
           <label className="flex items-center gap-2">
             <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: me.color }} />
             <input
