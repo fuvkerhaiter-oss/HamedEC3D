@@ -246,6 +246,15 @@ export function mapStripeEvent(event: { id: string; type: string; created: numbe
         amount: toMoney(o.amount, o.currency), occurredAt,
         refund: { providerRefundId: String(o.id), status: mapRefundStatus(o.status), localRefundId: meta.local_refund_id ?? null },
       };
+    case "charge.dispute.created":
+    case "charge.dispute.updated":
+    case "charge.dispute.closed":
+      // Chargeback: never changes the order by itself; the admin is alerted and pending supplier purchases are held.
+      return {
+        eventId: event.id, type: "payment.disputed", orderId: meta.order_id ?? null, providerPaymentId: String(o.payment_intent ?? ""),
+        amount: toMoney(o.amount, o.currency), occurredAt,
+        dispute: { id: String(o.id), status: String(o.status ?? ""), reason: String(o.reason ?? "") },
+      };
     default:
       return null;
   }

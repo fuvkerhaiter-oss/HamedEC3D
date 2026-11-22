@@ -35,6 +35,9 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv): ConfigIssue[] {
   if (v("PAYMENT_PROVIDER") === "dev-simulator") err("PAYMENT_PROVIDER", "dev-simulator is development only");
   if (v("DEV_PAYMENT_WEBHOOK_SECRET")) warn("DEV_PAYMENT_WEBHOOK_SECRET", "set in production (unused there; remove it)");
 
+  const ae = ["ALIEXPRESS_APP_KEY", "ALIEXPRESS_APP_SECRET", "ALIEXPRESS_ACCESS_TOKEN"].filter((k) => v(k));
+  if (ae.length && ae.length < 3) err("ALIEXPRESS_APP_KEY", "AliExpress credentials incomplete — need ALIEXPRESS_APP_KEY, ALIEXPRESS_APP_SECRET and ALIEXPRESS_ACCESS_TOKEN");
+  if (Object.keys(env).some((k) => k.startsWith("NEXT_PUBLIC_") && /ALIEXPRESS|ALIBABA|SUPPLIER/i.test(k))) err("NEXT_PUBLIC_*", "supplier credentials must never be NEXT_PUBLIC_ (they would reach the browser)");
   if (!v("RESEND_API_KEY")) warn("RESEND_API_KEY", "missing — customer emails are recorded but NOT sent");
   if (!v("EMAIL_FROM")) warn("EMAIL_FROM", "missing — needs an address on a domain verified in Resend");
   if (!v("SUPPORT_EMAIL")) warn("SUPPORT_EMAIL", "missing — contact-form messages only reach the admin panel");

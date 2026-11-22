@@ -5,6 +5,8 @@ import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { flushEmailOutbox } from "@/lib/email/outbox";
 import { syncMissingPaymentFinancials } from "@/lib/payments/financials";
+import { processDueFulfillmentJobs } from "@/lib/fulfillment/worker";
+import { syncSupplierOrders } from "@/lib/fulfillment/tracking-sync";
 import { getPaymentProvider } from "@/lib/payments/registry";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,10 @@ export async function GET(req: Request) {
   const db = getSql();
   const expired = await expireStalePendingOrders(db);
   if (expired) expirePublicData(CATALOG_TAG); // released stock
+  // Daily backstop for the fulfillment worker (the frequent tick is /api/cron/fulfillment).
+  const jobs = await processDueFulfillmentJobs(db, { limit: 10 });
+  const sync = await syncSupplierOrders(db, { limit: 50 });
   const emails = await flushEmailOutbox(db, 100);
   const financials = await syncMissingPaymentFinancials(db, (id) => getPaymentProvider(id)); // Stripe fees from balance transactions
-  return NextResponse.json({ expired, emails, financials });
+  return NextResponse.json({ expired, emails, financials, jobs: jobs.processed, sync });
 }

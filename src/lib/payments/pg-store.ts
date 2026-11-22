@@ -67,6 +67,11 @@ export function pgWebhookStore(db: Db, opts: { isTest: boolean }): PaymentWebhoo
         link: isUuid(orderId) ? `/admin/orders/${orderId}` : "/admin/payments", dedupeKey,
       });
     },
+    async holdFulfillment(orderId, reason) {
+      const held = await db`update public.fulfillment_jobs set status = 'manual_review', stage = 'payment_disputed', review_reason = ${reason}, locked_until = null
+                           where order_id = ${orderId} and status = 'queued' returning id`;
+      if (held.length) await db`insert into public.automation_logs (order_id, job_id, level, event, message) values (${orderId}, ${held[0]!.id as string}, 'warn', 'job.held', ${reason})`;
+    },
     async recordUnmatchedPayment(orderId, providerId, event) {
       await upsertSucceededPayment(db, orderId, providerId, event, opts.isTest);
     },

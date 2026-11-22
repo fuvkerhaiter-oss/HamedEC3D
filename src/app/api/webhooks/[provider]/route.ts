@@ -6,6 +6,7 @@ import { getPaymentProvider } from "@/lib/payments/registry";
 import { WebhookVerificationError } from "@/lib/payments/types";
 import { handlePaymentWebhook } from "@/lib/payments/webhook";
 import { logError } from "@/lib/log";
+import { processDueFulfillmentJobs } from "@/lib/fulfillment/worker";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ provide
   try {
     // One transaction: if applying the event fails, the dedupe record rolls back too, so the provider's retry is processed.
     const result = await getSql().begin((tx) => handlePaymentWebhook(provider, raw, req.headers, pgWebhookStore(tx as unknown as Tx, { isTest: provider.isSandbox })));
-    after(() => flushEmailOutbox(getSql()).catch((e) => logError("email flush failed", e)));
+    after(async () => {
+      // After the response: run the fulfillment job this payment queued (cron is the backstop if this is cut short).
+      if (result.status === "processed" && result.orderStatus === "paid") await processDueFulfillmentJobs(getSql(), { limit: 2 }).catch((e) => logError("fulfillment kick failed", e));
+      await flushEmailOutbox(getSql()).catch((e) => logError("email flush failed", e));
+    });
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof WebhookVerificationError) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });

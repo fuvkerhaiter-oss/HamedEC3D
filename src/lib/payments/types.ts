@@ -48,7 +48,7 @@ export interface PaymentEvent {
    * payment.attempt_failed: one card attempt was declined; the hosted checkout lets the customer retry, so the order stays open.
    * payment.expired: the checkout session expired unpaid → the order is cancelled and its stock released.
    */
-  type: "payment.succeeded" | "payment.failed" | "payment.attempt_failed" | "payment.expired" | "refund.succeeded" | "refund.updated";
+  type: "payment.succeeded" | "payment.failed" | "payment.attempt_failed" | "payment.expired" | "refund.succeeded" | "refund.updated" | "payment.disputed";
   /** null when the provider event doesn't carry it (e.g. refunds); resolved via providerPaymentId. */
   orderId: string | null;
   providerPaymentId: string;
@@ -56,6 +56,8 @@ export interface PaymentEvent {
   occurredAt: string;
   /** The provider checkout session the event belongs to, when known. */
   providerSessionId?: string | null;
+  /** payment.disputed: dispute status + reason from the provider. */
+  dispute?: { id: string; status: string; reason: string } | null;
   /** payment.attempt_failed: provider's reason (e.g. "Your card was declined."). */
   failureMessage?: string | null;
   /** refund.updated only: the provider refund and its current status. */

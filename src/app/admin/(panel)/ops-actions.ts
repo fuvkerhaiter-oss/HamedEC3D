@@ -16,6 +16,7 @@ import { deleteShippingEntity, saveMethod, saveZone } from "@/lib/admin/services
 import { deleteMapping, saveMapping, saveSupplier } from "@/lib/admin/services/suppliers";
 import { AuthError } from "@/lib/admin/auth";
 import { fromDecimalString } from "@/lib/money";
+import { MAX_SUPPORTERS, normalizeSupporters, SUPPORTERS_KEY } from "@/lib/storefront/supporters";
 
 async function friendly<T>(fn: () => Promise<T>): Promise<T> {
   try {
@@ -30,7 +31,7 @@ async function friendly<T>(fn: () => Promise<T>): Promise<T> {
 export const saveSupplierAction = adminAction(
   "suppliers.manage",
   z.object({
-    id: optUuid, name: reqStr(120), adapterKey: z.enum(["manual", "mock"]), fulfillmentMode: z.enum(["manual", "api"]), isActive: bool,
+    id: optUuid, name: reqStr(120), adapterKey: z.enum(["manual", "aliexpress", "alibaba", "mock"]), fulfillmentMode: z.enum(["manual", "api"]), isActive: bool,
     contactEmail: optStr(254), website: optStr(300), notes: str(2000), defaultCurrency: currency, leadTimeDays: optInt(0, 365),
   }),
   async (i, { sql, actor }) => {
@@ -275,3 +276,26 @@ export const markReadAction = adminAction("notifications.view", z.object({ id: z
   revalidatePath("/admin", "layout");
   return { ok: true };
 });
+
+// ───────────────── 3D store supporters wall (super admin) ─────────────────
+export const saveSupportersAction = adminAction(
+  "admins.manage",
+  z.object({ title: str(80), people: z.string().max(400_000) }),
+  async (i, { sql, actor }) => {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(i.people || "[]");
+    } catch {
+      throw new UserError("The list could not be read. Reload the page and try again.");
+    }
+    if (!Array.isArray(raw)) throw new UserError("The list could not be read. Reload the page and try again.");
+    if (raw.length > MAX_SUPPORTERS) throw new UserError(`At most ${MAX_SUPPORTERS} names.`);
+    const wall = normalizeSupporters({ title: i.title, people: raw });
+    await setSetting(sql, actor, SUPPORTERS_KEY, wall);
+    expirePublicData(STOREFRONT_TAG);
+    revalidatePath("/store");
+    revalidatePath("/");
+    revalidatePath("/admin/supporters");
+    return { ok: true, message: `Saved ${wall.people.length} ${wall.people.length === 1 ? "name" : "names"}. The 3D store shows them within a minute.` };
+  },
+);

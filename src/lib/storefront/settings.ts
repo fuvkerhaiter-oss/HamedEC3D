@@ -6,6 +6,7 @@ import { cache } from "react";
 import { cachedPublic, STOREFRONT_TAG } from "../cache/public-data";
 import { getSql, isDbConfigured } from "../db/client";
 import { logFallback } from "../log";
+import { EMPTY_SUPPORTERS, normalizeSupporters, SUPPORTERS_KEY, type SupportersWall } from "./supporters";
 
 export interface HomeContent {
   heroEyebrow: string;
@@ -17,6 +18,8 @@ export interface HomeContent {
 export interface StorefrontSettings {
   stockAllFaces: boolean | undefined;
   home: HomeContent;
+  /** 3D store supporters wall (edited in /admin/supporters). */
+  supporters: SupportersWall;
 }
 
 const EMPTY_HOME: HomeContent = { heroEyebrow: "", heroTitle: "", heroSubtitle: "", announcement: "" };
@@ -24,10 +27,10 @@ const EMPTY_HOME: HomeContent = { heroEyebrow: "", heroTitle: "", heroSubtitle: 
 const str = (v: unknown, max = 400) => (typeof v === "string" ? v.slice(0, max) : "");
 
 async function loadStorefrontSettings(): Promise<StorefrontSettings> {
-  if (!isDbConfigured()) return { stockAllFaces: undefined, home: EMPTY_HOME };
+  if (!isDbConfigured()) return { stockAllFaces: undefined, home: EMPTY_HOME, supporters: EMPTY_SUPPORTERS };
   try {
     const rows = await getSql()<{ key: string; value: unknown }[]>`
-      select key, value from public.store_settings where key in ('store.stock_all_faces', 'storefront.home')`;
+      select key, value from public.store_settings where key in ('store.stock_all_faces', 'storefront.home', ${SUPPORTERS_KEY})`;
     const map = new Map(rows.map((r) => [r.key, r.value]));
     const home = (map.get("storefront.home") ?? {}) as Record<string, unknown>;
     const stock = map.get("store.stock_all_faces");
@@ -39,10 +42,11 @@ async function loadStorefrontSettings(): Promise<StorefrontSettings> {
         heroSubtitle: str(home.heroSubtitle, 400),
         announcement: str(home.announcement, 200),
       },
+      supporters: normalizeSupporters(map.get(SUPPORTERS_KEY)),
     };
   } catch (err) {
     logFallback("storefront settings unavailable", err);
-    return { stockAllFaces: undefined, home: EMPTY_HOME };
+    return { stockAllFaces: undefined, home: EMPTY_HOME, supporters: EMPTY_SUPPORTERS };
   }
 }
 
@@ -75,5 +79,5 @@ async function loadPublishedPages(): Promise<{ slug: string; title: string; upda
 
 // Public, identical for every visitor and read by the site layout on every page: shared server cache,
 // expired immediately by the admin content/settings/page actions (expirePublicData(STOREFRONT_TAG)).
-export const getStorefrontSettings = cache(cachedPublic("storefront-settings-v1", STOREFRONT_TAG, loadStorefrontSettings));
+export const getStorefrontSettings = cache(cachedPublic("storefront-settings-v2", STOREFRONT_TAG, loadStorefrontSettings));
 export const listPublishedPages = cache(cachedPublic("published-pages-v1", STOREFRONT_TAG, loadPublishedPages));

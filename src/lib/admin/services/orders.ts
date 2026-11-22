@@ -19,6 +19,7 @@ import { logActivity, type Actor } from "../audit";
 import { loadCouponForCode } from "./coupons";
 import { notify } from "./notifications";
 import { getSetting } from "./settings";
+import { enqueueFulfillmentJob } from "../../fulfillment/jobs";
 import { loadShippingZones } from "./shipping";
 import { mapProductRow, type ProductRow } from "../../catalog/source-map";
 
@@ -210,7 +211,11 @@ export async function transitionOrderInDb(
     await tx`select public.transition_order(${orderId}, ${to}, ${audit.actorType}, ${audit.actorId}, ${audit.reason}, ${tx.json(JSON.parse(JSON.stringify(audit.evidence)))})`;
     await applyInventoryEffects(tx, orderId, row.status, to, actor.adminUserId ?? null);
     await queueOrderStatusEmail(tx, orderId, row.status, to); // sent after commit (flushEmailOutbox)
-    if (to === "paid") await notify(tx, { kind: "new_order", title: `New paid order #${row.order_number}`, link: `/admin/orders/${orderId}`, dedupeKey: `paid:${orderId}` });
+    if (to === "paid") {
+      await notify(tx, { kind: "new_order", title: `New paid order #${row.order_number}`, link: `/admin/orders/${orderId}`, dedupeKey: `paid:${orderId}` });
+      // Same transaction as the verified payment: exactly one automatic-fulfillment job per paid order.
+      await enqueueFulfillmentJob(tx, orderId);
+    }
     if (to === "failed" && row.status !== "pending_payment") {
       await notify(tx, { kind: "order_failed", severity: "warning", title: `Order #${row.order_number} needs attention`, body: opts.reason ?? "", link: `/admin/orders/${orderId}` });
     }

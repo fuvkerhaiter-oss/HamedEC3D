@@ -23,6 +23,8 @@ export interface PaymentWebhookStore {
   recordUnmatchedPayment(orderId: string, providerId: string, event: PaymentEvent): Promise<void>;
   recordPaymentFinancials(providerId: string, providerPaymentId: string, balance: BalanceFigures): Promise<void>;
   applyRefundUpdate(providerId: string, event: PaymentEvent): Promise<RefundUpdateOutcome>;
+  /** Stop automatic supplier purchasing for an order that has not reached a supplier yet (e.g. a chargeback). */
+  holdFulfillment?(orderId: string, reason: string): Promise<void>;
   /** True when this provider session is the order's latest pending checkout (an older expired session must not cancel it). */
   isCurrentSession(orderId: string, providerId: string, providerSessionId: string): Promise<boolean>;
 }
@@ -61,6 +63,13 @@ export async function handlePaymentWebhook(
   if (!order) {
     if (event.type === "payment.succeeded") await store.flagForReview(null, `Payment ${event.providerPaymentId} does not match any order`, `pay-unknown:${event.providerPaymentId}`);
     return { status: "ignored", reason: "Unknown order" };
+  }
+
+  if (event.type === "payment.disputed") {
+    const d = event.dispute;
+    await store.flagForReview(order.id, `Chargeback ${d?.id ?? ""} is ${d?.status ?? "open"} (${d?.reason ?? "no reason"}) for ${event.amount.amount} ${event.amount.currency}. Respond in ${provider.id}.`, `dispute:${d?.id}:${d?.status}`);
+    if (d?.status !== "won") await store.holdFulfillment?.(order.id, `Payment disputed (${d?.reason ?? "chargeback"}) — do not buy from the supplier until it is resolved`);
+    return { status: "ignored", reason: "Dispute recorded and flagged" };
   }
 
   if (event.type === "payment.succeeded") {

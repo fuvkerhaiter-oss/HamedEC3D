@@ -19,6 +19,8 @@ export async function callSupplier<T>(
   op: (signal: AbortSignal) => Promise<T>,
   policy: RetryPolicy = DEFAULT_RETRY,
   sleep: (ms: number) => Promise<void> = defaultSleep,
+  /** Which errors may be retried (default: every retryable SupplierError). */
+  shouldRetry: (e: SupplierError) => boolean = (e) => e.retryable,
 ): Promise<T> {
   let lastError: SupplierError | undefined;
   for (let attempt = 1; attempt <= policy.maxAttempts; attempt++) {
@@ -34,7 +36,7 @@ export async function callSupplier<T>(
       return await Promise.race([op(controller.signal), timeout]);
     } catch (err) {
       lastError = err instanceof SupplierError ? err : new SupplierError(String((err as Error)?.message ?? err), "unknown");
-      if (!lastError.retryable || attempt === policy.maxAttempts) throw lastError;
+      if (!shouldRetry(lastError) || attempt === policy.maxAttempts) throw lastError;
       await sleep(Math.min(policy.maxDelayMs, policy.baseDelayMs * 2 ** (attempt - 1)));
     } finally {
       if (timer) clearTimeout(timer);

@@ -18,6 +18,21 @@ export const NEW_END_X = 34.2;
 export const GATE_X = 25.2;
 /** Portal pillars + bulkhead. */
 export const GATE = { pillarDepth: 0.7, pillarWidth: 1.1, bulkheadBottom: 3.45 } as const;
+/**
+ * Free-standing "Who supported us from the beginning" sign in the new hall, beside the updates board, facing back
+ * toward the old store (yaw: rotation about Y; its face looks along (sin yaw, cos yaw)). Admin content: /admin/supporters.
+ */
+export const SUPPORTERS_STAND = { x: 21.0, z: 5.0, yaw: -2.0, width: 2.6, depth: 0.6 } as const;
+
+/** Walk-blocking box around the sign's base (axis-aligned bounds of its rotated footprint). */
+export function supportersStandCollider(): Box {
+  const { x, z, yaw, width, depth } = SUPPORTERS_STAND;
+  const c = Math.abs(Math.cos(yaw));
+  const s = Math.abs(Math.sin(yaw));
+  const hx = (width / 2) * c + (depth / 2) * s;
+  const hz = (width / 2) * s + (depth / 2) * c;
+  return { min: [x - hx, 0, z - hz], max: [x + hx, 2, z + hz] };
+}
 export const WALL_T = 0.3;
 
 /**
@@ -99,6 +114,7 @@ export function extensionColliders(env: EnvLayout): Box[] {
     box([g - GATE.pillarDepth / 2, 0, z1 - GATE.pillarWidth], [g + GATE.pillarDepth / 2, h, z1]),
     // The chains: nobody walks into the wing yet (a little in front of the stanchions so the trolley stops at them).
     box([g - 0.55, 0, z0], [g - 0.25, 1.2, z1]),
+    supportersStandCollider(), // supporters sign
   ];
 }
 

@@ -18,6 +18,9 @@ export interface SupplierMapping {
   costAmount: number;
   costCurrency: CurrencyCode;
   isPrimary: boolean;
+  supplierProductId?: string | null;
+  supplierVariantId?: string | null;
+  shippingMethod?: string | null;
 }
 
 export interface SupplierGroupLine {
@@ -26,6 +29,9 @@ export interface SupplierGroupLine {
   quantity: number;
   unitCost: number;
   costCurrency: CurrencyCode;
+  supplierProductId?: string | null;
+  supplierVariantId?: string | null;
+  shippingMethod?: string | null;
 }
 
 export interface SupplierGroup {
@@ -56,7 +62,7 @@ export function splitOrderBySupplier(lines: readonly SplitOrderLine[], mappings:
       continue;
     }
     const g = groups.get(m.supplierId) ?? { supplierId: m.supplierId, lines: [], costTotal: null };
-    g.lines.push({ orderItemId: line.orderItemId, supplierSku: m.supplierSku, quantity: line.quantity, unitCost: m.costAmount, costCurrency: m.costCurrency });
+    g.lines.push({ orderItemId: line.orderItemId, supplierSku: m.supplierSku, quantity: line.quantity, unitCost: m.costAmount, costCurrency: m.costCurrency, supplierProductId: m.supplierProductId ?? null, supplierVariantId: m.supplierVariantId ?? null, shippingMethod: m.shippingMethod ?? null });
     groups.set(m.supplierId, g);
   }
   for (const g of groups.values()) {

@@ -52,6 +52,13 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
               <li key={s.trackingNumber}>
                 {s.carrier} · {s.trackingUrl ? <a href={s.trackingUrl} target="_blank" rel="noopener noreferrer" className="underline">{s.trackingNumber}</a> : s.trackingNumber}
                 <span className="text-ink-soft"> ({s.status.replaceAll("_", " ")})</span>
+                {s.events && s.events.length > 0 && (
+                  <ol className="mt-2 space-y-1 border-l border-line pl-3 text-xs text-ink-soft">
+                    {s.events.slice(0, 10).map((e, i) => (
+                      <li key={i}><time dateTime={e.at}>{new Date(e.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</time> · {e.description}{e.location ? ` — ${e.location}` : ""}</li>
+                    ))}
+                  </ol>
+                )}
               </li>
             ))}
           </ul>

@@ -33,9 +33,11 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/analytics", label: "Reports", hint: "Sales, profit and downloads", icon: "chart", permission: "analytics.view", group: "Money & delivery" },
   { href: "/admin/shipping", label: "Shipping prices", hint: "Countries you deliver to and what it costs", icon: "truck", permission: "shipping.manage", group: "Money & delivery" },
   { href: "/admin/suppliers", label: "Suppliers", hint: "Companies that send products to customers", icon: "supplier", permission: "suppliers.view", group: "Money & delivery" },
+  { href: "/admin/dropshipping", label: "Dropshipping", hint: "Automatic supplier orders, kill switch, orders that need you", icon: "truck", permission: "suppliers.view", group: "Every day" },
 
   { href: "/admin/content", label: "Website text", hint: "Homepage banner and pages like Terms", icon: "text", permission: "content.manage", group: "Setup" },
   { href: "/admin/settings", label: "Shop settings", hint: "Shop name, taxes, invoice details", icon: "settings", permission: "settings.manage", group: "Setup" },
+  { href: "/admin/supporters", label: "Supporters wall", hint: "Names on the 3D “supported us from the beginning” board", icon: "star", permission: "admins.manage", group: "Setup" },
   { href: "/admin/admins", label: "Team & logins", hint: "Who can sign in to this admin", icon: "team", permission: "admins.manage", group: "Setup" },
   { href: "/admin/activity", label: "Change history", hint: "Who changed what, and when", icon: "history", permission: "activity.view", group: "Setup" },
 ];
@@ -130,6 +132,10 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
   "/admin/settings": {
     what: "Basic information about your business: shop name, contact email, company details for invoices, and tax rates.",
     steps: ["Fill in your company details once — they are printed on invoices.", "Add the tax (VAT) rate for each country you sell to. Ask your accountant if unsure.", "Change your own password at the bottom."],
+  },
+  "/admin/supporters": {
+    what: "The people who supported you from the beginning. Their names and countries scroll on a 3D board next to the “Coming soon” wing in the 3D store. Only super admins can change it.",
+    steps: ["Type a name, pick the country and press “Add person”, or paste many names at once.", "Use the arrows to change the order and fix names right in the table.", "Press “Save and publish” — the 3D store shows the new list within a minute."],
   },
   "/admin/admins": {
     what: "People who can sign in to this admin. Each person gets a role that decides what they can see and change.",

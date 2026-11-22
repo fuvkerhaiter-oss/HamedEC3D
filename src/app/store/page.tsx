@@ -46,7 +46,7 @@ export default async function StorePage() {
           <p>The 3D store needs JavaScript and WebGL. <Link href="/catalog">Shop the same products in the catalog</Link>.</p>
         </div>
       </noscript>
-      <StoreClient catalog={{ categories, products, stockAllFaces: settings.stockAllFaces }} />
+      <StoreClient catalog={{ categories, products, stockAllFaces: settings.stockAllFaces, supporters: settings.supporters }} />
     </>
   );
 }

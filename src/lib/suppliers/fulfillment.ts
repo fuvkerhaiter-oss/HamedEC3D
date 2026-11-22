@@ -102,6 +102,8 @@ async function attemptSubmission(
       },
       policy,
       sleep,
+      // A timed-out submission may have reached the supplier: never resubmit it automatically (no double purchase).
+      (e) => e.retryable && e.kind !== "timeout",
     );
     await store.update(req.idempotencyKey, { status: "submitted", supplierOrderRef, attempts, lastError: null });
     return { kind: "submitted", supplierOrderRef, duplicate: false };

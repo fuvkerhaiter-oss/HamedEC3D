@@ -15,6 +15,8 @@ import { GATE, GATE_X, NEW_END_X, OLD_END_X, WALL_T } from "../env/extension";
 import type { EnvLayout } from "../env/types";
 import { chainSegments, type ChainSpan } from "./chains";
 import { UpdatesBoard } from "./UpdatesBoard";
+import { SupportersBoard } from "./SupportersBoard";
+import type { SupportersWall } from "@/lib/storefront/supporters";
 
 const FLOOR_MATERIAL = "Material";
 const CEILING_MATERIAL = "Material.001";
@@ -27,7 +29,7 @@ const AMBER = "#f7c416";
 
 useGLTF.preload(ASSETS.chain.url);
 
-export function NewWing({ env, lowPower }: { env: EnvLayout; lowPower: boolean }) {
+export function NewWing({ env, lowPower, supporters }: { env: EnvLayout; lowPower: boolean; supporters?: SupportersWall }) {
   const z0 = env.interior.min[2];
   const z1 = env.interior.max[2];
   return (
@@ -43,6 +45,7 @@ export function NewWing({ env, lowPower }: { env: EnvLayout; lowPower: boolean }
       </Suspense>
       {!lowPower && <GateSpot from={[GATE_X - 5, env.ceilingY - 0.3, (z0 + z1) / 2]} to={[GATE_X, 1.6, (z0 + z1) / 2]} />}
       <UpdatesBoard center={[GATE_X - 2.5, 0, (z0 + z1) / 2 - 0.3]} gate={[GATE_X, (z0 + z1) / 2]} />
+      <SupportersBoard wall={supporters} />
     </group>
   );
 }

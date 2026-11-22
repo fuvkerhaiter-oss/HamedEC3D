@@ -62,7 +62,7 @@ const heroLogo = (
 );
 
 export default async function HomePage() {
-  const [{ home, stockAllFaces }, { categories, products }] = await Promise.all([getStorefrontSettings(), getCatalog()]);
+  const [{ home, stockAllFaces, supporters }, { categories, products }] = await Promise.all([getStorefrontSettings(), getCatalog()]);
   const site = siteUrl();
   const departments = categories
     .map((c) => ({ c, items: products.filter((p) => p.categoryId === c.id && p.status === "published") }))
@@ -79,7 +79,7 @@ export default async function HomePage() {
         {/* The real first view of the 3D store (rendered from the scene: tools/assets/capture-store-preview.ts).
             Click = fly into the store. Between the logo and the copy on phones, right-anchored on large screens. */}
         <div className="vsw-hero-photo relative z-0 aspect-[4/3] w-full overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
-          <StorePortal image={storeFirstView} catalog={{ categories, products, stockAllFaces }} />
+          <StorePortal image={storeFirstView} catalog={{ categories, products, stockAllFaces, supporters }} />
         </div>
         <div aria-hidden className="vsw-grid-bg absolute inset-0 -z-20" />
 

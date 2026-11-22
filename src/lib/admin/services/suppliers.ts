@@ -5,9 +5,10 @@
  */
 import { inTx, type Db } from "../../db/client";
 import type { CurrencyCode } from "../../money";
-import { submitToSupplier, type FulfillmentStore, type SupplierOrderRecord } from "../../suppliers/fulfillment";
-import { getSupplierAdapter } from "../../suppliers/registry";
-import { splitOrderBySupplier, type SupplierMapping } from "../../suppliers/split";
+import { retryFailedSubmission, submitToSupplier, supplierIdempotencyKey, type FulfillmentStore, type SupplierOrderRecord } from "../../suppliers/fulfillment";
+import { getSupplierAdapter } from "../../suppliers/adapters";
+import { splitOrderBySupplier, type SplitResult, type SupplierMapping } from "../../suppliers/split";
+import type { SupplierAdapter } from "../../suppliers/types";
 import { logActivity, type Actor } from "../audit";
 import { notify } from "./notifications";
 import { requireFulfillmentEligible, transitionOrderInDb, OrderError, type ShipTo } from "./orders";
@@ -16,7 +17,20 @@ import type { PaymentProvider } from "../../payments/types";
 /** Injectable payment-provider lookup for the fulfillment gate (tests); defaults to the configured providers. */
 export interface FulfillmentDeps {
   getProvider?: (id: string) => PaymentProvider | null;
+  /** Adapter factory override (tests). */
+  getAdapter?: (key: string, supplierId: string) => SupplierAdapter | null;
 }
+
+export interface CreateSupplierOrdersOptions extends FulfillmentDeps {
+  /** Pre-checked supplier plan (automatic fulfillment); default: primary mappings via splitOrderBySupplier. */
+  plan?: SplitResult;
+  /** Resubmit supplier orders whose previous attempt failed with a retryable error (worker retries). */
+  retryFailed?: boolean;
+}
+
+/** null actor = the automatic fulfillment worker. */
+const orderActor = (actor: Actor | null) =>
+  actor ? { type: "admin" as const, id: actor.id, adminUserId: actor.id } : { type: "system" as const, id: "fulfillment-worker", adminUserId: null };
 
 export interface SupplierRow {
   id: string;
@@ -33,6 +47,8 @@ export interface SupplierRow {
   mapped_variants: number;
   open_orders: number;
   has_credentials: boolean;
+  supported_countries: string[];
+  api_status: string;
 }
 
 export async function listSuppliers(db: Db): Promise<SupplierRow[]> {
@@ -47,7 +63,9 @@ export async function saveSupplier(db: Db, actor: Actor, s: {
   id?: string; name: string; adapterKey: string; fulfillmentMode: "manual" | "api"; isActive: boolean; contactEmail: string | null;
   website: string | null; notes: string; defaultCurrency: CurrencyCode; leadTimeDays: number | null;
 }) {
-  if (s.fulfillmentMode === "manual" && s.adapterKey !== "manual" && s.adapterKey !== "mock") s.adapterKey = "manual";
+  // Manual-only keys never run in API mode; API-only keys in manual mode fall back to plain manual.
+  if (s.adapterKey === "manual" || s.adapterKey === "alibaba") s.fulfillmentMode = "manual";
+  if (s.fulfillmentMode === "manual" && !["manual", "mock", "alibaba"].includes(s.adapterKey)) s.adapterKey = "manual";
   const vals = {
     name: s.name, adapter_key: s.adapterKey, fulfillment_mode: s.fulfillmentMode, is_active: s.isActive, contact_email: s.contactEmail,
     website: s.website, notes: s.notes, default_currency: s.defaultCurrency, lead_time_days: s.leadTimeDays,
@@ -65,7 +83,8 @@ export async function saveSupplier(db: Db, actor: Actor, s: {
 }
 
 export async function listMappings(db: Db, supplierId: string) {
-  return db<{ id: string; supplier_sku: string; cost_amount: number; cost_currency: CurrencyCode; is_primary: boolean; shipping_days_min: number | null; shipping_days_max: number | null; sku: string; variant_name: string; product_name: string; product_id: string; last_synced_at: Date | null }[]>`
+  return db<{ id: string; supplier_sku: string; cost_amount: number; cost_currency: CurrencyCode; is_primary: boolean; shipping_days_min: number | null; shipping_days_max: number | null; sku: string; variant_name: string; product_name: string; product_id: string; last_synced_at: Date | null;
+    supplier_product_id: string | null; supplier_variant_id: string | null; shipping_method: string | null; shipping_cost_amount: number | null; priority: number; auto_fulfill: boolean; last_live_cost: number | null; last_live_available: number | null }[]>`
     select sp.*, v.sku, v.name as variant_name, p.name as product_name, p.id as product_id
       from public.supplier_products sp join public.product_variants v on v.id = sp.variant_id join public.products p on p.id = v.product_id
      where sp.supplier_id = ${supplierId} order by p.name, v.sku`;
@@ -73,6 +92,8 @@ export async function listMappings(db: Db, supplierId: string) {
 
 export async function saveMapping(db: Db, actor: Actor, m: {
   supplierId: string; sku: string; supplierSku: string; costAmount: number; costCurrency: CurrencyCode; isPrimary: boolean; daysMin: number | null; daysMax: number | null;
+  /** Dropshipping sourcing fields; omitted = left unchanged. */
+  sourcing?: { supplierProductId: string | null; supplierVariantId: string | null; shippingMethod: string | null; shippingCost: number | null; priority: number; autoFulfill: boolean };
 }) {
   return inTx(db, async (tx) => {
     const [v] = await tx<{ id: string }[]>`select id from public.product_variants where sku = ${m.sku}`;
@@ -82,6 +103,12 @@ export async function saveMapping(db: Db, actor: Actor, m: {
              values (${m.supplierId}, ${v.id}, ${m.supplierSku}, ${m.costAmount}, ${m.costCurrency}, ${m.isPrimary}, ${m.daysMin}, ${m.daysMax})
              on conflict (supplier_id, supplier_sku) do update set variant_id = excluded.variant_id, cost_amount = excluded.cost_amount,
                cost_currency = excluded.cost_currency, is_primary = excluded.is_primary, shipping_days_min = excluded.shipping_days_min, shipping_days_max = excluded.shipping_days_max`;
+    if (m.sourcing) {
+      const x = m.sourcing;
+      await tx`update public.supplier_products set supplier_product_id = ${x.supplierProductId}, supplier_variant_id = ${x.supplierVariantId},
+                 shipping_method = ${x.shippingMethod}, shipping_cost_amount = ${x.shippingCost}, priority = ${x.priority}, auto_fulfill = ${x.autoFulfill}
+               where supplier_id = ${m.supplierId} and supplier_sku = ${m.supplierSku}`;
+    }
     await logActivity(tx, actor, { action: "supplier.mapping", entity: "supplier", entityId: m.supplierId, summary: `Mapped ${m.sku} → ${m.supplierSku}`, after: m });
   });
 }
@@ -125,7 +152,7 @@ export function pgFulfillmentStore(db: Db, extra: { fulfillmentMode: "manual" | 
  * Moves the order paid → processing. API suppliers are submitted through their adapter; manual ones
  * wait for an admin to record the supplier reference.
  */
-export async function createSupplierOrders(db: Db, actor: Actor, orderId: string, deps: FulfillmentDeps = {}) {
+export async function createSupplierOrders(db: Db, actor: Actor | null, orderId: string, deps: CreateSupplierOrdersOptions = {}) {
   // Payment gate + move to processing under the order row lock: concurrent calls serialise here, and an order
   // whose payment is not verified (failed, pending, cancelled, refunded, mismatching) is refused.
   const order = await inTx(db, async (tx) => {
@@ -134,18 +161,12 @@ export async function createSupplierOrders(db: Db, actor: Actor, orderId: string
     if (!["paid", "processing", "failed"].includes(o.status)) throw new OrderError(`Supplier orders can be created for paid orders (this one is ${o.status})`);
     await requireFulfillmentEligible(tx, orderId, deps.getProvider);
     if (o.status === "paid" || o.status === "failed") {
-      await transitionOrderInDb(tx, orderId, "processing", { type: "admin", id: actor.id, adminUserId: actor.id }, { reason: "Fulfillment started" });
+      await transitionOrderInDb(tx, orderId, "processing", orderActor(actor), { reason: actor ? "Fulfillment started" : "Automatic fulfillment started" });
     }
     return o;
   });
-  const items = await db<{ id: string; variant_id: string | null; sku: string; quantity: number }[]>`select id, variant_id, sku, quantity from public.order_items where order_id = ${orderId}`;
-  const mappings = await db<{ variant_id: string; supplier_id: string; supplier_sku: string; cost_amount: number; cost_currency: CurrencyCode; is_primary: boolean }[]>`
-    select sp.* from public.supplier_products sp join public.suppliers s on s.id = sp.supplier_id
-     where s.is_active and sp.variant_id = any(${items.map((i) => i.variant_id).filter(Boolean) as string[]}::uuid[])`;
-  const split = splitOrderBySupplier(
-    items.map((i) => ({ orderItemId: i.id, variantId: i.variant_id, sku: i.sku, quantity: i.quantity })),
-    mappings.map<SupplierMapping>((m) => ({ variantId: m.variant_id, supplierId: m.supplier_id, supplierSku: m.supplier_sku, costAmount: m.cost_amount, costCurrency: m.cost_currency, isPrimary: m.is_primary })),
-  );
+  const split = deps.plan ?? (await defaultSplit(db, orderId));
+  const adapterFor = deps.getAdapter ?? getSupplierAdapter;
   const results: { supplierId: string; outcome: string }[] = [];
   for (const g of split.groups) {
     const [sup] = await db<{ name: string; adapter_key: string; fulfillment_mode: "manual" | "api" }[]>`select name, adapter_key, fulfillment_mode from public.suppliers where id = ${g.supplierId}`;
@@ -154,14 +175,28 @@ export async function createSupplierOrders(db: Db, actor: Actor, orderId: string
     if (sup!.fulfillment_mode === "api") {
       let adapter;
       try {
-        adapter = getSupplierAdapter(sup!.adapter_key, g.supplierId);
+        adapter = adapterFor(sup!.adapter_key, g.supplierId);
       } catch (e) {
         adapter = null;
         outcome = (e as Error).message;
       }
       if (adapter) {
-        const res = await submitToSupplier(adapter, { orderId, lines: g.lines.map((l) => ({ supplierSku: l.supplierSku, quantity: l.quantity })), shipTo: toSupplierAddress(order.shipping_address) }, store);
-        outcome = res.kind;
+        const req = {
+          orderId,
+          lines: g.lines.map((l) => ({ supplierSku: l.supplierSku, quantity: l.quantity, supplierProductId: l.supplierProductId ?? null, supplierVariantId: l.supplierVariantId ?? null, shippingMethod: l.shippingMethod ?? null })),
+          shipTo: toSupplierAddress(order.shipping_address),
+        };
+        const [prev] = await db<{ status: SupplierOrderRecord["status"]; attempts: number; last_error: string | null; supplier_order_ref: string | null }[]>`
+          select status, attempts, last_error, supplier_order_ref from public.supplier_orders where idempotency_key = ${supplierIdempotencyKey(orderId, adapter.id)}`;
+        const res = prev?.status === "failed" && deps.retryFailed
+          ? await retryFailedSubmission(adapter, req, store, { idempotencyKey: supplierIdempotencyKey(orderId, adapter.id), orderId, supplierId: g.supplierId, status: "failed", supplierOrderRef: prev.supplier_order_ref, attempts: prev.attempts, lastError: prev.last_error })
+          : await submitToSupplier(adapter, req, store);
+        outcome = res.kind === "failed" ? (res.retryable ? "failed_retryable" : "failed") : res.kind;
+        if (res.kind === "submitted" && !res.duplicate) {
+          // Placing an order is not paying for it: unless the adapter can pay, the supplier payment is pending.
+          const paymentStatus = adapter.capabilities.has("supplierPayment") ? "unknown" : "pending";
+          await db`update public.supplier_orders set supplier_payment_status = ${paymentStatus}, next_sync_at = now() + interval '30 minutes' where idempotency_key = ${supplierIdempotencyKey(orderId, adapter.id)}`;
+        }
       } else {
         const { record } = await store.reserve({ idempotencyKey: `${orderId}:${g.supplierId}`, orderId, supplierId: g.supplierId, status: "submitting", supplierOrderRef: null, attempts: 0, lastError: null });
         if (record.status === "submitting") await store.update(record.idempotencyKey, { status: "manual_required", lastError: `No working API adapter for ${sup!.name} — place the order manually` });
@@ -182,12 +217,27 @@ export async function createSupplierOrders(db: Db, actor: Actor, orderId: string
   if (split.unassigned.length) {
     await notify(db, { kind: "unmapped_items", severity: "warning", title: `Order #${order.order_number}: ${split.unassigned.length} item(s) have no supplier`, link: `/admin/orders/${orderId}`, dedupeKey: `unmapped:${orderId}` });
   }
-  await logActivity(db, actor, { action: "order.split", entity: "order", entityId: orderId, summary: `Created ${split.groups.length} supplier order(s)${split.unassigned.length ? `, ${split.unassigned.length} unassigned line(s)` : ""}`, after: results });
+  await logActivity(db, actor, { action: actor ? "order.split" : "order.auto_split", entity: "order", entityId: orderId, summary: `Created ${split.groups.length} supplier order(s)${split.unassigned.length ? `, ${split.unassigned.length} unassigned line(s)` : ""}`, after: results });
   await advanceIfAllSubmitted(db, actor, orderId);
   return { results, unassigned: split.unassigned.length };
 }
 
-function toSupplierAddress(a: ShipTo) {
+/** Primary (else any) active mapping per order line, grouped by supplier. */
+async function defaultSplit(db: Db, orderId: string): Promise<SplitResult> {
+  const items = await db<{ id: string; variant_id: string | null; sku: string; quantity: number }[]>`select id, variant_id, sku, quantity from public.order_items where order_id = ${orderId}`;
+  const mappings = await db<{ variant_id: string; supplier_id: string; supplier_sku: string; cost_amount: number; cost_currency: CurrencyCode; is_primary: boolean; supplier_product_id: string | null; supplier_variant_id: string | null; shipping_method: string | null }[]>`
+    select sp.* from public.supplier_products sp join public.suppliers s on s.id = sp.supplier_id
+     where s.is_active and sp.variant_id = any(${items.map((i) => i.variant_id).filter(Boolean) as string[]}::uuid[])`;
+  return splitOrderBySupplier(
+    items.map((i) => ({ orderItemId: i.id, variantId: i.variant_id, sku: i.sku, quantity: i.quantity })),
+    mappings.map<SupplierMapping>((m) => ({
+      variantId: m.variant_id, supplierId: m.supplier_id, supplierSku: m.supplier_sku, costAmount: m.cost_amount, costCurrency: m.cost_currency, isPrimary: m.is_primary,
+      supplierProductId: m.supplier_product_id, supplierVariantId: m.supplier_variant_id, shippingMethod: m.shipping_method,
+    })),
+  );
+}
+
+export function toSupplierAddress(a: ShipTo) {
   return { fullName: a.fullName, line1: a.line1, line2: a.line2, city: a.city, region: a.region, postalCode: a.postalCode, countryCode: a.country, phone: a.phone };
 }
 
@@ -211,13 +261,13 @@ export async function recordSupplierSubmission(
 }
 
 /** When every supplier order of a processing order is submitted, the order moves to submitted_to_supplier. */
-async function advanceIfAllSubmitted(db: Db, actor: Actor, orderId: string) {
+async function advanceIfAllSubmitted(db: Db, actor: Actor | null, orderId: string) {
   const [state] = await db<{ status: string; total: number; submitted: number; refs: string | null }[]>`
     select o.status, count(so.id)::int as total, count(so.id) filter (where so.status = 'submitted')::int as submitted,
       string_agg(so.supplier_order_ref, ', ') as refs
     from public.orders o left join public.supplier_orders so on so.order_id = o.id where o.id = ${orderId} group by o.status`;
   if (state && state.status === "processing" && state.total > 0 && state.total === state.submitted) {
-    await transitionOrderInDb(db, orderId, "submitted_to_supplier", { type: "admin", id: actor.id, adminUserId: actor.id }, {
+    await transitionOrderInDb(db, orderId, "submitted_to_supplier", orderActor(actor), {
       reason: "All supplier orders submitted", evidence: { supplierOrderRef: state.refs ?? "" },
     });
   }

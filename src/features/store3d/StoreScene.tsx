@@ -16,12 +16,15 @@ import { useInteractable } from "./interactables";
 import type { ItemPlacement, PriceTag, StoreLayout } from "./layout";
 import { useStoreUi, type InteractionTarget } from "./ui-store";
 import { NewWing } from "./wing/NewWing";
+import type { SupportersWall } from "@/lib/storefront/supporters";
 
 export interface StoreCatalog {
   categories: Category[];
   products: Product[];
   /** Admin setting store.stock_all_faces; undefined = STORE_CONFIG default. */
   stockAllFaces?: boolean;
+  /** Supporters wall at the chained wing (admin /admin/supporters); absent = empty board. */
+  supporters?: SupportersWall;
 }
 
 const center = (b: Box) => b.min.map((v, i) => (v + b.max[i]!) / 2) as [number, number, number];
@@ -38,7 +41,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
     <>
       <Lighting env={env} lowPower={lowPower} />
       <SupermarketModel />
-      <NewWing env={env} lowPower={lowPower} />
+      <NewWing env={env} lowPower={lowPower} supporters={catalog.supporters} />
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {
         const placements = layout.items[p.id];

@@ -13,6 +13,7 @@ import { ProductPanel } from "./ProductPanel";
 import { PauseMenu } from "./PauseMenu";
 import { ProductPeek } from "./ProductPeek";
 import { TouchControls } from "./TouchControls";
+import { SupportersScrollButtons } from "./SupportersScrollButtons";
 
 export function Hud({ catalog }: { catalog: StoreCatalog }) {
   const locked = useStoreUi((s) => s.locked);
@@ -99,6 +100,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
       )}
 
       {showTouchControls && <TouchControls />}
+      {showTouchControls && <SupportersScrollButtons />}
 
       {toast && (
         <div
