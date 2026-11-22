@@ -8,7 +8,8 @@ import { adminTargets, getOrderDetail } from "@/lib/admin/services/orders";
 import { maskEmail, maskName } from "@/lib/admin/services/people";
 import { getSql } from "@/lib/db/client";
 import { toDecimalString } from "@/lib/money";
-import { invoiceAction, noteAction, refundAction, shipmentAction, shipmentStatusAction, supplierOrdersAction, supplierRefAction, transitionAction } from "../actions";
+import { invoiceAction, noteAction, refundAction, shipmentAction, shipmentStatusAction, supplierOrdersAction, supplierRefAction, transitionAction, withdrawalStatusAction } from "../actions";
+import { listWithdrawals } from "@/lib/orders/withdrawal";
 
 export const metadata = { title: "Order" };
 
@@ -19,6 +20,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const d = await getOrderDetail(getSql(), id);
   if (!d) notFound();
+  const withdrawals = await listWithdrawals(getSql(), id);
   const { order: o } = d;
   const can = (p: Parameters<typeof session.permissions.has>[0]) => session.permissions.has(p);
   const pii = can("customers.pii");
@@ -67,6 +69,39 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               {o.base_currency && o.base_currency !== o.currency && <><dt className="text-xs text-ink-soft">Exchange rate that day</dt><dd className="text-right font-mono text-xs text-ink-soft">1 {o.currency} = {o.fx_rate_to_base ?? "not recorded"} {o.base_currency}</dd></>}
             </dl>
           </Card>
+
+          {withdrawals.length > 0 && (
+            <Card title="Customer withdrawals (EU 14-day right)">
+              <ul className="space-y-4 text-sm">
+                {withdrawals.map((w) => (
+                  <li key={w.id} className="border-t border-line pt-4 first:border-0 first:pt-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={w.status === "received" ? "amber" : w.status === "completed" ? "green" : "red"}>{w.status === "received" ? "To handle" : w.status === "completed" ? "Completed" : "Not accepted"}</Badge>
+                      <span>Received {fmtDate(w.submittedAt)}</span>
+                      <span className="text-ink-soft">· {w.wholeOrder ? "whole order" : "part of the order"}</span>
+                    </div>
+                    <p className="mt-1">{w.items.map((x) => `${x.quantity} × ${x.name}${x.variant && x.variant !== "Default" ? ` (${x.variant})` : ""}`).join(", ")}</p>
+                    <p className="text-ink-soft">By {pii ? w.fullName : maskName(w.fullName)} · confirmation sent to {pii ? w.confirmationEmail : maskEmail(w.confirmationEmail)}</p>
+                    {w.reason && <p className="mt-1 italic">“{w.reason}”</p>}
+                    {w.adminNote && <p className="mt-1 text-ink-soft">Team note: {w.adminNote}</p>}
+                    {w.status === "received" && <p className="mt-2 text-ink-soft">Next: email the customer the return address (never the supplier&apos;s), cancel unsent supplier lines, then refund the withdrawn items + standard shipping within 14 days of {fmtDate(w.submittedAt)}.</p>}
+                    {can("orders.manage") && (
+                      <ActionForm action={withdrawalStatusAction} submitLabel="Save" className="mt-3 flex flex-wrap items-end gap-2">
+                        <input type="hidden" name="orderId" value={o.id} />
+                        <input type="hidden" name="withdrawalId" value={w.id} />
+                        <select name="status" defaultValue={w.status} className="admin-input w-auto" aria-label="Withdrawal status">
+                          <option value="received">To handle</option>
+                          <option value="completed">Completed (goods back / refunded)</option>
+                          <option value="rejected">Not accepted (give reason)</option>
+                        </select>
+                        <input name="note" defaultValue={w.adminNote ?? ""} placeholder="Note (shown to the customer if not accepted)" className="admin-input min-w-64 flex-1" aria-label="Note" />
+                      </ActionForm>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           <Card title="History and notes">
             <ol className="relative space-y-4 border-l border-line pl-5">

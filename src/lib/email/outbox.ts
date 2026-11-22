@@ -19,7 +19,7 @@ const KIND_FOR_STATUS: Partial<Record<OrderStatus, OrderEmailKind>> = {
 };
 const MAX_ATTEMPT_AGE_HOURS = 48;
 
-function publicSiteUrl(env = process.env): string {
+export function publicSiteUrl(env = process.env): string {
   return (env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 

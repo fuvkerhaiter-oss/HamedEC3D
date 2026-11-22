@@ -73,6 +73,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
               <li>European Union · EUR</li>
               <li>United States · USD</li>
               <li><Link href="/contact" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Help, order tracking & contact</Link></li>
+              <li><Link href="/withdraw" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Withdraw from contract</Link></li>
             </ul>
             {pages.length > 0 && (
               <ul className="mt-6 space-y-2.5 text-sm">

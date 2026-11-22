@@ -22,7 +22,7 @@ The withdrawal period ends 14 days after the day on which you, or a third party 
 
 How to withdraw
 To exercise the right of withdrawal, you must inform us of your decision with a clear statement, in any of these ways:
-• [with the "Withdraw from contract" function on your order page (the link in your order confirmation email);]
+• online, with our "Withdraw from contract" form at [WEBSITE DOMAIN]/withdraw (also linked from your order page, your order emails and the footer of every page). It is the quickest way: you choose the items, press "Confirm withdrawal" and immediately receive an email confirming the date and time we received it;
 • by email to [RETURNS EMAIL];
 • by post to [LEGAL COMPANY NAME], [REGISTERED ADDRESS].
 You may use the model withdrawal form at the end of this page, but you do not have to. Please include your order number and the items you are returning. If you use the online function or email, we will confirm receipt on a durable medium (email) without delay.

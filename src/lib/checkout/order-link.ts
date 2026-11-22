@@ -32,6 +32,14 @@ export function orderUrl(siteUrl: string, orderId: string, env?: NodeJS.ProcessE
   return u.toString();
 }
 
+/** Absolute link to the online withdrawal form for this order (EU "withdraw from contract" function). */
+export function withdrawUrl(siteUrl: string, orderId: string, env?: NodeJS.ProcessEnv): string {
+  const u = new URL("/withdraw", siteUrl);
+  u.searchParams.set("id", orderId);
+  u.searchParams.set("t", orderToken(orderId, env));
+  return u.toString();
+}
+
 /** Public base URL. Production must pin it (never trust the Host header for payment redirects). */
 export function siteUrl(req: Request, env: NodeJS.ProcessEnv = process.env): string {
   if (env.NEXT_PUBLIC_SITE_URL) return env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");

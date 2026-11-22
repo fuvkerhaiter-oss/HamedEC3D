@@ -21,13 +21,15 @@ export function orderEmail(
   ].filter(Boolean).join("\n");
   const address = [o.shipTo.fullName, o.shipTo.line1, o.shipTo.line2, `${o.shipTo.postalCode} ${o.shipTo.city}${o.shipTo.region ? `, ${o.shipTo.region}` : ""}`, o.shipTo.country]
     .filter(Boolean).map((l) => `  ${l}`).join("\n");
+  // Same signed token opens the online withdrawal form (EU "withdraw from contract" function).
+  const withdrawLink = link.replace("/order?", "/withdraw?");
   const footer = `\nFollow your order: ${link}\n\nQuestions? Just reply to this email with your order number #${o.orderNumber}.\n\nWEGO SHIIIP · Happy Family, Happy Animals`;
 
   switch (kind) {
     case "order_confirmed":
       return {
         subject: `Order #${o.orderNumber} confirmed — thank you!`,
-        text: `${hello}\n\nThank you for shopping at WEGO SHIIIP! We've received your payment and are preparing your order.\n\nOrder #${o.orderNumber}\n${items}\n\n${totals}\n\nDelivery to:\n${address}\n${o.shippingMethod ? `Shipping method: ${o.shippingMethod}\n` : ""}\nWe'll email you the tracking number as soon as it ships.\n\nEU customers: you may withdraw from this purchase within 14 days of delivery. See our returns policy for how.\n${footer}`,
+        text: `${hello}\n\nThank you for shopping at WEGO SHIIIP! We've received your payment and are preparing your order.\n\nOrder #${o.orderNumber}\n${items}\n\n${totals}\n\nDelivery to:\n${address}\n${o.shippingMethod ? `Shipping method: ${o.shippingMethod}\n` : ""}\nWe'll email you the tracking number as soon as it ships.\n\nEU customers: you may withdraw from this purchase within 14 days of delivery. Withdraw from contract online: ${withdrawLink}\n${footer}`,
       };
     case "payment_failed":
       return {
@@ -37,7 +39,7 @@ export function orderEmail(
     case "order_delivered":
       return {
         subject: `Order #${o.orderNumber} has been delivered`,
-        text: `${hello}\n\nThe carrier reports that your order #${o.orderNumber} has been delivered. We hope you enjoy it!\n\nIf something is missing or damaged, reply to this email with your order number.\n\nEU customers: the 14-day withdrawal period starts on the day of delivery. See our returns policy.\n${footer}`,
+        text: `${hello}\n\nThe carrier reports that your order #${o.orderNumber} has been delivered. We hope you enjoy it!\n\nIf something is missing or damaged, reply to this email with your order number.\n\nEU customers: the 14-day withdrawal period starts on the day of delivery. Withdraw from contract online: ${withdrawLink}\n${footer}`,
       };
     case "refund_partial":
       return {

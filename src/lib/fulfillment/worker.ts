@@ -15,6 +15,7 @@ import { getSupplierAdapter } from "../suppliers/adapters";
 import type { SplitResult, SupplierGroup } from "../suppliers/split";
 import { SupplierError, supports, type SupplierAdapter } from "../suppliers/types";
 import { notify } from "../admin/services/notifications";
+import { hasOpenWithdrawal } from "../orders/withdrawal";
 import { rateToBase, requireFulfillmentEligible, OrderError, type ShipTo } from "../admin/services/orders";
 import { createSupplierOrders, type FulfillmentDeps } from "../admin/services/suppliers";
 import { claimDueJobs, deferJob, finishJob, loadAutomationSettings, logAutomation, scheduleRetry, type FulfillmentJob } from "./jobs";
@@ -132,6 +133,9 @@ async function fulfil(db: Db, job: FulfillmentJob, deps: WorkerDeps): Promise<Ou
   }
   if (["submitted_to_supplier", "supplier_accepted", "shipped", "delivered"].includes(order.status)) {
     return { kind: "succeeded", stage: "already_fulfilled", message: `Order already ${order.status}` };
+  }
+  if (await hasOpenWithdrawal(db, job.order_id)) {
+    return { kind: "review", stage: "customer_withdrawal", reasons: ["The customer withdrew from this order (all or part) — cancel/refund the withdrawn items, then buy only what is still wanted"] };
   }
   await inTx(db, (tx) => requireFulfillmentEligible(tx, job.order_id, deps.getProvider));
   await log("check.payment", "Payment verified with the provider");
@@ -285,6 +289,9 @@ async function fulfil(db: Db, job: FulfillmentJob, deps: WorkerDeps): Promise<Ou
     await deferJob(db, job.id, 15, "kill_switch");
     await log("job.deferred", "Kill switch turned on during checks — nothing submitted", undefined, "warn");
     return { kind: "deferred" };
+  }
+  if (await hasOpenWithdrawal(db, job.order_id)) {
+    return { kind: "review", stage: "customer_withdrawal", reasons: ["The customer withdrew while the order was being checked — nothing was sent to the supplier"] };
   }
   await log("submit.start", `Submitting to ${plan.groups.length} supplier(s)`);
   const res = await createSupplierOrders(db, null, job.order_id, { plan, retryFailed: true, getProvider: deps.getProvider, getAdapter: deps.getAdapter });

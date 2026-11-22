@@ -13,7 +13,8 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; json: Re
   }
 }
 
-export function OrderLookupForm() {
+/** Email + order number → signed link. target "withdraw" opens the online withdrawal form instead of the order page. */
+export function OrderLookupForm({ target = "order", submitLabel = "Find my order" }: { target?: "order" | "withdraw"; submitLabel?: string } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
@@ -24,7 +25,7 @@ export function OrderLookupForm() {
         const f = new FormData(e.currentTarget);
         setBusy(true);
         setError(null);
-        const { ok, json } = await post("/api/orders/lookup", { email: f.get("email"), orderNumber: f.get("orderNumber") });
+        const { ok, json } = await post("/api/orders/lookup", { email: f.get("email"), orderNumber: f.get("orderNumber"), target });
         if (ok && json.url) window.location.assign(json.url);
         else { setError(json.error ?? "Something went wrong."); setBusy(false); }
       }}
@@ -32,7 +33,7 @@ export function OrderLookupForm() {
       <label className="block"><span className="text-sm font-medium">Email used for the order</span><input name="email" type="email" required autoComplete="email" className={FIELD} /></label>
       <label className="block"><span className="text-sm font-medium">Order number</span><input name="orderNumber" required inputMode="numeric" placeholder="e.g. 100042" className={FIELD} /></label>
       {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      <button disabled={busy} className="w-full rounded-full bg-ink py-3 font-semibold text-cream disabled:opacity-50">{busy ? "Looking…" : "Find my order"}</button>
+      <button disabled={busy} className="w-full rounded-full bg-ink py-3 font-semibold text-cream disabled:opacity-50">{busy ? "Looking…" : submitLabel}</button>
     </form>
   );
 }

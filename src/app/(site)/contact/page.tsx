@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const FAQ = [
   { q: "Where is my order?", a: "Use “Track an order” on this page with your email and order number. You also get an email with the tracking number as soon as it ships." },
   { q: "How long does delivery take?", a: "Delivery options and estimated times for your address are shown at checkout before you pay.", link: { href: "/pages/shipping", label: "Shipping policy" } },
-  { q: "Can I return something?", a: "Yes. In the EU you have 14 days to change your mind after delivery. Damaged or wrong items are always replaced or refunded.", link: { href: "/pages/returns", label: "Returns & refunds" } },
+  { q: "Can I return something?", a: "Yes. In the EU you have 14 days to change your mind after delivery. Damaged or wrong items are always replaced or refunded.", link: { href: "/withdraw", label: "Withdraw from contract" } },
   { q: "Is paying safe?", a: "Payments are handled by our payment provider on a secure page. We never see or store your full card details." },
   { q: "The 3D store doesn't work on my device", a: "You can always shop the same products, prices and stock in the list view.", link: { href: "/catalog", label: "Open the catalog" } },
 ];

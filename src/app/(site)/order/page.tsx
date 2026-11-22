@@ -8,6 +8,7 @@ import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { OrderAutoRefresh } from "@/features/checkout/OrderAutoRefresh";
 import { getEmailProvider } from "@/lib/email/provider";
+import { loadWithdrawalContext } from "@/lib/orders/withdrawal";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Your order", robots: { index: false } };
@@ -18,6 +19,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
   if (!isDbConfigured() || !verifyOrderToken(id, t)) notFound();
   const o = await getCustomerOrder(getSql(), id);
   if (!o) notFound();
+  const wd = await loadWithdrawalContext(getSql(), id);
 
   const locale = o.total.currency === "USD" ? MARKETS.US.locale : MARKETS.EU.locale;
   const fmt = (m: typeof o.total) => formatMoney(m, locale);
@@ -101,6 +103,21 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
           {o.shipTo.postalCode} {o.shipTo.city}{o.shipTo.region ? `, ${o.shipTo.region}` : ""}<br />{o.shipTo.country}
         </address>
       </section>
+
+      {wd && (wd.requests.length > 0 || !wd.block) && (
+        <section className="mt-6 rounded-3xl bg-white/70 p-6 text-sm shadow-card">
+          <h2 className="font-display text-xl">Changed your mind?</h2>
+          {wd.requests.length > 0 && (
+            <p className="mt-2">We received your withdrawal on {new Date(wd.requests[0]!.submittedAt).toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })}{wd.requests[0]!.status === "received" ? " and will email you the next steps." : "."}</p>
+          )}
+          {!wd.block && (
+            <>
+              <p className="mt-2 text-ink-soft">EU orders can be withdrawn within 14 days of delivery, without giving a reason{wd.window.deadline ? ` (until ${wd.window.deadline.toLocaleDateString("en-GB", { dateStyle: "long" })})` : ""}.</p>
+              <Link href={`/withdraw?id=${o.id}&t=${encodeURIComponent(t ?? "")}`} className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 font-semibold text-cream">Withdraw from contract</Link>
+            </>
+          )}
+        </section>
+      )}
 
       <p className="mt-8 text-center text-sm text-ink-soft">
         Questions? <Link href="/contact" className="underline">Contact us</Link> with your order number #{o.orderNumber}.

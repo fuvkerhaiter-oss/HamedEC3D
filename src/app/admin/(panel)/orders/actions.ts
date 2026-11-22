@@ -12,6 +12,7 @@ import { InvalidTransitionError } from "@/lib/orders/state-machine";
 import { addOrderNote, addShipment, adminTransition, issueInvoice, OrderError, refundOrder, updateShipmentStatus } from "@/lib/admin/services/orders";
 import { createSupplierOrders, recordSupplierSubmission } from "@/lib/admin/services/suppliers";
 import { logError } from "@/lib/log";
+import { setWithdrawalStatus, WithdrawalError } from "@/lib/orders/withdrawal";
 
 const done = (orderId: string) => {
   revalidatePath(`/admin/orders/${orderId}`);
@@ -48,6 +49,21 @@ export const noteAction = adminAction("orders.manage", z.object({ orderId: uuid,
   done(i.orderId);
   return { ok: true, message: "Note added." };
 });
+
+export const withdrawalStatusAction = adminAction(
+  "orders.manage",
+  z.object({ orderId: uuid, withdrawalId: uuid, status: z.enum(["received", "completed", "rejected"]), note: optStr(2000) }),
+  async (i, { sql, actor }) => {
+    try {
+      await setWithdrawalStatus(sql, actor, i.withdrawalId, i.status, i.note);
+    } catch (e) {
+      if (e instanceof WithdrawalError) throw new UserError(e.message);
+      throw e;
+    }
+    done(i.orderId);
+    return { ok: true, message: i.status === "completed" ? "Withdrawal marked as completed." : i.status === "rejected" ? "Withdrawal marked as not accepted." : "Withdrawal reopened." };
+  },
+);
 
 export const shipmentAction = adminAction(
   "orders.manage",
