@@ -50,13 +50,122 @@ export function createSql(url: string, max = 5): Sql {
     max,
     prepare: false, // required by the Supabase transaction pooler
     idle_timeout: 20,
-    connect_timeout: 10,
+    connect_timeout: 5,
     onnotice: () => {},
     types: { bigint: safeBigint },
   }) as unknown as Sql;
 }
 
-const globalForDb = globalThis as unknown as { __megamarketSql?: Sql };
+/** The database did not answer in time (dead connection, overloaded pooler, lock wait). */
+export class DbTimeoutError extends Error {
+  override name = "DbTimeoutError";
+  readonly code = "DB_TIMEOUT";
+  constructor(ms: number) {
+    super(`The database did not answer within ${Math.round(ms / 1000)} s.`);
+  }
+}
+
+export interface GuardOptions {
+  /** Longest one query may wait for its answer. */
+  queryTimeoutMs?: number;
+  /** Longest a whole `sql.begin(...)` transaction may take. */
+  txTimeoutMs?: number;
+  /** Replace the connections when nothing used them for this long (wall clock); 0 = never. */
+  idleRecycleMs?: number;
+  max?: number;
+}
+
+/**
+ * The app's pool, guarded so a request can never hang until the platform kills it (Vercel 504):
+ *
+ * - postgres.js has no query timeout: once a connection is open, a query on a socket that went silently dead
+ *   waits forever. On Vercel (Fluid compute) an instance is frozen between requests, its pool timers don't
+ *   run, and the pooler/NAT drops the idle sockets meanwhile — the next request writes into a dead socket.
+ *   So every query and transaction gets a deadline; on a timeout the whole pool is replaced (the next request
+ *   opens fresh connections) and the caller gets a DbTimeoutError.
+ * - Before a request uses connections that sat idle longer than `idleRecycleMs` (measured with the wall clock,
+ *   which keeps running while the instance is frozen), they are replaced with fresh ones.
+ *
+ * The returned function is a stable facade: each call goes to the current pool, so code holding a reference
+ * (e.g. across a slow Stripe call) never uses a retired pool. Queries inside a transaction (`tx`) are covered
+ * by the transaction's deadline.
+ */
+export function createGuardedSql(url: string, opts: GuardOptions = {}): Sql {
+  const queryTimeoutMs = opts.queryTimeoutMs ?? 10_000;
+  const txTimeoutMs = opts.txTimeoutMs ?? 30_000;
+  const idleRecycleMs = opts.idleRecycleMs ?? 15_000;
+  type Pool = { sql: Sql; lastUsed: number; active: number; retired: boolean };
+  let pool: Pool | null = null;
+
+  const retire = (p: Pool, why: string) => {
+    if (p.retired) return;
+    p.retired = true;
+    if (pool === p) pool = null;
+    if (why !== "idle") console.warn(`[db] ${why} — replacing the connection pool`);
+    void p.sql.end({ timeout: why === "idle" ? 5 : 1 }).catch(() => {});
+  };
+  const current = (): Pool => {
+    if (pool && idleRecycleMs > 0 && pool.active === 0 && Date.now() - pool.lastUsed > idleRecycleMs) retire(pool, "idle");
+    pool ??= { sql: createSql(url, opts.max), lastUsed: Date.now(), active: 0, retired: false };
+    return pool;
+  };
+  const deadline = <T>(p: Pool, work: PromiseLike<T>, ms: number): Promise<T> => {
+    p.active++;
+    p.lastUsed = Date.now();
+    return new Promise<T>((resolve, reject) => {
+      let settled = false;
+      const done = () => {
+        settled = true;
+        clearTimeout(timer);
+        p.active--;
+        p.lastUsed = Date.now();
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        done();
+        retire(p, `no answer from the database after ${ms} ms`);
+        reject(new DbTimeoutError(ms));
+      }, ms);
+      work.then(
+        (v) => { if (!settled) { done(); resolve(v); } },
+        (e: unknown) => { if (!settled) { done(); reject(e); } },
+      );
+    });
+  };
+  /** A postgres.js query runs when first awaited (`then`): start its deadline there. */
+  const guardQuery = (p: Pool, q: unknown): unknown => {
+    if (!(q instanceof Promise)) return q; // helpers like sql(obj) / sql.json(x) are not queries
+    const run = q.then;
+    let guarded: Promise<unknown> | undefined;
+    Object.defineProperty(q, "then", {
+      configurable: true,
+      value: (onOk?: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) => {
+        guarded ??= deadline(p, run.call(q) as Promise<unknown>, queryTimeoutMs);
+        return guarded.then(onOk, onErr);
+      },
+    });
+    return q;
+  };
+
+  const facade = function () {} as unknown as Sql;
+  return new Proxy(facade, {
+    apply: (_t, _this, args: unknown[]) => {
+      const p = current();
+      return guardQuery(p, (p.sql as unknown as (...a: unknown[]) => unknown)(...args));
+    },
+    get: (_t, prop) => {
+      const p = current();
+      const v = Reflect.get(p.sql, prop) as unknown;
+      if (prop === "begin" && typeof v === "function") return (...a: unknown[]) => deadline(p, (v as (...x: unknown[]) => Promise<unknown>)(...a), txTimeoutMs);
+      if (prop === "unsafe" && typeof v === "function") return (...a: unknown[]) => guardQuery(p, (v as (...x: unknown[]) => unknown)(...a));
+      if (prop === "end" && typeof v === "function") return (...a: unknown[]) => { p.retired = true; if (pool === p) pool = null; return (v as (...x: unknown[]) => unknown)(...a); };
+      return v;
+    },
+    has: (_t, prop) => Reflect.has(current().sql, prop),
+  });
+}
+
+const globalForDb = globalThis as unknown as { __megamarketDb?: Sql };
 
 /**
  * Connection string to use.
@@ -91,12 +200,12 @@ export function isDbConfigured(): boolean {
   return Boolean(databaseUrl());
 }
 
-/** Shared pool (survives dev hot reloads). Throws when DATABASE_URL is missing. */
+/** Shared guarded pool (survives dev hot reloads). Throws when DATABASE_URL is missing. */
 export function getSql(): Sql {
   const url = databaseUrl();
   if (!url) throw new DbNotConfiguredError();
-  globalForDb.__megamarketSql ??= createSql(url);
-  return globalForDb.__megamarketSql;
+  globalForDb.__megamarketDb ??= createGuardedSql(url);
+  return globalForDb.__megamarketDb;
 }
 
 export class DbNotConfiguredError extends Error {

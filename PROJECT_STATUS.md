@@ -1,5 +1,13 @@
 # Project Status
 
+## Admin 504 on Vercel: database calls can no longer hang (2026-11-22)
+- Symptom: live `/admin` → Vercel 504 FUNCTION_INVOCATION_TIMEOUT. No Vercel log access from here (CLI not installed, dashboard not signed in), so the exact production trigger is unconfirmed.
+- Cause found: postgres.js has no query timeout. Once a connection is open, a query on a socket that went silently dead waits forever (reproduced locally: still hanging after 30 s). On Vercel the instance is frozen between requests, so the pool's 20 s idle timer never runs while the pooler/NAT drops the idle sockets; the next request writes into a dead socket and hangs until the platform kills it. Dashboard queries themselves are fast (~0.2–0.4 s locally).
+- Fix (`lib/db/client.ts` `createGuardedSql`, used by `getSql()`): every query 10 s deadline, every `sql.begin` 30 s; on a timeout the pool is replaced (next request reconnects, ~0.1 s) and the caller gets `DbTimeoutError` (`DB_TIMEOUT`, counted by `isDbUnreachable`). Connections idle > 15 s (wall clock, so it works across freezes) are replaced before reuse. connect_timeout 10 → 5 s. `createSql` (tests/tools) unchanged.
+- Admin: panel layout shows a full-page "Can't reach the database right now / Try again" notice (`features/admin/DbDownNotice.tsx`) instead of hanging; other page failures show `(panel)/error.tsx` with "Try again". `maxDuration = 30` on the admin panel.
+- Tests: new `tests/unit/db-guard.test.ts` (fake silent Postgres); typecheck/lint clean · unit 118/118 · build OK.
+- Owner to check after deploy: open /admin; if it still fails, the Vercel log line `[db] no answer from the database…` or `admin: database unreachable` says which part.
+
 ## Product photo slideshow in the 3D store popups (2026-11-22)
 - Admin already had everything (product page → "Images": upload several, drag/← → to reorder, "Set main", delete, alt text; plus Admin → Product photos for bulk upload). No admin changes.
 - `store3d/hud/PhotoSlideshow.tsx` (+ pure `slideshow.ts`, unit tested): peek card and product dialog crossfade through `product.gallery` (main photo first) every 2.8 s, looping; dots; dialog also has prev/next buttons, swipe (touch, `pan-y`), ←/→ only while focus is inside the dialog. Pauses on mouse hover/focus, waits for the next photo to load, stops when the popup closes, restarts from the main photo per product, no auto-advance with reduced motion. Screen readers: alt text on the visible photo, "Photo x of N" live only while paused. 0–1 photos: unchanged markup.

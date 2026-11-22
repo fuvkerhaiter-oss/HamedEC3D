@@ -12,7 +12,7 @@ export function logError(label: string, e: unknown): void {
   console.error(`[${label}]`, JSON.stringify(safeError(e)));
 }
 
-const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT"]);
+const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT", "DB_TIMEOUT", "CONNECTION_DESTROYED", "CONNECTION_CLOSED"]);
 const warned = new Set<string>();
 
 /**
