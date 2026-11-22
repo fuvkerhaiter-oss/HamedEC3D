@@ -162,3 +162,10 @@ test("Stripe disputes map to payment.disputed (order untouched, flagged)", async
   assert.deepEqual(ev?.dispute, { id: "dp_1", status: "needs_response", reason: "fraudulent" });
   assert.deepEqual(ev?.amount, { amount: 1234, currency: "EUR" });
 });
+
+test("IOP /rest system API signing prefixes the API path", async () => {
+  const { iopSignRest } = await import("../../src/lib/suppliers/aliexpress/iop");
+  const p = { app_key: "1", code: "c", sign_method: "sha256", timestamp: "2" };
+  const expected = createHmac("sha256", "s").update("/auth/token/createapp_key1codecsign_methodsha256timestamp2").digest("hex").toUpperCase();
+  assert.equal(iopSignRest("/auth/token/create", p, "s"), expected);
+});

@@ -10,6 +10,9 @@ import { toDecimalString } from "../money";
 
 export const SITE_NAME = "WEGO SHIIIP";
 export const SITE_TAGLINE = "Happy Family, Happy Animals";
+/** Public production origin (www is canonical; the apex domain does not serve the app). Used for URLs that must
+ *  point at production from any environment, e.g. the Stripe webhook endpoint shown in the admin. */
+export const PRODUCTION_ORIGIN = "https://www.wegoshiiip.com";
 /** Stable public URL (schema.org Organization logo must not change with every build hash). */
 export const LOGO_PATH = "/brand/wego-shiiip-logo.png";
 /** Site-wide share image (app/opengraph-image.jpg). Pages that set their own openGraph must repeat it, since

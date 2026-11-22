@@ -6,6 +6,7 @@ import { listPayments, listRates, listRefunds, recentWebhookEvents } from "@/lib
 import { getSetting } from "@/lib/admin/services/settings";
 import { getSql } from "@/lib/db/client";
 import { paymentProviderStatuses } from "@/lib/payments/registry";
+import { PRODUCTION_ORIGIN, siteUrl } from "@/lib/seo/site";
 import { addRateAction } from "../ops-actions";
 
 export const metadata = { title: "Payments" };
@@ -16,7 +17,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const sql = getSql();
   const [payments, refunds, events, rates, base] = await Promise.all([listPayments(sql, { status: sp.status }), listRefunds(sql), recentWebhookEvents(sql), listRates(sql), getSetting(sql, "store.base_currency")]);
   const providers = paymentProviderStatuses();
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://your-domain";
+  // Stripe can only reach a public https URL, so local and preview builds still show the production endpoint.
+  const current = siteUrl();
+  const site = current.startsWith("https://") && !current.includes("vercel.app") ? current : PRODUCTION_ORIGIN;
   return (
     <>
       <PageHeader title="Payments" description="Money customers paid and refunds you gave back. Orders become “Paid” only when the payment company confirms it." />

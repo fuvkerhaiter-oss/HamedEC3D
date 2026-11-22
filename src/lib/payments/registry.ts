@@ -16,11 +16,14 @@ export interface ProviderStatus {
 
 export function paymentProviderStatuses(env: NodeJS.ProcessEnv = process.env): ProviderStatus[] {
   const key = env.STRIPE_SECRET_KEY ?? "";
+  const mode = key.includes("_test_") ? "test" : "live";
   const stripe: ProviderStatus = !key
     ? { id: "stripe", name: "Stripe", configured: false, mode: "not_configured", detail: "STRIPE_SECRET_KEY is not set. Payments and refunds through Stripe are unavailable." }
     : !env.STRIPE_WEBHOOK_SECRET
-      ? { id: "stripe", name: "Stripe", configured: false, mode: key.includes("_test_") ? "test" : "live", detail: "STRIPE_WEBHOOK_SECRET is missing — payment confirmations cannot be verified." }
-      : { id: "stripe", name: "Stripe", configured: true, mode: key.includes("_test_") ? "test" : "live", detail: key.includes("_test_") ? "Test mode keys present. Verify with a sandbox payment before going live." : "Live keys present." };
+      ? { id: "stripe", name: "Stripe", configured: false, mode, detail: "STRIPE_WEBHOOK_SECRET is missing — payment confirmations cannot be verified." }
+      : mode === "live" && env.STRIPE_ALLOW_LIVE !== "true"
+        ? { id: "stripe", name: "Stripe", configured: false, mode, detail: "Live keys present but STRIPE_ALLOW_LIVE is not \"true\" — checkout and webhooks stay off until it is set." }
+        : { id: "stripe", name: "Stripe", configured: true, mode, detail: mode === "test" ? "Test mode keys present. No real money is taken; switch to live keys to accept real payments." : "Live mode — real payments are being taken." };
   const simOn = env.PAYMENT_PROVIDER === "dev-simulator" && env.NODE_ENV !== "production" && (env.DEV_PAYMENT_WEBHOOK_SECRET ?? "").length >= 16;
   const sim: ProviderStatus = {
     id: "dev-simulator",

@@ -19,7 +19,8 @@
     "db:seed-test-orders": "tsx tools/db/seed-test-orders.ts",
     "db:migrate": "tsx tools/db/migrate.ts",
     "content:legal": "tsx --env-file-if-exists=.env.local tools/content/seed-legal-pages.ts",
-    "check:env": "tsx --env-file-if-exists=.env.local tools/ops/check-env.ts"
+    "check:env": "tsx --env-file-if-exists=.env.local tools/ops/check-env.ts",
+    "supplier:token": "tsx tools/suppliers/iop-token.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

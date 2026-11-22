@@ -29,6 +29,12 @@ export function iopSign(params: Record<string, string>, secret: string): string 
   return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
+/** System APIs on the /rest gateway (e.g. /auth/token/create) sign apiPath + sorted key+value. */
+export function iopSignRest(apiPath: string, params: Record<string, string>, secret: string): string {
+  const base = apiPath + Object.keys(params).filter((k) => k !== "sign").sort().map((k) => k + params[k]).join("");
+  return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
+}
+
 export type IopParams = Record<string, string | number | boolean | object | undefined | null>;
 
 const toStr = (v: IopParams[string]): string | undefined =>
