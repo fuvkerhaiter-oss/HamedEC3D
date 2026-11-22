@@ -24,7 +24,10 @@ export function isDbUnreachable(e: unknown): boolean {
   const err = e as { code?: string; severity?: string; severity_local?: string; errors?: { code?: string }[] };
   if (CONNECTION_CODES.has(String(err?.code)) || (err?.errors ?? []).some((x) => CONNECTION_CODES.has(String(x?.code)))) return true;
   const code = String(err?.code ?? "");
-  return err?.severity === "FATAL" || err?.severity_local === "FATAL" || code.startsWith("08") || code.startsWith("28") || code === "3D000";
+  return err?.severity === "FATAL" || err?.severity_local === "FATAL" || code.startsWith("08") || code.startsWith("28") || code === "3D000" ||
+    // 57014 statement timeout (Supabase cancels slow queries: database overloaded or a query stuck behind a lock),
+    // 57P01–57P03 server shutting down / not accepting connections yet.
+    code === "57014" || code.startsWith("57P");
 }
 
 /**

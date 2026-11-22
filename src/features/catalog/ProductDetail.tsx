@@ -30,7 +30,7 @@ export function ProductDetail({ product, categoryName }: { product: Product; cat
             <Image key={current.url} src={current.url} unoptimized={!canOptimize(current.url)} alt={current.alt || product.name} fill priority sizes="(min-width: 1200px) 580px, (min-width: 1024px) 50vw, 100vw" className="object-cover" />
           ) : (
             <div className="grid h-full place-items-center text-center">
-              <span aria-hidden className="font-display text-8xl text-white/90">{product.name.slice(0, 1)}</span>
+              <span aria-hidden className="font-display text-8xl text-brand/80">{product.name.slice(0, 1)}</span>
               <span className="eyebrow absolute bottom-6 text-ink/55">No photo yet</span>
             </div>
           )}
@@ -41,7 +41,7 @@ export function ProductDetail({ product, categoryName }: { product: Product; cat
             {gallery.map((g, i) => (
               <li key={g.url}>
                 <button type="button" onClick={() => setActive(i)} aria-label={`Show photo ${i + 1}`} aria-current={i === active}
-                  className={`relative block h-20 w-20 overflow-hidden rounded-xl ring-2 transition ${i === active ? "ring-ink" : "ring-transparent hover:ring-line"}`}>
+                  className={`relative block h-20 w-20 overflow-hidden rounded-xl ring-2 transition ${i === active ? "ring-amber" : "ring-transparent hover:ring-ink/20"}`}>
                   <Image src={g.url} unoptimized={!canOptimize(g.url)} alt="" fill sizes="80px" className="object-cover" />
                 </button>
               </li>
@@ -50,9 +50,9 @@ export function ProductDetail({ product, categoryName }: { product: Product; cat
         )}
       </div>
       <div>
-        {categoryName && <p className="eyebrow text-brand">{categoryName}</p>}
-        <h1 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">{product.name}</h1>
-        <p className="mt-5 font-display text-3xl tabular-nums">{price ? formatMoney(price, market.locale) : <span className="text-lg text-ink-soft">Not sold in this region</span>}</p>
+        {categoryName && <p className="inline-block rounded-full bg-brand px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white">{categoryName}</p>}
+        <h1 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">{product.name}</h1>
+        <p className="mt-6 border-t border-line pt-6 font-display text-4xl tabular-nums">{price ? formatMoney(price, market.locale) : <span className="text-lg text-ink-soft">Not sold in this region</span>}</p>
         <p className="mt-1 text-xs text-ink-soft">{market.taxMode === "inclusive" ? "VAT included" : "Before sales tax"} · {STOCK_LABEL[stock]}</p>
         {product.variants.length > 1 && (
           <label className="mt-6 block text-sm">
@@ -71,11 +71,19 @@ export function ProductDetail({ product, categoryName }: { product: Product; cat
             setAdded(true);
             setTimeout(() => setAdded(false), 1500);
           }}
-          className={`mt-6 w-full rounded-full py-3.5 font-semibold transition disabled:cursor-not-allowed disabled:bg-sand disabled:text-ink-soft sm:w-auto sm:px-10 ${added ? "bg-brand text-cream" : "bg-amber text-ink hover:bg-ink hover:text-cream"}`}
+          className={`mt-6 w-full rounded-full py-3.5 font-semibold transition disabled:cursor-not-allowed disabled:bg-sand disabled:text-ink-soft sm:w-auto sm:px-10 ${added ? "bg-brand text-white" : "bg-amber text-ink shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)] hover:bg-ink hover:text-white"}`}
         >
           {added ? "Added ✓" : "Add to cart"}
         </button>
         <span className="sr-only" aria-live="polite">{added ? `${product.name} added to cart` : ""}</span>
+        <ul className="mt-6 grid gap-2 text-sm text-ink-soft sm:grid-cols-3">
+          {["Delivered across the EU & US", "Secure payment", "14-day returns in the EU"].map((t) => (
+            <li key={t} className="flex items-center gap-2 rounded-xl bg-sand/70 px-3 py-2.5">
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+              {t}
+            </li>
+          ))}
+        </ul>
         {product.description && <p className="mt-8 whitespace-pre-line leading-relaxed text-ink-soft">{product.description}</p>}
       </div>
     </div>

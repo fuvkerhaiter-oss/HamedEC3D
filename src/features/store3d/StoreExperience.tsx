@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } from "@react-three/drei";
-import { Physics } from "@react-three/rapier";
+import { rectsFromBoxes } from "./collision";
 import { ASSETS } from "./assets/registry";
 import { KEYMAP } from "./controls";
 import { STORE_CONFIG, SUPERMARKET } from "./env/supermarket";
@@ -27,6 +27,9 @@ import { Trolley } from "./trolley/Trolley";
 import { useTrolley } from "./trolley/trolley-store";
 import { buildTrolleyCatalog } from "./trolley/visuals";
 import { LOCK_ERROR_MESSAGE, useStoreUi } from "./ui-store";
+
+/** Walls and fixtures the shopper and trolley collide with (flat floor; see ./collision). */
+const OBSTACLES = rectsFromBoxes([...SUPERMARKET.walls, ...SUPERMARKET.fixtures]);
 
 // Start downloading the imported models as soon as this bundle loads.
 useGLTF.preload(ASSETS.supermarket.url);
@@ -209,10 +212,8 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
           <color attach="background" args={["#e9e4da"]} />
           <fog attach="fog" args={["#e9e4da", 25, 60]} />
           <Suspense fallback={null}>
-            <Physics timeStep="vary">
-              <StoreScene env={SUPERMARKET} layout={layout} catalog={catalog} lowPower={lowPower} />
-              <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} trolley={<Trolley tc={trolleyCatalog} />} />
-            </Physics>
+            <StoreScene env={SUPERMARKET} layout={layout} catalog={catalog} lowPower={lowPower} />
+            <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} obstacles={OBSTACLES} trolley={<Trolley tc={trolleyCatalog} />} />
             <RemotePlayers tc={trolleyCatalog} />
             <FlightLayer tc={trolleyCatalog} />
             <Interactor />

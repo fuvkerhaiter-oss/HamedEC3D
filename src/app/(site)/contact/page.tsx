@@ -22,13 +22,13 @@ export default function ContactPage() {
       <h1 className="mt-2 font-display text-5xl leading-none">How can we help?</h1>
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
-        <section id="track" className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section id="track" className="rounded-3xl border-t-4 border-amber bg-white p-7 ring-1 ring-line">
           <h2 className="font-display text-2xl">Track an order</h2>
           <p className="mt-1 text-sm text-ink-soft">No account needed.</p>
           <div className="mt-5"><OrderLookupForm /></div>
           <p className="mt-4 text-sm text-ink-soft">See all your orders at once? <Link href="/account/orders" className="underline">Get a link by email</Link>.</p>
         </section>
-        <section id="message" className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section id="message" className="rounded-3xl border-t-4 border-brand bg-white p-7 ring-1 ring-line">
           <h2 className="font-display text-2xl">Send us a message</h2>
           <p className="mt-1 text-sm text-ink-soft">We reply by email, usually within 1–2 business days.</p>
           <div className="mt-5"><ContactForm /></div>
@@ -37,11 +37,11 @@ export default function ContactPage() {
 
       <section className="mt-12">
         <h2 className="font-display text-3xl">Frequently asked</h2>
-        <div className="mt-5 divide-y divide-line rounded-3xl bg-white/70 shadow-card">
+        <div className="mt-5 divide-y divide-line rounded-3xl bg-white ring-1 ring-line">
           {FAQ.map((f) => (
             <details key={f.q} className="group p-5">
               <summary className="cursor-pointer list-none font-medium">
-                <span className="mr-2 inline-block transition group-open:rotate-45">+</span>{f.q}
+                <span aria-hidden className="mr-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber text-ink transition group-open:rotate-45">+</span>{f.q}
               </summary>
               <p className="mt-2 text-ink-soft">
                 {f.a} {f.link && <Link href={f.link.href} className="underline">{f.link.label}</Link>}

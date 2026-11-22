@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useKeyboardControls } from "@react-three/drei";
-import { CapsuleCollider, CuboidCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
+import { step, type Motion, type Rect, type ShopperShape } from "./collision";
 import type { ControlName } from "./controls";
 import { analogSpeed, touchInput } from "./input/touch-input";
 import type { Vec3 } from "./layout";
@@ -16,26 +16,32 @@ const WALK_SPEED = 2.2; // m/s — a little slower while pushing a trolley
 const RUN_SPEED = 3.8;
 const ACCELERATION = 8; // trolley has some inertia
 const TURN_RESPONSE = 7; // how quickly the trolley swings to where you look
-const CAPSULE_HALF_HEIGHT = 0.55;
-const CAPSULE_RADIUS = 0.3;
-const EYE_OFFSET = 0.75; // above capsule center → eyes at ~1.6 m
+const BODY_RADIUS = 0.3;
+const BODY_Y = 0.85; // body centre (shopper ~1.7 m tall standing on the floor); the trolley hangs off it
+const EYE_OFFSET = 0.75; // above body centre → eyes at ~1.6 m
+
+const SHAPE: ShopperShape = {
+  radius: BODY_RADIUS,
+  box: { offsetX: TROLLEY.collider.center[0], offsetZ: TROLLEY.collider.center[2], halfX: TROLLEY.collider.halfExtents[0], halfZ: TROLLEY.collider.halfExtents[2] },
+};
 
 // Reused per frame (no allocations in useFrame).
 const forward = new THREE.Vector3();
 const side = new THREE.Vector3();
 const wish = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
-const bodyQuat = new THREE.Quaternion();
 
 const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /**
- * First-person shopper pushing a trolley. The body yaw (and the trolley + its collider, which are
- * children of the body) smoothly follows the look direction; movement is relative to the camera.
+ * First-person shopper pushing a trolley. The body yaw (and the trolley, a child of the body) smoothly
+ * follows the look direction; movement is relative to the camera. Collision with walls and fixtures
+ * (`obstacles`) is the small top-down solver in ./collision (flat floor, no physics engine).
  */
-export function Player({ spawn, spawnYaw = 0, trolley }: { spawn: Vec3; spawnYaw?: number; trolley?: ReactNode }) {
-  const body = useRef<RapierRigidBody>(null);
+export function Player({ spawn, spawnYaw = 0, obstacles, trolley }: { spawn: Vec3; spawnYaw?: number; obstacles: readonly Rect[]; trolley?: ReactNode }) {
+  const body = useRef<THREE.Group>(null);
   const yaw = useRef(spawnYaw);
+  const motion = useRef<Motion>({ x: spawn[0], z: spawn[2], vx: 0, vz: 0 });
   const [, getKeys] = useKeyboardControls<ControlName>();
   const camera = useThree((s) => s.camera);
 
@@ -60,10 +66,10 @@ export function Player({ spawn, spawnYaw = 0, trolley }: { spawn: Vec3; spawnYaw
     side.crossVectors(forward, UP);
 
     // Trolley/body heading follows the camera with a little lag (feels like pushing a real cart).
+    const fromYaw = yaw.current;
     if (hasHeading) {
       const target = Math.atan2(-forward.x, -forward.z);
       yaw.current += wrapAngle(target - yaw.current) * (1 - Math.exp(-TURN_RESPONSE * dt));
-      b.setRotation(bodyQuat.setFromAxisAngle(UP, yaw.current), true);
     }
 
     wish.set(0, 0, 0);
@@ -80,26 +86,23 @@ export function Player({ spawn, spawnYaw = 0, trolley }: { spawn: Vec3; spawnYaw
       }
     }
 
-    const v = b.linvel();
+    const m = motion.current;
     const t = 1 - Math.exp(-ACCELERATION * dt);
-    const vx = v.x + (wish.x - v.x) * t;
-    const vz = v.z + (wish.z - v.z) * t;
-    b.setLinvel({ x: vx, y: v.y, z: vz }, true);
+    m.vx += (wish.x - m.vx) * t;
+    m.vz += (wish.z - m.vz) * t;
+    step(m, fromYaw, yaw.current, dt, SHAPE, obstacles); // moves, turns and slides along what it hits
 
     // Signed speed along the trolley's facing, for wheel roll + rattle.
-    trolleyMotion.speed = -Math.sin(yaw.current) * vx - Math.cos(yaw.current) * vz;
+    trolleyMotion.speed = -Math.sin(yaw.current) * m.vx - Math.cos(yaw.current) * m.vz;
 
-    const p = b.translation();
-    camera.position.set(p.x, p.y + EYE_OFFSET, p.z);
+    b.position.set(m.x, BODY_Y, m.z);
+    b.rotation.set(0, yaw.current, 0);
+    camera.position.set(m.x, BODY_Y + EYE_OFFSET, m.z);
   });
 
-  const { center, halfExtents } = TROLLEY.collider;
   return (
-    <RigidBody ref={body} colliders={false} position={spawn} rotation={[0, spawnYaw, 0]} enabledRotations={[false, false, false]} canSleep={false} ccd>
-      <CapsuleCollider args={[CAPSULE_HALF_HEIGHT, CAPSULE_RADIUS]} friction={0} />
-      {/* Trolley body: blocks shelves/walls so the cart never passes through them. */}
-      <CuboidCollider args={halfExtents} position={center} friction={0} />
+    <group ref={body} position={[spawn[0], BODY_Y, spawn[2]]} rotation={[0, spawnYaw, 0]}>
       {trolley}
-    </RigidBody>
+    </group>
   );
 }

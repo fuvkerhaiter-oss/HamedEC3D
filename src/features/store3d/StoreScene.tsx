@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Environment, Lightformer, Text, useGLTF } from "@react-three/drei";
-import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useCart } from "@/features/cart/cart-store";
 import { categoryColor } from "@/lib/catalog/colors";
 import { resizedImageUrl } from "@/lib/catalog/image";
@@ -24,7 +23,6 @@ export interface StoreCatalog {
 }
 
 const center = (b: Box) => b.min.map((v, i) => (v + b.max[i]!) / 2) as [number, number, number];
-const half = (b: Box) => b.min.map((v, i) => (b.max[i]! - v) / 2) as [number, number, number];
 
 export function StoreScene({ env, layout, catalog, lowPower = false }: { env: EnvLayout; layout: StoreLayout; catalog: StoreCatalog; lowPower?: boolean }) {
   const colorOf = useMemo(() => {
@@ -37,7 +35,6 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
     <>
       <Lighting env={env} lowPower={lowPower} />
       <SupermarketModel />
-      <EnvColliders env={env} />
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {
         const placements = layout.items[p.id];
@@ -115,19 +112,6 @@ function Lighting({ env, lowPower }: { env: EnvLayout; lowPower: boolean }) {
         <Lightformer form="rect" intensity={0.6} position={[min[0], 2, cz]} rotation-y={Math.PI / 2} scale={[d, 3, 1]} />
       </Environment>
     </>
-  );
-}
-
-/** Physics from the measured layout: floor, perimeter walls and every fixture (shelves, freezers, racks, checkout…). */
-function EnvColliders({ env }: { env: EnvLayout }) {
-  const { min, max } = env.interior;
-  return (
-    <RigidBody type="fixed" colliders={false}>
-      <CuboidCollider args={[(max[0] - min[0]) / 2 + 1, 0.1, (max[2] - min[2]) / 2 + 1]} position={[(min[0] + max[0]) / 2, -0.1, (min[2] + max[2]) / 2]} />
-      {[...env.walls, ...env.fixtures].map((b, i) => (
-        <CuboidCollider key={i} args={half(b)} position={center(b)} />
-      ))}
-    </RigidBody>
   );
 }
 

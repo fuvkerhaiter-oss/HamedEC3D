@@ -7,6 +7,26 @@
 @custom-variant short (@media (max-height: 520px));
 
 @theme {
+  /* Brand palette: black, white, signal yellow, deep forest green. */
+  --color-ink: #0d0f0e;
+  --color-ink-soft: #454b47;
+  --color-cream: #fcfcf9;
+  --color-sand: #f2f1ea;
+  --color-brand: #12392b;
+  --color-brand-light: #1e5a43;
+  --color-brand-deep: #0b2619;
+  --color-amber: #f7c416;
+  --color-amber-deep: #dcaa00;
+  --color-line: #e4e3da;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --shadow-card: 0 1px 0 rgb(13 15 14 / 0.04), 0 1px 3px rgb(13 15 14 / 0.06);
+  --shadow-lift: 0 2px 0 rgb(13 15 14 / 0.04), 0 18px 36px -18px rgb(13 15 14 / 0.28);
+}
+
+/* The homepage hero keeps its original colors exactly. */
+.vsw-hero-keep {
   --color-ink: #111513;
   --color-ink-soft: #2a302d;
   --color-cream: #f7f4ee;
@@ -15,11 +35,6 @@
   --color-brand-light: #2f8f6e;
   --color-amber: #e5a93d;
   --color-line: #ddd5c6;
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --shadow-card: 0 1px 2px rgb(17 21 19 / 0.04), 0 8px 24px -12px rgb(17 21 19 / 0.12);
-  --shadow-lift: 0 2px 4px rgb(17 21 19 / 0.05), 0 24px 48px -20px rgb(17 21 19 / 0.3);
 }
 
 html {
@@ -53,12 +68,33 @@ html {
     background-image: radial-gradient(rgb(247 244 238 / 0.08) 1px, transparent 1px);
     background-size: 22px 22px;
   }
+  /* Short yellow highlight under a word in headings. */
+  .vsw-mark {
+    background-image: linear-gradient(var(--color-amber), var(--color-amber));
+    background-size: 100% 0.3em;
+    background-position: 0 90%;
+    background-repeat: no-repeat;
+    padding: 0 0.04em;
+  }
+  /* Storefront buttons: solid fills, no glow. */
+  .btn-yellow, .btn-dark, .btn-outline {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border-radius: 999px; font-weight: 600;
+    transition: background-color 150ms, color 150ms, border-color 150ms, transform 150ms;
+  }
+  .btn-yellow { background: var(--color-amber); color: var(--color-ink); box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.12); }
+  .btn-yellow:hover { background: var(--color-amber-deep); }
+  .btn-dark { background: var(--color-ink); color: #fff; }
+  .btn-dark:hover { background: var(--color-brand); }
+  .btn-outline { border: 1.5px solid var(--color-ink); color: var(--color-ink); }
+  .btn-outline:hover { background: var(--color-ink); color: #fff; }
+  .btn-yellow:active, .btn-dark:active, .btn-outline:active { transform: translateY(1px); }
   .vsw-card {
     box-shadow: var(--shadow-card);
     transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 300ms;
   }
   .vsw-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-lift);
   }
 }

@@ -29,14 +29,14 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const [{ home }, pages] = await Promise.all([getStorefrontSettings(), listPublishedPages()]);
   return (
     <div className="flex min-h-dvh flex-col">
-      {home.announcement && <p className="bg-amber px-5 py-2 text-center text-sm font-medium text-ink">{home.announcement}</p>}
+      {home.announcement && <p className="bg-ink px-5 py-2 text-center text-[13px] font-medium tracking-wide text-white"><span aria-hidden className="mr-2 inline-block h-1.5 w-1.5 -translate-y-px rounded-full bg-amber align-middle" />{home.announcement}</p>}
       {/* Floating golden-edged banner (public/brand/navbar-banner.webp, 9-slice in globals.css .vsw-nav-banner). */}
       <header className="sticky top-0 z-40 px-2 pt-2 sm:px-4">
         <nav className="vsw-nav-banner mx-auto flex max-w-6xl items-center justify-between gap-3 py-2 pl-7 pr-7 sm:gap-4 sm:pl-9 sm:pr-8" aria-label="Main">
           <Logo />
           <div className="hidden items-center gap-1 text-sm font-medium sm:flex">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className="rounded-full px-4 py-2 text-ink-soft transition hover:bg-sand hover:text-ink">
+              <Link key={n.href} href={n.href} className="relative px-4 py-2 font-semibold text-ink/75 transition hover:text-ink after:absolute after:inset-x-4 after:bottom-1 after:h-[3px] after:origin-left after:scale-x-0 after:rounded-full after:bg-amber after:transition-transform after:duration-200 hover:after:scale-x-100">
                 {n.label}
               </Link>
             ))}
@@ -48,40 +48,37 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         </nav>
       </header>
       <main className="flex-1">{children}</main>
-      <footer className="vsw-grid-bg relative overflow-hidden bg-ink text-cream">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 pb-8 pt-16 sm:grid-cols-[1.4fr_1fr_1fr]">
+      <footer className="bg-brand-deep text-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 pb-12 pt-16 sm:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <Logo dark />
-            <p className="mt-4 max-w-xs text-sm text-cream/65">An immersive 3D supermarket in your browser. Real products, delivered across Europe and the United States.</p>
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/65">An immersive 3D supermarket in your browser. Real products, delivered across Europe and the United States.</p>
           </div>
           <div>
-            <p className="eyebrow text-cream/45">Shop</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">Shop</p>
+            <ul className="mt-4 space-y-2.5 text-sm">
               {NAV.map((n) => (
-                <li key={n.href}><Link href={n.href} className="text-cream/80 transition hover:text-amber">{n.label}</Link></li>
+                <li key={n.href}><Link href={n.href} className="text-white/80 transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">{n.label}</Link></li>
               ))}
             </ul>
           </div>
           <div>
-            <p className="eyebrow text-cream/45">Delivery</p>
-            <ul className="mt-4 space-y-2 text-sm text-cream/80">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">Delivery</p>
+            <ul className="mt-4 space-y-2.5 text-sm text-white/80">
               <li>European Union · EUR</li>
               <li>United States · USD</li>
             </ul>
             {pages.length > 0 && (
-              <ul className="mt-6 space-y-2 text-sm">
-                {pages.map((pg) => <li key={pg.slug}><Link href={`/pages/${pg.slug}`} className="text-cream/80 transition hover:text-amber">{pg.title}</Link></li>)}
+              <ul className="mt-6 space-y-2.5 text-sm">
+                {pages.map((pg) => <li key={pg.slug}><Link href={`/pages/${pg.slug}`} className="text-white/80 transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">{pg.title}</Link></li>)}
               </ul>
             )}
           </div>
         </div>
-        <p aria-hidden className="pointer-events-none select-none px-5 text-center font-display text-[18vw] leading-[0.8] text-cream/[0.06] sm:text-[15vw]">
-          WEGO SHIIIP.
-        </p>
-        <div className="border-t border-cream/10">
-          <div className="mx-auto flex max-w-6xl flex-col justify-between gap-2 px-5 py-5 text-xs text-cream/50 sm:flex-row">
+        <div className="bg-ink">
+          <div className="mx-auto flex max-w-6xl flex-col justify-between gap-2 px-5 py-5 text-xs text-white/55 sm:flex-row">
             <p>© {new Date().getFullYear()} WEGO SHIIIP · Italy</p>
-            <p className="eyebrow !tracking-[0.14em]">Happy Family, Happy Animals</p>
+            <p className="font-semibold tracking-wide text-white/70">Happy Family, Happy Animals</p>
           </div>
         </div>
       </footer>

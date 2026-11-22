@@ -4,9 +4,11 @@ import { getStorefrontSettings } from "@/lib/storefront/settings";
 import { StoreClient } from "@/features/store3d/StoreClient";
 
 export const metadata: Metadata = { title: "Store" };
-// Rendered per request, never prerendered at build: the build must not depend on the live database
-// (a missing/unmigrated Supabase project otherwise fails the whole deploy). Errors go to ./error.tsx.
-export const dynamic = "force-dynamic";
+// Cached page (ISR, like the homepage): served from the CDN without waking a server function or the database,
+// refreshed at most every 60 s and right after admin edits (catalog-actions revalidatePath). If the database
+// can't be used during `next build`, it is prerendered without products and fills in on the first refresh
+// (lib/catalog/source). Runtime errors go to ./error.tsx and never replace a good cached page.
+export const revalidate = 60;
 // Game viewport: edge-to-edge (notches handled with safe-area insets), no pinch/double-tap zoom while playing.
 export const viewport: Viewport = {
   themeColor: "#111513",

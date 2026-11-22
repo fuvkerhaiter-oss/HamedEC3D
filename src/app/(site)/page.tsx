@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
+import feature1 from "@/assets/home/feature-1.webp";
+import feature2 from "@/assets/home/feature-2.webp";
+import feature3 from "@/assets/home/feature-3.webp";
 import storeFirstView from "@/assets/hero/store-first-view.webp";
 import { StorePortal } from "@/features/home/StorePortal";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
@@ -10,9 +13,9 @@ import { getCatalog } from "@/lib/catalog/source";
 export const revalidate = 60;
 
 const FEATURES = [
-  { title: "Walk the aisles", body: "Explore a beautifully lit supermarket in first person, straight from your browser. No download." },
-  { title: "Real products", body: "Everything on the shelves is a real product with live prices and stock, shipped to your door." },
-  { title: "Shop your way", body: "Prefer a classic list? The full catalog and cart work on any device, any time." },
+  { title: "Walk the aisles", image: feature1 },
+  { title: "Real products", image: feature2 },
+  { title: "Shop your way", image: feature3 },
 ];
 
 const STEPS: { title: string; body: string; keys: string[] }[] = [
@@ -48,7 +51,7 @@ export default async function HomePage() {
   const [{ home, stockAllFaces }, { categories, products }] = await Promise.all([getStorefrontSettings(), getCatalog()]);
   return (
     <>
-      <section className="relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
+      <section className="vsw-hero-keep relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
         {/* Phones: the logo comes first, then the store picture, then the copy (the h1 below is screen-reader only there). */}
         <div aria-hidden className="vsw-hero-in relative z-10 mx-auto w-[min(86%,26rem)] pb-6 pt-8 lg:hidden">{heroLogo}</div>
         {/* The real first view of the 3D store (rendered from the scene: tools/assets/capture-store-preview.ts).
@@ -88,14 +91,14 @@ export default async function HomePage() {
       </section>
 
       {/* Category ribbon */}
-      <div aria-hidden className="overflow-hidden border-y border-ink bg-amber py-3 text-ink">
+      <div aria-hidden className="overflow-hidden border-y-2 border-ink bg-amber py-3 text-ink">
         <div className="vsw-marquee">
           {[0, 1].map((copy) => (
             <div key={copy} className="flex shrink-0">
               {RIBBON.map((r) => (
                 <span key={r} className="flex items-center gap-6 px-6 font-display text-lg font-semibold tracking-tight">
                   {r}
-                  <span className="text-ink/40">✦</span>
+                  <span className="h-2 w-2 rotate-45 bg-ink" />
                 </span>
               ))}
             </div>
@@ -103,41 +106,52 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <section className="mx-auto max-w-6xl px-5 py-24">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow text-brand">Why WEGO SHIIIP</p>
-            <h2 className="mt-3 max-w-xl font-display text-4xl leading-[1.02] sm:text-5xl">Shopping, reimagined as a place you visit.</h2>
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-24">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Why WEGO SHIIIP</p>
+              <h2 className="mt-4 max-w-xl font-display text-4xl leading-[1.04] sm:text-5xl">
+                Shopping, reimagined as a <span className="vsw-mark">place you visit</span>.
+              </h2>
+            </div>
+            <p className="max-w-md text-lg leading-relaxed text-ink-soft lg:justify-self-end">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
           </div>
-          <p className="max-w-sm text-ink-soft">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
-        </div>
-        <div className="mt-12 grid gap-5 sm:grid-cols-3">
-          {FEATURES.map((f, i) => (
-            <article
-              key={f.title}
-              className={`vsw-card group relative flex min-h-64 flex-col rounded-3xl p-7 ring-1 ${i === 0 ? "bg-brand text-cream ring-brand" : "bg-white ring-line"}`}
-            >
-              <span className={`eyebrow ${i === 0 ? "text-cream/60" : "text-ink-soft/70"}`}>0{i + 1}</span>
-              <h3 className="mt-auto font-display text-3xl leading-tight">{f.title}</h3>
-              <p className={`mt-3 ${i === 0 ? "text-cream/80" : "text-ink-soft"}`}>{f.body}</p>
-            </article>
-          ))}
+          {/* 3D feature cards (artwork: src/assets/home/feature-*.webp, cut from "Modern Automation Feature Cards.webp"). */}
+          <div className="mt-14 grid gap-6 sm:grid-cols-3 sm:gap-4">
+            {FEATURES.map((f) => (
+              <Image
+                key={f.title}
+                src={f.image}
+                alt={f.title}
+                sizes="(min-width: 1152px) 370px, (min-width: 640px) 32vw, 92vw"
+                className="h-auto w-full drop-shadow-[0_14px_22px_rgb(17_21_19/0.16)] transition duration-300 hover:-translate-y-1.5 hover:rotate-[-0.6deg]"
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="border-y border-line bg-sand/50 py-24">
+      <section className="bg-ink py-24 text-white">
         <div className="mx-auto max-w-6xl px-5">
-          <p className="eyebrow text-brand">How it works</p>
-          <h2 className="mt-3 font-display text-4xl sm:text-5xl">Three steps to a full trolley.</h2>
-          <ol className="mt-12 grid gap-px overflow-hidden rounded-3xl bg-line ring-1 ring-line sm:grid-cols-3">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">How it works</p>
+              <h2 className="mt-4 font-display text-4xl sm:text-5xl">Three steps to a full trolley.</h2>
+            </div>
+            <Link href="/store" className="group inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition hover:text-amber">
+              Try it now <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+            </Link>
+          </div>
+          <ol className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
             {STEPS.map((s, i) => (
-              <li key={s.title} className="flex flex-col gap-5 bg-cream p-8">
-                <span className="font-mono text-sm text-ink-soft/70">Step {String(i + 1).padStart(2, "0")}</span>
-                <h3 className="font-display text-2xl">{s.title}</h3>
-                <p className="text-ink-soft">{s.body}</p>
-                <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+              <li key={s.title} className="flex flex-col border-t-2 border-white/15 pt-6 transition-colors hover:border-amber">
+                <span className="font-display text-5xl leading-none text-amber">{i + 1}</span>
+                <h3 className="mt-6 font-display text-2xl">{s.title}</h3>
+                <p className="mt-2 leading-relaxed text-white/70">{s.body}</p>
+                <div className="mt-auto flex flex-wrap gap-1.5 pt-6">
                   {s.keys.map((k) => (
-                    <kbd key={k} className="min-w-8 rounded-md border border-line border-b-[3px] bg-white px-2 py-1 text-center font-mono text-xs text-ink">
+                    <kbd key={k} className="min-w-8 rounded-md border border-white/25 border-b-[3px] bg-white/5 px-2 py-1 text-center font-mono text-xs text-white">
                       {k}
                     </kbd>
                   ))}
@@ -148,19 +162,23 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-24">
-        <div className="vsw-grid-bg relative overflow-hidden rounded-[2rem] bg-ink px-8 py-14 text-cream sm:px-14 sm:py-20">
-          <div aria-hidden className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber/25 blur-3xl" />
-          <div aria-hidden className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-brand/40 blur-3xl" />
-          <div className="relative flex flex-col items-start gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="eyebrow text-amber">Doors are open</p>
-              <h2 className="mt-3 max-w-2xl font-display text-4xl leading-[1.02] sm:text-6xl">Your next shop is a walk away.</h2>
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-24">
+          <div className="relative overflow-hidden rounded-3xl bg-amber px-8 py-14 text-ink sm:px-14 sm:py-16">
+            <div aria-hidden className="absolute inset-y-0 right-0 hidden w-3 bg-brand lg:block" />
+            <div className="relative flex flex-col items-start gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Doors are open</p>
+                <h2 className="mt-4 max-w-2xl font-display text-4xl leading-[1.02] sm:text-6xl">Your next shop is a walk away.</h2>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-3">
+                <Link href="/store" className="btn-dark group px-7 py-4">
+                  Enter the store
+                  <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+                </Link>
+                <Link href="/catalog" className="btn-outline px-7 py-4">Browse the catalog</Link>
+              </div>
             </div>
-            <Link href="/store" className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-cream px-7 py-4 font-semibold text-ink transition hover:-translate-y-0.5 hover:bg-white">
-              Enter the store
-              <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-            </Link>
           </div>
         </div>
       </section>

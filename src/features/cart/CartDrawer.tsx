@@ -35,15 +35,15 @@ export function CartDrawer() {
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="cart-title">
       <button className="vsw-fade-in absolute inset-0 bg-ink/55 backdrop-blur-sm" aria-label="Close cart" onClick={() => setOpen(false)} />
       <aside
-        className="vsw-drawer-in relative flex h-full w-full max-w-md flex-col bg-cream shadow-[-24px_0_60px_rgb(0_0_0/0.25)]"
+        className="vsw-drawer-in relative flex h-full w-full max-w-md flex-col bg-white shadow-[-24px_0_60px_rgb(0_0_0/0.25)]"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)", paddingRight: "env(safe-area-inset-right, 0px)" }}
       >
         <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 short:py-3 sm:px-6 sm:py-6">
           <div>
-            <p className="eyebrow text-brand">
+            <p className="eyebrow inline-block rounded-full bg-amber px-2.5 py-1 !tracking-[0.12em] text-ink">
               {count} item{count === 1 ? "" : "s"} · {market.currency}
             </p>
-            <h2 id="cart-title" className="mt-1 font-display text-3xl leading-none short:text-2xl">Your cart</h2>
+            <h2 id="cart-title" className="mt-2 font-display text-3xl leading-none short:text-2xl">Your cart</h2>
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -109,7 +109,7 @@ export function CartDrawer() {
         </div>
 
         {cart && cart.lines.length > 0 && (
-          <footer className="border-t border-line bg-white/60 px-5 py-4 short:py-3 sm:px-6 sm:py-6">
+          <footer className="border-t border-line bg-sand/60 px-5 py-4 short:py-3 sm:px-6 sm:py-6">
             <div className="flex items-end justify-between">
               <span className="eyebrow text-ink-soft">Subtotal</span>
               <span className="font-display text-3xl tabular-nums leading-none short:text-2xl">{fmt(cart.subtotal)}</span>
@@ -121,7 +121,7 @@ export function CartDrawer() {
               href="/checkout"
               onClick={() => setOpen(false)}
               aria-disabled={!cart.purchasable}
-              className={`mt-4 block w-full rounded-full py-3.5 text-center font-semibold text-cream transition short:mt-3 short:py-3 ${cart.purchasable ? "bg-ink hover:bg-ink-soft" : "pointer-events-none bg-ink/35"}`}
+              className={`mt-4 block w-full rounded-full py-3.5 text-center font-semibold text-cream transition short:mt-3 short:py-3 ${cart.purchasable ? "bg-ink hover:bg-brand" : "pointer-events-none bg-ink/35"}`}
             >
               Checkout
             </a>

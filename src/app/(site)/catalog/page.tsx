@@ -29,23 +29,23 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
     <div className="pb-20">
       <MarketParamSync query={query} />
 
-      <div className="border-b border-line bg-sand/50">
+      <div className="bg-brand text-white">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-            <nav aria-label="Breadcrumb" className="text-xs text-ink-soft">
+            <nav aria-label="Breadcrumb" className="text-xs text-white/65">
               <ol className="flex items-center gap-1.5">
-                <li><Link href="/" className="hover:text-ink hover:underline">Home</Link></li>
+                <li><Link href="/" className="hover:text-white hover:underline">Home</Link></li>
                 <li aria-hidden>/</li>
-                <li>{activeCategory ? <Link href="/catalog" className="hover:text-ink hover:underline">Catalog</Link> : <span aria-current="page">Catalog</span>}</li>
+                <li>{activeCategory ? <Link href="/catalog" className="hover:text-white hover:underline">Catalog</Link> : <span aria-current="page">Catalog</span>}</li>
                 {activeCategory && (
                   <>
                     <li aria-hidden>/</li>
-                    <li aria-current="page" className="font-medium text-ink">{activeCategory.name}</li>
+                    <li aria-current="page" className="font-medium text-white">{activeCategory.name}</li>
                   </>
                 )}
               </ol>
             </nav>
-            <Link href="/store" className="group inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
+            <Link href="/store" className="group inline-flex items-center gap-1.5 text-xs font-semibold text-amber hover:underline">
               Prefer to browse the shelves? Walk the 3D store
               <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
             </Link>
@@ -54,8 +54,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
             <CatalogSearchBar query={query} categories={catalog.categories} />
           </div>
           {catalog.source === "mock" && (
-            <p className="mt-3 text-xs text-ink-soft">
-              <span className="font-semibold text-ink">Sample catalog:</span> these are development sample products, not real listings.
+            <p className="mt-3 text-xs text-white/70">
+              <span className="font-semibold text-white">Sample catalog:</span> these are development sample products, not real listings.
             </p>
           )}
         </div>
@@ -94,18 +94,18 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
           </div>
 
           {products.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-dashed border-line bg-white/60 px-6 py-16 text-center">
+            <div className="mt-8 rounded-2xl border border-dashed border-ink/20 bg-white px-6 py-16 text-center">
               <p className="font-display text-2xl">Nothing matches that yet</p>
               <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
                 {query.q ? <>We couldn&apos;t find products for “{query.q}”. Check the spelling or try a broader word.</> : "Try removing a filter or widening the price range."}
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 {anyNarrowing && (
-                  <Link href={catalogHref(query, { q: "", category: null, min: null, max: null, inStock: false, options: [] })} className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream transition hover:bg-brand">
+                  <Link href={catalogHref(query, { q: "", category: null, min: null, max: null, inStock: false, options: [] })} className="btn-dark px-5 py-2.5 text-sm">
                     Clear search and filters
                   </Link>
                 )}
-                <Link href="/store" className="rounded-full border border-ink px-5 py-2.5 text-sm font-semibold transition hover:bg-ink hover:text-cream">
+                <Link href="/store" className="btn-outline px-5 py-2.5 text-sm">
                   Walk the 3D store
                 </Link>
               </div>

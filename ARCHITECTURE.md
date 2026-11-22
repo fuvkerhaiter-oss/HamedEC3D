@@ -4,7 +4,7 @@
 | Layer | Choice | Purpose |
 |---|---|---|
 | App | Next.js (App Router), React, TypeScript strict, Tailwind | Pages, API routes, SSR |
-| 3D | three, @react-three/fiber, @react-three/drei, @react-three/rapier | Store scene, controller, physics |
+| 3D | three, @react-three/fiber, @react-three/drei | Store scene, controller; collision = small top-down solver (`store3d/collision.ts`, flat floor + boxes) instead of a physics engine (saves ~0.8 MB) |
 | Client state | zustand | UI + cart mirror (server is source of truth) |
 | Validation | zod | All API input |
 | Backend | Supabase (Postgres, Auth, Storage, RLS) via @supabase/ssr | Data, auth, GLB/image storage |

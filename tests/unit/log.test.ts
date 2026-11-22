@@ -44,6 +44,8 @@ test("a refused connection (pooler FATAL / auth / missing db) counts as unreacha
   assert.equal(isDbUnreachable({ code: "XX000", severity_local: "FATAL", message: "Tenant or user not found" }), true);
   assert.equal(isDbUnreachable({ code: "28P01", severity: "FATAL" }), true);
   assert.equal(isDbUnreachable({ code: "3D000" }), true);
+  assert.equal(isDbUnreachable({ code: "57014", severity: "ERROR", message: "canceling statement due to statement timeout" }), true, "build prerender on a slow DB");
+  assert.equal(isDbUnreachable({ code: "57P03", severity: "FATAL" }), true);
   assert.equal(isDbUnreachable({ code: "XX000", severity: "ERROR" }), false);
   assert.equal(isDbUnreachable({ code: "23505", severity: "ERROR" }), false);
 });

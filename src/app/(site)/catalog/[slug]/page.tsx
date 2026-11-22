@@ -7,6 +7,11 @@ import type { Product } from "@/lib/catalog/types";
 import { toDecimalString } from "@/lib/money";
 
 export const revalidate = 60;
+// None at build time (the build must not depend on the database): each product page is rendered on its first
+// visit, then served from the cache and refreshed at most every 60 s (and right after admin edits).
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

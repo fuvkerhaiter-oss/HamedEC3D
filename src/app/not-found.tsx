@@ -12,8 +12,8 @@ export default function NotFound() {
       </h1>
       <p className="text-ink-soft">The link may be old, or the product is no longer sold.</p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
-        <Link href="/catalog" className="rounded-full bg-ink px-6 py-3 font-semibold text-cream transition hover:bg-brand">Browse the catalog</Link>
-        <Link href="/" className="rounded-full border border-ink px-6 py-3 font-semibold transition hover:bg-ink hover:text-cream">Back to home</Link>
+        <Link href="/catalog" className="btn-dark px-6 py-3">Browse the catalog</Link>
+        <Link href="/" className="btn-outline px-6 py-3">Back to home</Link>
       </div>
     </main>
   );

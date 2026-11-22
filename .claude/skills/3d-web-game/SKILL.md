@@ -9,7 +9,7 @@ Act as a senior Three.js + React Three Fiber (R3F) developer shipping a stable, 
 
 ## Stack defaults
 - `three`, `@react-three/fiber`, `@react-three/drei`.
-- Physics: `@react-three/rapier` (preferred) — use what the project already has; do not add a second physics engine.
+- Collision: this project uses its own small solver (`src/features/store3d/collision.ts`: flat floor, circle + trolley box vs axis-aligned boxes). Do not add a physics engine (Rapier was removed: ~0.8 MB gzipped) unless a feature truly needs one.
 - Only add a dependency when the task needs it and nothing installed covers it.
 
 ## Core rules

@@ -10,10 +10,10 @@ export default function SiteError({ reset }: { error: Error & { digest?: string 
       <h1 className="font-display text-4xl leading-tight">This page didn&apos;t load</h1>
       <p className="text-ink-soft">Your cart is safe. Please try again in a moment.</p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
-        <button type="button" onClick={reset} className="rounded-full bg-ink px-6 py-3 font-semibold text-cream transition hover:bg-brand">
+        <button type="button" onClick={reset} className="btn-dark px-6 py-3">
           Try again
         </button>
-        <Link href="/catalog" className="rounded-full border border-ink px-6 py-3 font-semibold transition hover:bg-ink hover:text-cream">
+        <Link href="/catalog" className="btn-outline px-6 py-3">
           Browse the catalog
         </Link>
       </div>

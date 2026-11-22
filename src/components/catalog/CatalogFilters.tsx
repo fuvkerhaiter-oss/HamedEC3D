@@ -9,7 +9,7 @@ import { PriceRangeForm } from "./CatalogControls";
 
 export function CatalogSearchBar({ query, categories }: { query: CatalogQuery; categories: Category[] }) {
   return (
-    <form action="/catalog" method="get" role="search" aria-label="Search the catalog" className="flex h-12 w-full overflow-hidden rounded-xl bg-white shadow-card ring-1 ring-line transition focus-within:ring-2 focus-within:ring-brand sm:h-14">
+    <form action="/catalog" method="get" role="search" aria-label="Search the catalog" className="flex h-12 w-full overflow-hidden rounded-xl bg-white shadow-card ring-1 ring-black/10 transition focus-within:ring-2 focus-within:ring-amber sm:h-14">
       <label className="sr-only" htmlFor="catalog-search-category">Search in category</label>
       <select
         id="catalog-search-category"
@@ -32,7 +32,7 @@ export function CatalogSearchBar({ query, categories }: { query: CatalogQuery; c
         enterKeyHint="search"
         className="min-w-0 flex-1 bg-transparent px-3 text-[15px] text-ink outline-none placeholder:text-ink-soft/60 sm:px-4 sm:text-base"
       />
-      <button type="submit" className="flex shrink-0 items-center gap-2 bg-ink px-4 font-semibold text-cream transition hover:bg-brand sm:px-6" aria-label="Search">
+      <button type="submit" className="flex shrink-0 items-center gap-2 bg-amber px-4 font-semibold text-ink transition hover:bg-amber-deep sm:px-6" aria-label="Search">
         <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <circle cx="8.5" cy="8.5" r="5.5" />
           <path d="M13 13l4 4" />
@@ -100,10 +100,10 @@ export function FilterPanel({ query, result, activeCount }: { query: CatalogQuer
                   href={catalogHref(query, { category: c.slug, options: [] })}
                   scroll={false}
                   aria-current={on ? "page" : undefined}
-                  className={`flex items-center justify-between rounded-md px-2 py-1.5 transition ${on ? "bg-ink font-semibold text-cream" : c.count === 0 ? "text-ink-soft/50 hover:bg-sand" : "text-ink-soft hover:bg-sand hover:text-ink"}`}
+                  className={`flex items-center justify-between rounded-md px-2 py-1.5 transition ${on ? "bg-brand font-semibold text-white" : c.count === 0 ? "text-ink-soft/50 hover:bg-sand" : "text-ink-soft hover:bg-sand hover:text-ink"}`}
                 >
                   <span>{c.name}</span>
-                  <span className={`font-mono text-[11px] ${on ? "text-cream/70" : "text-ink-soft/70"}`}>{c.count}</span>
+                  <span className={`font-mono text-[11px] ${on ? "text-white/70" : "text-ink-soft/70"}`}>{c.count}</span>
                 </Link>
               </li>
             );
