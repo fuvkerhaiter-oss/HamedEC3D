@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   const market = MARKETS[parsed.data.market];
   try {
-    const reader = await getCatalogReader();
+    const reader = await getCatalogReader(parsed.data.lines.map((l) => l.variantId));
     const opts = { currency: market.currency, taxMode: market.taxMode };
     let cart = await priceCart(parsed.data.lines, reader, opts);
     let coupon: { code: string; applied: boolean; message: string } | undefined;

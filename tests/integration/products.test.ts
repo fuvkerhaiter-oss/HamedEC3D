@@ -38,6 +38,12 @@ test("a product created in the admin appears in the storefront catalog only once
   assert.ok(p, "published product is in the catalog");
   assert.equal(p.variants[0]!.stockQuantity, 10);
   assert.deepEqual(p.variants[0]!.prices.map((m) => [m.currency, m.amount]).sort(), [["EUR", 1999], ["USD", 2199]]);
+  // Cart pricing reads only the products owning the requested variants (fresh, no categories).
+  const scoped = await loadCatalogSql(t.sql, "", [p.variants[0]!.id, p.variants[0]!.id, "not-a-uuid"]);
+  assert.deepEqual(scoped.products.map((x) => x.id), [p.id]);
+  assert.equal(scoped.categories.length, 0);
+  assert.equal(scoped.products[0]!.variants[0]!.stockQuantity, 10);
+  assert.deepEqual((await loadCatalogSql(t.sql, "", [])).products, []);
   assert.ok(cat2.categories.some((c) => c.name === "Pet Food"));
 
   // 3D shelf mapping: pin to a face outside the benchmark aisle → that face is stocked with it.

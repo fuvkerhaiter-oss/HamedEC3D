@@ -39,7 +39,7 @@ export function ProductCard({ product, categorySlug, categoryName, priority = fa
             alt={product.name}
             fill
             priority={priority}
-            sizes="(min-width: 1024px) 22vw, (min-width: 640px) 33vw, 50vw"
+            sizes="(min-width: 1200px) 270px, (min-width: 1024px) 22vw, (min-width: 640px) 33vw, 50vw"
             className="object-cover transition duration-700 group-hover:scale-105"
           />
         ) : (

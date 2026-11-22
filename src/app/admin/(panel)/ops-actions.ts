@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { expirePublicData, STOREFRONT_TAG } from "@/lib/cache/public-data";
 import { z } from "zod";
 import { adminAction, UserError } from "@/lib/admin/guard";
 import { bool, currency, int, money as moneyField, optInt, optMoneyAny, optStr, optUuid, reqStr, str, strList, uuid } from "@/lib/admin/form";
@@ -169,6 +170,7 @@ export const homeContentAction = adminAction(
   z.object({ heroEyebrow: str(80), heroTitle: str(120), heroSubtitle: str(400), announcement: str(200) }),
   async (i, { sql, actor }) => {
     await setSetting(sql, actor, "storefront.home", i);
+    expirePublicData(STOREFRONT_TAG);
     revalidatePath("/");
     revalidatePath("/", "layout");
     return { ok: true, message: "Homepage content published." };
@@ -183,6 +185,8 @@ export const savePageAction = adminAction("content.manage", z.object({ id: optUu
 
 export const publishPageAction = adminAction("content.manage", z.object({ id: uuid, publish: bool }), async (i, { sql, actor }) => {
   await friendly(() => setPagePublished(sql, actor, i.id, i.publish));
+  expirePublicData(STOREFRONT_TAG);
+  revalidatePath("/", "layout"); // footer lists published pages
   revalidatePath("/admin/content");
   revalidatePath("/pages/[slug]", "page");
   return { ok: true, message: i.publish ? "Published." : "Unpublished." };
@@ -202,6 +206,8 @@ export const settingsAction = adminAction(
     await setSetting(sql, actor, "store.default_low_stock_threshold", i.lowStock);
     await setSetting(sql, actor, "store.stock_all_faces", i.stockAllFaces);
     await setSetting(sql, actor, "store.seller", { legalName: i.legalName, address: i.address, vatNumber: i.vatNumber, email: i.sellerEmail });
+    expirePublicData(STOREFRONT_TAG);
+    revalidatePath("/");
     revalidatePath("/store");
     revalidatePath("/admin/settings");
     return { ok: true, message: "Settings saved." };

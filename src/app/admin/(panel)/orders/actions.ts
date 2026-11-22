@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { flushEmailOutbox } from "@/lib/email/outbox";
@@ -35,6 +36,7 @@ export const transitionAction = adminAction(
     if (i.to === "cancelled" && !i.reason) throw new UserError("Give a reason for cancelling");
     const r = await friendly(() => adminTransition(sql, actor, i.orderId, i.to, i.reason));
     done(i.orderId);
+    expirePublicData(CATALOG_TAG); // cancel/refund can release stock
     revalidatePath("/catalog");
     revalidatePath("/store");
     return { ok: true, message: `Order moved ${r.from} → ${r.to}.` };

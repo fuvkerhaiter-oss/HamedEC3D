@@ -27,7 +27,7 @@ export function ProductDetail({ product, categoryName }: { product: Product; cat
       <div>
         <div className="relative aspect-square overflow-hidden rounded-3xl bg-sand ring-1 ring-line">
           {current ? (
-            <Image key={current.url} src={current.url} unoptimized={!canOptimize(current.url)} alt={current.alt || product.name} fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+            <Image key={current.url} src={current.url} unoptimized={!canOptimize(current.url)} alt={current.alt || product.name} fill priority sizes="(min-width: 1200px) 580px, (min-width: 1024px) 50vw, 100vw" className="object-cover" />
           ) : (
             <div className="grid h-full place-items-center text-center">
               <span aria-hidden className="font-display text-8xl text-white/90">{product.name.slice(0, 1)}</span>

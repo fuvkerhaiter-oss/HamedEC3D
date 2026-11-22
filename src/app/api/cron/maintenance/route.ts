@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { expireStalePendingOrders } from "@/lib/checkout/service";
+import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { flushEmailOutbox } from "@/lib/email/outbox";
 import { syncMissingPaymentFinancials } from "@/lib/payments/financials";
@@ -23,6 +24,7 @@ export async function GET(req: Request) {
   if (!isDbConfigured()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   const db = getSql();
   const expired = await expireStalePendingOrders(db);
+  if (expired) expirePublicData(CATALOG_TAG); // released stock
   const emails = await flushEmailOutbox(db, 100);
   const financials = await syncMissingPaymentFinancials(db, (id) => getPaymentProvider(id)); // Stripe fees from balance transactions
   return NextResponse.json({ expired, emails, financials });

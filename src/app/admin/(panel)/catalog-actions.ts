@@ -1,11 +1,14 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { z } from "zod";
 import { adminAction, UserError } from "@/lib/admin/guard";
 import { bool, int, optUuid, reqStr, str, uuid } from "@/lib/admin/form";
 import { adjustStock, deleteCategory, moveCategory, saveCategory, setIncoming, setSupplierReported } from "@/lib/admin/services/catalog-admin";
 
 const refresh = () => {
+  expirePublicData(CATALOG_TAG);
+  revalidatePath("/catalog/[slug]", "page");
   revalidatePath("/catalog");
   revalidatePath("/store");
   revalidatePath("/");

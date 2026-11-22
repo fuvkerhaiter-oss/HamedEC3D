@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { adminAction, UserError } from "@/lib/admin/guard";
@@ -12,6 +13,8 @@ import {
 
 /** Storefront pages that read the catalog (ISR) are refreshed after every catalog change. */
 function refreshStorefront(productId?: string) {
+  expirePublicData(CATALOG_TAG);
+  revalidatePath("/catalog/[slug]", "page");
   revalidatePath("/catalog");
   revalidatePath("/store");
   revalidatePath("/");

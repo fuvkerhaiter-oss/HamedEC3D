@@ -6,8 +6,12 @@ import type { Db } from "../db/client";
 import { mapProductRow, type ProductRow } from "./source-map";
 import type { Category, Product } from "./types";
 
-export async function loadCatalogSql(db: Db, supabaseUrl: string): Promise<{ categories: Category[]; products: Product[] }> {
-  const cats = await db<{ id: string; slug: string; name: string }[]>`
+/** With `variantIds`, only products owning one of those variants are returned (cart pricing). */
+export async function loadCatalogSql(db: Db, supabaseUrl: string, variantIds?: readonly string[]): Promise<{ categories: Category[]; products: Product[] }> {
+  const only = variantIds ? [...new Set(variantIds)].slice(0, 500) : null;
+  if (only && only.length === 0) return { categories: [], products: [] };
+  // Pricing reads (variant filter) do not need the category list.
+  const cats = only ? [] : await db<{ id: string; slug: string; name: string }[]>`
     select id, slug, name from public.categories where is_active order by sort_order, name`;
   const rows = await db<{ row: ProductRow }[]>`
     select json_build_object(
@@ -31,6 +35,7 @@ export async function loadCatalogSql(db: Db, supabaseUrl: string): Promise<{ cat
     from public.products p
     left join public.categories c on c.id = p.category_id
     where p.status = 'published' and p.deleted_at is null and (c.id is null or c.is_active)
+      ${only ? db`and exists (select 1 from public.product_variants fv where fv.product_id = p.id and fv.id::text = any(${only}))` : db``}
     order by p.name`;
   return {
     categories: cats.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
+import { canOptimize } from "@/lib/catalog/image";
 import { formatMoney } from "@/lib/money";
 import { MARKETS } from "@/lib/markets";
 import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
@@ -69,8 +71,8 @@ export function CartDrawer() {
             {cart?.lines.map((l) => (
               <li key={l.variantId} className="flex gap-4 py-5">
                 {l.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- small thumbnail from the product's main image
-                  <img src={l.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl bg-sand object-cover" loading="lazy" />
+                  // 56 px thumbnail: optimized 64/128 px WebP instead of the full-size original
+                  <Image src={l.imageUrl} unoptimized={!canOptimize(l.imageUrl)} alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-xl bg-sand object-cover" />
                 ) : (
                   <span aria-hidden className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-sand font-display text-2xl text-ink-soft">
                     {l.productName.slice(0, 1)}

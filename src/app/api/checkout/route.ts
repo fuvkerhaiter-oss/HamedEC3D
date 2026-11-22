@@ -3,6 +3,7 @@ import { OrderError } from "@/lib/admin/services/orders";
 import { siteUrl } from "@/lib/checkout/order-link";
 import { CheckoutBody } from "@/lib/checkout/schema";
 import { checkoutProvider, checkoutUnavailableReason, expireStalePendingOrders, legalBlocker, startCheckout } from "@/lib/checkout/service";
+import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { getSql } from "@/lib/db/client";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   try {
     const input = { ...parsed.data, acceptTerms: undefined };
     const result = await startCheckout(db, input, { provider, siteUrl: siteUrl(req) });
+    expirePublicData(CATALOG_TAG); // stock was reserved: shown stock refreshes on the next page view
     return NextResponse.json({ redirectUrl: result.redirectUrl }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     if (e instanceof OrderError) return NextResponse.json({ error: e.message }, { status: 422 });

@@ -6,6 +6,7 @@ import { Environment, Lightformer, Text, useGLTF } from "@react-three/drei";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useCart } from "@/features/cart/cart-store";
 import { categoryColor } from "@/lib/catalog/colors";
+import { resizedImageUrl } from "@/lib/catalog/image";
 import { priceIn, type Category, type Product } from "@/lib/catalog/types";
 import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -43,7 +44,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
         return placements ? (
           <group key={`${p.id}-${placements.length}`}>
             <ProductInstances product={p} placements={placements} color={colorOf(p)} />
-            {p.imageUrl && <ProductPhotoFaces url={p.imageUrl} placements={placements} maxSize={lowPower ? 256 : 512} />}
+            {p.imageUrl && <ProductPhotoFaces url={resizedImageUrl(p.imageUrl, lowPower ? 256 : 640)} placements={placements} maxSize={lowPower ? 256 : 512} />}
           </group>
         ) : null;
       })}

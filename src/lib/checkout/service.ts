@@ -2,7 +2,7 @@
  * Checkout: server-priced order (createOrder: fresh prices, stock reserved atomically) → payment session at the
  * configured provider → redirect. The order becomes "paid" ONLY through a verified provider webhook.
  */
-import type { Db } from "../db/client";
+import { databaseUrl, type Db } from "../db/client";
 import { createOrder, OrderError, transitionOrderInDb, type CreateOrderInput } from "../admin/services/orders";
 import type { CurrencyCode } from "../money";
 import { getPaymentProvider, paymentProviderStatuses } from "../payments/registry";
@@ -19,7 +19,7 @@ export function checkoutProvider(env: NodeJS.ProcessEnv = process.env): PaymentP
 }
 
 export function checkoutUnavailableReason(env: NodeJS.ProcessEnv = process.env): string | null {
-  if (!env.DATABASE_URL) return "Checkout isn't connected to the order database yet.";
+  if (!databaseUrl(env)) return "Checkout isn't connected to the order database yet.";
   if (checkoutProvider(env)) return null;
   const stripe = paymentProviderStatuses(env).find((s) => s.id === "stripe");
   return stripe?.detail ?? "No payment provider is configured.";

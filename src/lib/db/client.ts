@@ -58,13 +58,42 @@ export function createSql(url: string, max = 5): Sql {
 
 const globalForDb = globalThis as unknown as { __megamarketSql?: Sql };
 
+/**
+ * Connection string to use.
+ * - On Vercel: the Vercel ↔ Supabase integration's POSTGRES_URL (IPv4 transaction pooler, port 6543, kept in
+ *   sync by the integration) wins; DATABASE_URL is only a fallback.
+ * - Elsewhere: DATABASE_URL wins (local dev DB), unless it points at Supabase's IPv6-only direct host and
+ *   POSTGRES_URL is available.
+ * Only sslmode is kept from POSTGRES_URL: the integration adds extra params (e.g. `supa=…`) that postgres.js
+ * would send to the server as startup parameters.
+ */
+export function databaseUrl(env: Partial<NodeJS.ProcessEnv> = process.env): string | undefined {
+  const direct = env.DATABASE_URL || undefined;
+  const pooled = env.POSTGRES_URL ? cleanPoolerUrl(env.POSTGRES_URL) : undefined;
+  if (env.VERCEL && pooled) return pooled;
+  if (direct && !directSupabaseHostHint(direct)) return direct;
+  return pooled ?? direct;
+}
+
+function cleanPoolerUrl(raw: string): string | undefined {
+  try {
+    const u = new URL(raw);
+    const ssl = u.searchParams.get("sslmode");
+    u.search = "";
+    if (ssl) u.searchParams.set("sslmode", ssl);
+    return u.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export function isDbConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(databaseUrl());
 }
 
 /** Shared pool (survives dev hot reloads). Throws when DATABASE_URL is missing. */
 export function getSql(): Sql {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!url) throw new DbNotConfiguredError();
   globalForDb.__megamarketSql ??= createSql(url);
   return globalForDb.__megamarketSql;

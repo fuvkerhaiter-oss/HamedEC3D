@@ -1,5 +1,6 @@
 /** Shared handling for admin image uploads (route handlers). */
 import { revalidatePath } from "next/cache";
+import { CATALOG_TAG, expirePublicData } from "../cache/public-data";
 import { NextResponse } from "next/server";
 import { clientIp, requireApi } from "./guard";
 import { ImageError, saveUploadedImage, toView } from "./services/images";
@@ -19,6 +20,7 @@ export function sameOrigin(req: Request): boolean {
 }
 
 export function refreshProductPages(slug?: string | null) {
+  expirePublicData(CATALOG_TAG); // new/replaced/removed photo → new URL in the catalog data at once
   revalidatePath("/catalog");
   revalidatePath("/store");
   revalidatePath("/");

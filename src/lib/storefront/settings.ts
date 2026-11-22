@@ -2,6 +2,8 @@
  * Storefront-facing settings and content managed in the admin (store_settings, cms_pages).
  * Without a database every value falls back to the built-in defaults, so the storefront never breaks.
  */
+import { cache } from "react";
+import { cachedPublic, STOREFRONT_TAG } from "../cache/public-data";
 import { getSql, isDbConfigured } from "../db/client";
 import { logFallback } from "../log";
 
@@ -21,7 +23,7 @@ const EMPTY_HOME: HomeContent = { heroEyebrow: "", heroTitle: "", heroSubtitle: 
 
 const str = (v: unknown, max = 400) => (typeof v === "string" ? v.slice(0, max) : "");
 
-export async function getStorefrontSettings(): Promise<StorefrontSettings> {
+async function loadStorefrontSettings(): Promise<StorefrontSettings> {
   if (!isDbConfigured()) return { stockAllFaces: undefined, home: EMPTY_HOME };
   try {
     const rows = await getSql()<{ key: string; value: unknown }[]>`
@@ -51,15 +53,16 @@ export interface PublishedPage {
   publishedAt: string | null;
 }
 
-export async function getPublishedPage(slug: string): Promise<PublishedPage | null> {
+/** Deduplicated per request (metadata + page both ask); the page itself is ISR. */
+export const getPublishedPage = cache(async (slug: string): Promise<PublishedPage | null> => {
   if (!isDbConfigured() || !/^[a-z0-9-]{1,80}$/.test(slug)) return null;
   const [row] = await getSql()<{ slug: string; title: string; published_body: string; published_at: Date | null }[]>`
     select slug, title, published_body, published_at from public.cms_pages
      where slug = ${slug} and status = 'published' and published_body is not null`;
   return row ? { slug: row.slug, title: row.title, body: row.published_body, publishedAt: row.published_at?.toISOString() ?? null } : null;
-}
+});
 
-export async function listPublishedPages(): Promise<{ slug: string; title: string }[]> {
+async function loadPublishedPages(): Promise<{ slug: string; title: string }[]> {
   if (!isDbConfigured()) return [];
   try {
     return await getSql()<{ slug: string; title: string }[]>`
@@ -68,3 +71,8 @@ export async function listPublishedPages(): Promise<{ slug: string; title: strin
     return [];
   }
 }
+
+// Public, identical for every visitor and read by the site layout on every page: shared server cache,
+// expired immediately by the admin content/settings/page actions (expirePublicData(STOREFRONT_TAG)).
+export const getStorefrontSettings = cache(cachedPublic("storefront-settings-v1", STOREFRONT_TAG, loadStorefrontSettings));
+export const listPublishedPages = cache(cachedPublic("published-pages-v1", STOREFRONT_TAG, loadPublishedPages));

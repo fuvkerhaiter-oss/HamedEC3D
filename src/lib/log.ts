@@ -15,10 +15,16 @@ export function logError(label: string, e: unknown): void {
 const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT"]);
 const warned = new Set<string>();
 
-/** The database can't be reached at all (not running, wrong host) — as opposed to a query failing. */
+/**
+ * The database can't be used at all — not running, wrong host, or the server/pooler refused the connection
+ * (wrong user/password/region: Supabase's pooler answers FATAL XX000 "Tenant or user not found") — as opposed
+ * to a single query failing (severity ERROR).
+ */
 export function isDbUnreachable(e: unknown): boolean {
-  const err = e as { code?: string; errors?: { code?: string }[] };
-  return CONNECTION_CODES.has(String(err?.code)) || (err?.errors ?? []).some((x) => CONNECTION_CODES.has(String(x?.code)));
+  const err = e as { code?: string; severity?: string; severity_local?: string; errors?: { code?: string }[] };
+  if (CONNECTION_CODES.has(String(err?.code)) || (err?.errors ?? []).some((x) => CONNECTION_CODES.has(String(x?.code)))) return true;
+  const code = String(err?.code ?? "");
+  return err?.severity === "FATAL" || err?.severity_local === "FATAL" || code.startsWith("08") || code.startsWith("28") || code === "3D000";
 }
 
 /**
