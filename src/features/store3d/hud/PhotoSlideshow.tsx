@@ -132,8 +132,8 @@ export function PhotoSlideshow({
         const g = images[i]!;
         const on = i === current;
         return (
-          <div key={i} className="absolute inset-0 transition-opacity duration-700 ease-in-out motion-reduce:transition-none" style={{ opacity: on ? 1 : 0 }} aria-hidden={!on || undefined}>
-            <Image src={g.url} unoptimized={!canOptimize(g.url)} alt={decorative ? "" : g.alt} fill sizes={sizes} className="object-cover" draggable={false} onLoad={() => onLoaded(g.url)} />
+          <div key={i} className="absolute inset-0 bg-white transition-opacity duration-700 ease-in-out motion-reduce:transition-none" style={{ opacity: on ? 1 : 0 }} aria-hidden={!on || undefined}>
+            <Image src={g.url} unoptimized={!canOptimize(g.url)} alt={decorative ? "" : g.alt} fill sizes={sizes} className="object-contain" draggable={false} onLoad={() => onLoaded(g.url)} />
           </div>
         );
       })}

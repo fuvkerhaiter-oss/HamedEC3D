@@ -6,6 +6,11 @@
 - Restyled: nav hover (yellow underline), announcement bar, footer (dark green + black bar), home sections below the hero (feature grid, dark "How it works", yellow closing CTA), catalog header band (green, yellow search), product cards, product page (category pill, trust row), cart drawer, help page, error/404 buttons.
 - Checked in the browser (home, catalog, product, cart). typecheck + lint clean on the changed files. `next build` compiles but its type-check stops on another session's temp file `tools/_tmp_walk.ts`. Not changed by this pass.
 
+## 3D store popups show whole product photos (2026-11-22)
+- Peek card (340×170) and product dialog used `object-cover`, cropping square product photos (text/infographics cut off). Now `object-contain` on white (`.vsw-peek-media-photo`, slideshow layers `bg-white`), peek photo 170 → 200 px, dialog photo min height 56 → 72 (sm). Placeholder/initial letter unchanged.
+- Checked in Edge on the real store (peek + dialog): whole photo visible, no errors. typecheck/lint clean, e2e smoke 8/8.
+- Stripe test keys are set in the local `.env.local` only (checked against Stripe: test account, IT, EUR). Live site: owner adds them + webhook secret in Vercel (steps in INTEGRATION_GUIDE "Stripe").
+
 ## Stock right on the product page (2026-11-22)
 - Owner's live product didn't show on the 3D shelves: its only variant had **0 stock** (the 3D layout leaves an empty facing with a "Sold out" tag), and they had typed 1000 into "Low-stock alert at", thinking it was the stock. Stock could only be set on Stock (Inventory).
 - Product page (`admin/(panel)/products/[id]`): each size/option now opens with a "How many you have (stock)" box + "Save stock" (same `adjustStockAction`, movement + change-history entry, reason "Set on the product page"; needs `inventory.adjust`); sold-out options open automatically; a "Nothing in stock" warning shows on live products with no sellable stock. New-variant field renamed "How many you have (stock)"; "Low-stock alert at" now says it is NOT the stock. Saving stock refreshes the shop, the 3D store and the admin page at once.

@@ -142,11 +142,11 @@ function PeekCallout({ product, catalog, leaving }: { product: Product; catalog:
               style={{ "--peek-accent": info.color } as CSSProperties}
             >
               <div className="vsw-peek-bg" />
-              <div className="vsw-peek-media">
+              <div className={`vsw-peek-media${product.imageUrl ? " vsw-peek-media-photo" : ""}`}>
                 {gallery.length > 1 ? (
                   <PhotoSlideshow key={product.id} images={gallery} sizes="(max-width: 640px) 110px, 340px" decorative active={!leaving} />
                 ) : product.imageUrl ? (
-                  <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt="" fill sizes="(max-width: 640px) 110px, 340px" className="object-cover" />
+                  <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt="" fill sizes="(max-width: 640px) 110px, 340px" className="object-contain" />
                 ) : (
                   <span className="vsw-peek-initial" aria-hidden>{product.name.slice(0, 1)}</span>
                 )}

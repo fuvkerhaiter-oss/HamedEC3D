@@ -65,11 +65,11 @@ export function ProductPanel({
   return (
     <div ref={dialog} className="fixed inset-0 z-30 flex overflow-y-auto overscroll-contain bg-ink/50 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="product-title">
       <div className="m-auto grid w-full max-w-3xl overflow-hidden rounded-3xl bg-cream shadow-2xl md:grid-cols-2 short:grid-cols-[2fr_3fr]">
-        <div className="relative min-h-44 bg-sand sm:min-h-56 short:min-h-0">
+        <div className={`relative min-h-44 sm:min-h-72 short:min-h-0 ${product.imageUrl ? "bg-white" : "bg-sand"}`}>
           {gallery.length > 1 ? (
             <PhotoSlideshow key={product.id} images={gallery} sizes="(min-width: 768px) 50vw, 100vw" controls keyTarget={dialog} />
           ) : product.imageUrl ? (
-            <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt={product.name} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+            <Image src={product.imageUrl} unoptimized={!canOptimize(product.imageUrl)} alt={product.name} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-contain" />
           ) : (
             <div className="flex h-full min-h-44 flex-col items-center justify-center gap-2 p-6 text-center text-ink-soft sm:min-h-56">
               <span className="font-display text-6xl text-ink/30" aria-hidden>{product.name.slice(0, 1)}</span>

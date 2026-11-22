@@ -112,7 +112,7 @@
 }
 .vsw-peek-media {
   position: relative;
-  height: 170px;
+  height: 200px;
   border-radius: 16px;
   overflow: hidden;
   background:
@@ -121,6 +121,10 @@
   box-shadow: 0 14px 28px -12px rgb(0 0 0 / 0.45);
   transform: translateZ(34px);
   animation: vsw-peek-pop 720ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Real photos are shown whole (object-contain) on white, like a product shot, never cropped to the box. */
+.vsw-peek-media-photo {
+  background: #fff;
 }
 .vsw-peek-initial {
   position: absolute;
