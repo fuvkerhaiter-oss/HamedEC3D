@@ -6,6 +6,12 @@
 - Restyled: nav hover (yellow underline), announcement bar, footer (dark green + black bar), home sections below the hero (feature grid, dark "How it works", yellow closing CTA), catalog header band (green, yellow search), product cards, product page (category pill, trust row), cart drawer, help page, error/404 buttons.
 - Checked in the browser (home, catalog, product, cart). typecheck + lint clean on the changed files. `next build` compiles but its type-check stops on another session's temp file `tools/_tmp_walk.ts`. Not changed by this pass.
 
+## Stock right on the product page (2026-11-22)
+- Owner's live product didn't show on the 3D shelves: its only variant had **0 stock** (the 3D layout leaves an empty facing with a "Sold out" tag), and they had typed 1000 into "Low-stock alert at", thinking it was the stock. Stock could only be set on Stock (Inventory).
+- Product page (`admin/(panel)/products/[id]`): each size/option now opens with a "How many you have (stock)" box + "Save stock" (same `adjustStockAction`, movement + change-history entry, reason "Set on the product page"; needs `inventory.adjust`); sold-out options open automatically; a "Nothing in stock" warning shows on live products with no sellable stock. New-variant field renamed "How many you have (stock)"; "Low-stock alert at" now says it is NOT the stock. Saving stock refreshes the shop, the 3D store and the admin page at once.
+- e2e admin test extended (set 0 → warning, set 25 → gone); admin e2e 6/6, unit 122/122, typecheck/lint clean.
+- Owner: set real stock for the cat fountain, and change its "Low-stock alert at" from 1000 to a small number (else it will always alert).
+
 ## Speed pass: pages served from the cache (2026-11-22)
 - Measured with new `tools/perf/measure-pages.ts` (headless Edge, Pixel 7, ≈ fast 4G 9 Mbit/s / 150 ms, 4× CPU) on the local production build. First paint: home 2.2 s, catalog 1.1 s, product 1.3 s, 3D store 3.1 s (fade-in loading screen; 3.5 MB in the first 10 s). Server time locally 10–40 ms for every page.
 - Biggest problem on Vercel: `/store` (force-dynamic) and `/catalog/[slug]` (no generateStaticParams) ran a server function on EVERY visit, which wakes a function and may wait on the (currently slow) Supabase database. Now both are cached (ISR, 60 s, and admin edits still refresh them at once): `/store` ○, `/catalog/[slug]` ● (rendered on first visit, then cached). Verified `x-nextjs-cache: HIT`. Only `/catalog` (filters via URL) and checkout/account/admin stay per-request.

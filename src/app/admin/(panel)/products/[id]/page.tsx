@@ -16,6 +16,7 @@ import { toDecimalString } from "@/lib/money";
 import {
   deleteProductsAction, placementAction, removeVariantAction, restoreProductAction, saveProductAction, saveVariantAction, setStatusAction,
 } from "../actions";
+import { adjustStockAction } from "../../catalog-actions";
 
 export const metadata = { title: "Product" };
 
@@ -36,9 +37,9 @@ function VariantForm({ productId, v, suppliers, showCosts }: { productId: string
         <Field label="Weight (g)"><input name="weightGrams" inputMode="numeric" defaultValue={v?.weight_grams ?? ""} className="admin-input font-mono" /></Field>
         <Field label="Barcode"><input name="barcode" defaultValue={v?.barcode ?? ""} className="admin-input font-mono" /></Field>
         <Field label="Attributes" hint="key=value; key=value"><input name="attributes" defaultValue={v ? Object.entries(v.attributes).map(([k, x]) => `${k}=${x}`).join("; ") : ""} className="admin-input" /></Field>
-        <Field label="Low-stock alert at"><input name="lowStockThreshold" inputMode="numeric" defaultValue={v?.low_stock_threshold ?? ""} placeholder="default" className="admin-input font-mono" /></Field>
+        <Field label="Low-stock alert at" hint="Warn me when only this many are left. This is NOT your stock."><input name="lowStockThreshold" inputMode="numeric" defaultValue={v?.low_stock_threshold ?? ""} placeholder="default" className="admin-input font-mono" /></Field>
         <Field label="Sort order"><input name="sortOrder" inputMode="numeric" defaultValue={v?.sort_order ?? 0} className="admin-input font-mono" /></Field>
-        {!v && <Field label="Initial stock" hint="Logged as a stock movement"><input name="initialStock" inputMode="numeric" defaultValue={0} className="admin-input font-mono" /></Field>}
+        {!v && <Field label="How many you have (stock)" hint="0 = sold out: it can't be bought and its 3D shelf space stays empty"><input name="initialStock" inputMode="numeric" defaultValue={0} className="admin-input font-mono" /></Field>}
       </div>
       {showCosts && (
         <div className="grid gap-3 rounded-xl bg-cream p-3 sm:grid-cols-4">
@@ -57,6 +58,30 @@ function VariantForm({ productId, v, suppliers, showCosts }: { productId: string
       )}
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isActive" defaultChecked={v?.is_active ?? true} className="h-4 w-4" /> Active (sellable)</label>
     </ActionForm>
+  );
+}
+
+/** "How many do you have?" right on the product page (same action + movement log as Stock (Inventory)). */
+function StockBox({ v, canAdjust }: { v: VariantDetail; canAdjust: boolean }) {
+  const available = v.quantity - v.reserved;
+  return (
+    <div className={`mb-4 rounded-xl border p-3 ${available <= 0 ? "border-amber-300 bg-amber-50" : "border-line bg-cream"}`}>
+      <p className="text-sm font-semibold">How many you have (stock)</p>
+      <p className="mt-0.5 text-xs text-ink-soft">
+        {available <= 0
+          ? "Sold out right now: customers can't buy it and its space on the 3D shelf stays empty."
+          : `${available} can be bought${v.reserved ? ` (${v.reserved} more are kept for unpaid orders)` : ""}.`}
+      </p>
+      {canAdjust ? (
+        <ActionForm action={adjustStockAction} submitLabel="Save stock" className="mt-2">
+          <input type="hidden" name="variantId" value={v.id} />
+          <input type="hidden" name="reason" value="Set on the product page" />
+          <input name="quantity" type="number" min={v.reserved} defaultValue={v.quantity} aria-label={`Stock for ${v.name}`} className="admin-input !w-32 font-mono" />
+        </ActionForm>
+      ) : (
+        <p className="mt-2 font-mono text-sm">{v.quantity}</p>
+      )}
+    </div>
   );
 }
 
@@ -103,6 +128,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </Notice>
         </div>
       )}
+      {p && p.status === "published" && !p.deleted_at && detail!.variants.length > 0 && detail!.variants.every((v) => !v.is_active || v.quantity - v.reserved <= 0) && (
+        <div className="mb-4"><Notice tone="warn" title="Nothing in stock">
+          This product is live but sold out, so customers can&apos;t buy it and it isn&apos;t shown on the 3D shelves (only an empty space with a “Sold out” tag). Type how many you have in “How many you have (stock)” under Sizes &amp; prices and press “Save stock”.
+        </Notice></div>
+      )}
       {p?.is_mock && <div className="mb-4"><Notice tone="warn" title="Sample product">This is an example product (customers see a “Sample” label). Replace it with your real products before opening the shop.</Notice></div>}
       {p?.deleted_at && (
         <div className="mb-4"><Notice tone="bad" title="Deleted">This product was deleted on {fmtDate(p.deleted_at)} and is only kept so old orders still show it.
@@ -145,7 +175,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 {detail!.variants.map((v) => {
                   const m = v.price_eur !== null && v.cost_amount !== null && v.cost_currency === "EUR" ? marginBps(v.price_eur, v.cost_amount) : v.price_usd !== null && v.cost_amount !== null && v.cost_currency === "USD" ? marginBps(v.price_usd, v.cost_amount) : null;
                   return (
-                    <details key={v.id} className="group rounded-xl border border-line">
+                    <details key={v.id} className="group rounded-xl border border-line" open={v.quantity - v.reserved <= 0 || detail!.variants.length === 1}>
                       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3 text-sm">
                         <span className="font-mono text-xs">{v.sku}</span>
                         <span className="font-medium">{v.name}</span>
@@ -157,8 +187,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                         </span>
                       </summary>
                       <div className="border-t border-line p-4">
+                        <StockBox v={v} canAdjust={can("inventory.adjust") && !p.deleted_at} />
                         <fieldset disabled={!can("products.edit")}><VariantForm productId={p.id} v={v} suppliers={suppliers} showCosts={showCosts} /></fieldset>
-                        <p className="mt-3 text-xs text-ink-soft">To change how many you have, go to <Link className="underline" href={`/admin/inventory?q=${encodeURIComponent(v.sku)}`}>Stock (Inventory)</Link>.</p>
+                        <p className="mt-3 text-xs text-ink-soft">Stock history and all products at once: <Link className="underline" href={`/admin/inventory?q=${encodeURIComponent(v.sku)}`}>Stock (Inventory)</Link>.</p>
                         {can("products.edit") && (
                           <ActionForm action={removeVariantAction} inline className="mt-3" confirm={`Remove ${v.name} (${v.sku})?`}>
                             <input type="hidden" name="productId" value={p.id} /><input type="hidden" name="variantId" value={v.id} />

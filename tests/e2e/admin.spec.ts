@@ -67,7 +67,7 @@ test("super admin creates and publishes a product; it appears in the storefront 
   await variant.getByLabel("Name", { exact: true }).fill("500 g");
   await variant.getByLabel("Price EUR (VAT incl.)").fill("4.99");
   await variant.getByLabel("Price USD (pre-tax)").fill("5.49");
-  await variant.getByLabel("Initial stock").fill("12");
+  await variant.getByLabel("How many you have (stock)").fill("12");
   await variant.getByRole("button", { name: "Add variant" }).click();
   await expect(page.getByRole("heading", { name: "Sizes & prices (1)" })).toBeVisible();
   await expect(page.getByText("E2E-DOG-1", { exact: true })).toBeVisible();
@@ -89,6 +89,23 @@ test("super admin creates and publishes a product; it appears in the storefront 
   await expect(page.getByRole("status").filter({ hasText: "Stock set to 3" })).toBeVisible();
   await page.goto("/admin/activity?q=E2E");
   await expect(page.getByText("E2E-DOG-1: stock set to 3 (E2E recount)")).toBeVisible();
+
+  // Stock can also be set right on the product page; sold out shows a warning there.
+  await page.goto("/admin/products?q=E2E%20Dog");
+  await page.getByRole("link", { name: "E2E Dog Biscuits" }).first().click();
+  const stock = page.getByLabel("Stock for 500 g");
+  await expect(stock).toHaveValue("3");
+  await stock.fill("0");
+  await page.getByRole("button", { name: "Save stock" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Stock set to 0" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Nothing in stock", { exact: true })).toBeVisible();
+  await page.getByLabel("Stock for 500 g").fill("25");
+  await page.getByRole("button", { name: "Save stock" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Stock set to 25" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Nothing in stock", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("25 can be bought.")).toBeVisible();
 });
 
 test("admin works on a phone: drawer navigation, no horizontal scroll", async ({ browser }) => {

@@ -55,6 +55,7 @@ export const adjustStockAction = adminAction(
     const r = await adjustStock(sql, actor, i.variantId, i.quantity, i.reason);
     refresh();
     revalidatePath("/admin/inventory");
+    revalidatePath("/admin/products/[id]", "page");
     return { ok: true, message: `Stock set to ${r.quantity} (${r.quantity - r.reserved} available).` };
   },
 );
