@@ -8,6 +8,7 @@ import { formatMoney, type Money } from "@/lib/money";
 import { US_STATES } from "@/lib/shipping/address";
 import type { ShippingOption } from "@/lib/shipping/quote";
 import { useCart } from "@/features/cart/cart-store";
+import { useAuthStore } from "@/features/auth/auth-store";
 
 const FIELD = "mt-1 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-amber/40";
 const LABEL = "block text-sm font-medium";
@@ -35,6 +36,7 @@ function checkoutKey(cartKey: string): string {
 }
 
 export function CheckoutForm({ unavailable, cancelled }: { unavailable: string | null; cancelled: boolean }) {
+  const user = useAuthStore((s) => s.user);
   const lines = useCart((s) => s.lines);
   const cartMarket = useCart((s) => s.market);
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false); // cart lives in localStorage
@@ -161,10 +163,21 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
         )}
 
         <section className="rounded-3xl bg-white/70 p-6 shadow-card">
-          <h2 className="font-display text-xl">Contact</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl">Contact</h2>
+            {!user && (
+              <button
+                type="button"
+                onClick={() => useAuthStore.getState().openAuth("welcome")}
+                className="text-xs font-semibold text-ink underline decoration-amber decoration-2 underline-offset-2 hover:text-amber"
+              >
+                Sign in to use saved details
+              </button>
+            )}
+          </div>
           <label className="mt-4 block">
             <span className={LABEL}>Email</span>
-            <input name="email" type="email" required autoComplete="email" className={FIELD} />
+            <input key={user?.email || "guest"} name="email" type="email" required autoComplete="email" defaultValue={user?.email || ""} className={FIELD} />
             <span className="mt-1 block text-xs text-ink-soft">For your order confirmation and tracking.</span>
           </label>
         </section>

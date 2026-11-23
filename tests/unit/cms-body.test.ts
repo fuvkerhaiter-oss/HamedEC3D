@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseCmsBody } from "../../src/lib/storefront/cms-body";
-import { LEGAL_PAGES } from "../../tools/content/legal-templates";
+import { LEGAL_PAGES } from "../../src/lib/legal/templates";
 
 test("heading followed directly by text: heading stays short, text becomes content", () => {
   assert.deepEqual(parseCmsBody("# At a glance\n• One.\n• Two."), [{ kind: "h2", text: "At a glance" }, { kind: "list", items: ["One.", "Two."] }]);

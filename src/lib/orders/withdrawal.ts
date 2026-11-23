@@ -159,11 +159,43 @@ export interface SubmitWithdrawalInput {
 const fmtWhen = (d: Date) => `${d.toLocaleString("en-GB", { timeZone: "Europe/Rome", dateStyle: "long", timeStyle: "short" })} (Italian time)`;
 
 /** Acknowledgement of receipt on a durable medium: content of the statement + date and time of receipt. */
-export function withdrawalAckEmail(p: { orderNumber: number; fullName: string; submittedAt: Date; items: { name: string; variant: string; quantity: number }[]; wholeOrder: boolean; orderLink: string; returnsLink: string }): { subject: string; text: string } {
+export function withdrawalAckEmail(p: { orderNumber: number; fullName: string; submittedAt: Date; items: { name: string; variant: string; quantity: number }[]; wholeOrder: boolean; orderLink: string; returnsLink: string }): { subject: string; text: string; html: string } {
   const first = p.fullName.split(" ")[0] || "there";
   const items = p.items.map((i) => `  ${i.quantity} × ${i.name}${i.variant && i.variant !== "Default" ? ` (${i.variant})` : ""}`).join("\n");
+  const receivedOn = fmtWhen(p.submittedAt);
+  const subject = `We received your withdrawal for order #${p.orderNumber}`;
+  const html = renderEmail({
+    subject,
+    siteUrl: new URL(p.orderLink).origin,
+    eyebrow: "Withdrawal received",
+    heading: "We've got your withdrawal.",
+    intro: "This email confirms that we received your statement of withdrawal.",
+    preheader: `Withdrawal for order #${p.orderNumber} received on ${receivedOn}`,
+    content: [
+      panel(detailRows([
+        { label: "Order", value: `#${p.orderNumber}` },
+        { label: "Received on", value: receivedOn },
+        { label: "Name", value: p.fullName },
+        { label: "You withdrew from", value: p.wholeOrder ? "The whole order" : "These items" },
+      ]), "white"),
+      label(p.wholeOrder ? "The whole order" : "Items withdrawn"),
+      itemTable(p.items.map((i) => ({ name: i.name, variant: i.variant, quantity: i.quantity }))),
+      h2("What happens next"),
+      steps([
+        { title: "If you have not received the goods yet", body: "we will try to stop the shipment. If it has already left, you can refuse the parcel or return it once it arrives." },
+        { title: "If you already have the goods", body: "please wait for our email with the return address and instructions (within 2 business days). Do not send anything to the sender address printed on the parcel: it may be a supplier's warehouse that does not accept returns." },
+        { title: "Send the goods back", body: "within 14 days of today." },
+        { title: "We refund all payments", body: "for the withdrawn items, including standard delivery costs where the law requires it, within 14 days of today, using your original payment method. We may wait until we receive the goods or proof that you sent them." },
+      ]),
+      `<div style="height:18px"></div>`,
+      button(p.orderLink, "View your order"),
+      button(p.returnsLink, "Returns policy", "ghost"),
+      note(`<strong style="color:#0d0f0e">Keep this email:</strong> it is your proof of withdrawal. Questions? Just reply with your order number #${p.orderNumber}.`),
+    ].join(""),
+    footerNote: "You received this acknowledgement because a withdrawal was submitted for this order.",
+  });
   return {
-    subject: `We received your withdrawal for order #${p.orderNumber}`,
+    subject,
     text: `Hello ${first},
 
 This email confirms that we received your statement of withdrawal.

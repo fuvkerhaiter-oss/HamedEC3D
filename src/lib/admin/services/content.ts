@@ -2,10 +2,12 @@
 import type { Db } from "../../db/client";
 import { logActivity, type Actor } from "../audit";
 import { slugify } from "./products";
+import { LEGAL_PAGES } from "../../legal/templates";
+import { fillLegalPlaceholders, legalFactsFromEnv } from "../../legal/fill";
 
 export async function listPages(db: Db) {
-  return db<{ id: string; slug: string; title: string; status: string; published_at: Date | null; updated_at: Date; has_unpublished_changes: boolean }[]>`
-    select id, slug, title, status, published_at, updated_at, (published_body is distinct from draft_body) as has_unpublished_changes
+  return db<{ id: string; slug: string; title: string; status: string; published_at: Date | null; updated_at: Date; has_unpublished_changes: boolean; draft_body: string }[]>`
+    select id, slug, title, status, published_at, updated_at, (published_body is distinct from draft_body) as has_unpublished_changes, draft_body
       from public.cms_pages order by title`;
 }
 
@@ -29,10 +31,31 @@ export async function savePage(db: Db, actor: Actor, p: { id?: string; slug: str
   return row!.id;
 }
 
+/**
+ * Creates the missing legal pages (terms, privacy, returns, shipping, cookies, legal notice, about) as DRAFTS,
+ * pre-filled with the seller details from Settings. Existing pages are never touched. Nothing is published.
+ */
+export async function addLegalTemplates(db: Db, actor: Actor): Promise<string[]> {
+  const [row] = await db<{ value: Record<string, unknown> }[]>`select value from public.store_settings where key = ${"store.seller"}`;
+  const facts = legalFactsFromEnv(row?.value ?? {});
+  const added: string[] = [];
+  for (const p of LEGAL_PAGES) {
+    const rows = await db<{ id: string }[]>`insert into public.cms_pages (slug, title, draft_body, status, updated_by)
+      values (${p.slug}, ${p.title}, ${fillLegalPlaceholders(p.body, facts)}, ${"draft"}, ${actor.id})
+      on conflict (slug) do nothing returning id`;
+    if (rows.length) {
+      added.push(p.title);
+      await logActivity(db, actor, { action: "page.create", entity: "page", entityId: rows[0]!.id, summary: `Added legal template ${p.title}` });
+    }
+  }
+  return added;
+}
+
 export async function setPagePublished(db: Db, actor: Actor, id: string, publish: boolean) {
   if (publish) {
     const [p] = await db<{ draft_body: string }[]>`select draft_body from public.cms_pages where id = ${id}`;
     if (!p?.draft_body.trim()) throw new Error("Write some content before publishing");
+    if (/^s*TEMPLATE/.test(p.draft_body)) throw new Error("This is still a template: fill the [brackets], have it checked, and delete the first “TEMPLATE —” line before publishing");
     await db`update public.cms_pages set published_body = draft_body, status = 'published', published_at = now(), updated_by = ${actor.id} where id = ${id}`;
   } else {
     await db`update public.cms_pages set status = 'unpublished', updated_by = ${actor.id} where id = ${id}`;

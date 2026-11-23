@@ -8,6 +8,7 @@ import { MARKETS } from "@/lib/markets";
 import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
 import { cartCount, useCart } from "./cart-store";
 import { usePricedCart } from "./usePricedCart";
+import { useAuthStore } from "@/features/auth/auth-store";
 
 const STEP_BTN =
   "flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold transition hover:bg-white active:scale-75 disabled:opacity-30 disabled:hover:bg-transparent";
@@ -167,6 +168,18 @@ export function CartDrawer() {
             <p className="mt-2 text-xs text-ink-soft">
               {market.taxMode === "inclusive" ? "Prices include VAT. Shipping calculated at checkout." : "Sales tax and shipping calculated at checkout."}
             </p>
+            {!useAuthStore.getState().user && (
+              <div className="mt-3 flex items-center justify-between rounded-2xl bg-sand px-3.5 py-2 text-xs">
+                <span className="text-ink-soft">Shopping as guest?</span>
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); useAuthStore.getState().openAuth("welcome"); }}
+                  className="font-bold text-ink underline decoration-amber decoration-2 underline-offset-2 hover:text-amber"
+                >
+                  Sign in to save trolley
+                </button>
+              </div>
+            )}
             <a
               href="/checkout"
               onClick={() => setOpen(false)}

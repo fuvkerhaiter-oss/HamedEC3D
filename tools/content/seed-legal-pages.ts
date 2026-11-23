@@ -7,7 +7,7 @@
  * drafts, so only use it if you have not started filling them in. Published pages are never touched.
  */
 import postgres from "postgres";
-import { LEGAL_PAGES } from "./legal-templates";
+import { LEGAL_PAGES } from "../../src/lib/legal/templates";
 
 async function main() {
   const url = process.env.DATABASE_URL;

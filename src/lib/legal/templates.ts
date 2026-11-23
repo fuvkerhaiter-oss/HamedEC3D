@@ -3,9 +3,9 @@
  * fill every [BRACKETED] field and have a lawyer review before publishing. Format = CMS plain text
  * (blank line = paragraph, "# " = heading).
  */
-import { PRIVACY_BODY } from "./legal/privacy";
-import { RETURNS_BODY } from "./legal/returns";
-import { TERMS_BODY } from "./legal/terms";
+import { PRIVACY_BODY } from "./texts/privacy";
+import { RETURNS_BODY } from "./texts/returns";
+import { TERMS_BODY } from "./texts/terms";
 
 export const LEGAL_PAGES: { slug: string; title: string; body: string }[] = [
   // Full texts live in ./legal/*.ts (long; reviewed separately).

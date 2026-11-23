@@ -41,7 +41,7 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv): ConfigIssue[] {
   if (!v("RESEND_API_KEY")) warn("RESEND_API_KEY", "missing — customer emails are recorded but NOT sent");
   if (!v("EMAIL_FROM")) warn("EMAIL_FROM", "missing — needs an address on a domain verified in Resend");
   if (!v("SUPPORT_EMAIL")) warn("SUPPORT_EMAIL", "missing — contact-form messages only reach the admin panel");
-  if (!v("NEXT_PUBLIC_SUPABASE_URL") || !v("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")) warn("NEXT_PUBLIC_SUPABASE_URL", "Supabase URL/publishable key missing (product images storage, 3D rooms)");
+  if (!v("NEXT_PUBLIC_SUPABASE_URL") || !v("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")) warn("NEXT_PUBLIC_SUPABASE_URL", "Supabase URL/publishable key missing (customer authentication, product images storage, 3D rooms)");
   if (!v("SUPABASE_SECRET_KEY")) warn("SUPABASE_SECRET_KEY", "missing — product image uploads disabled");
 
   // Secrets must never be exposed through NEXT_PUBLIC_* variables.

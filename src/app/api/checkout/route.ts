@@ -7,6 +7,7 @@ import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { getSql } from "@/lib/db/client";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
+import { getAuthUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
   if (legal) return NextResponse.json({ error: `Checkout is not open yet. ${legal}` }, { status: 503 });
   void expireStalePendingOrders(db).catch((e) => logError("pending order expiry failed", e));
   try {
-    const input = { ...parsed.data, acceptTerms: undefined };
+    const user = await getAuthUser();
+    const input = { ...parsed.data, userId: user?.id ?? undefined, acceptTerms: undefined };
     const result = await startCheckout(db, input, { provider, siteUrl: siteUrl(req) });
     expirePublicData(CATALOG_TAG); // stock was reserved: shown stock refreshes on the next page view
     return NextResponse.json({ redirectUrl: result.redirectUrl }, { headers: { "Cache-Control": "no-store" } });

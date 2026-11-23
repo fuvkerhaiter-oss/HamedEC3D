@@ -7,7 +7,7 @@ import { bool, currency, int, money as moneyField, optInt, optMoneyAny, optStr, 
 import { ADMIN_ROLES } from "@/lib/admin/permissions";
 import { logActivity } from "@/lib/admin/audit";
 import { saveCoupon } from "@/lib/admin/services/coupons";
-import { savePage, setPagePublished } from "@/lib/admin/services/content";
+import { addLegalTemplates, savePage, setPagePublished } from "@/lib/admin/services/content";
 import { addExpense, addRate, deleteExpense } from "@/lib/admin/services/finance";
 import { markRead, markUnread } from "@/lib/admin/services/notifications";
 import { inviteAdmin, moderateReview, resetAdminPassword, updateAdmin } from "@/lib/admin/services/people";
@@ -182,6 +182,12 @@ export const savePageAction = adminAction("content.manage", z.object({ id: optUu
   await friendly(() => savePage(sql, actor, { ...i, id: i.id ?? undefined }));
   revalidatePath("/admin/content");
   return { ok: true, message: "Draft saved (not yet public)." };
+});
+
+export const addLegalPagesAction = adminAction("content.manage", z.object({}), async (_i, { sql, actor }) => {
+  const added = await addLegalTemplates(sql, actor);
+  revalidatePath("/admin/content");
+  return { ok: true, message: added.length ? `Added ${added.length} draft page(s): ${added.join(", ")}. Open each one, fill the [brackets], then Publish.` : "All legal pages already exist — nothing changed." };
 });
 
 export const publishPageAction = adminAction("content.manage", z.object({ id: uuid, publish: bool }), async (i, { sql, actor }) => {

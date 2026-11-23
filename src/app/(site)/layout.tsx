@@ -3,6 +3,7 @@ import Link from "next/link";
 import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
+import { AccountNavButton } from "@/features/auth/AccountNavButton";
 import { getStorefrontSettings, listPublishedPages } from "@/lib/storefront/settings";
 import { getCatalog } from "@/lib/catalog/source";
 import { GUIDES } from "@/lib/content/guides";
@@ -48,6 +49,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <MarketSwitch />
+            <AccountNavButton />
             <CartButton />
           </div>
         </nav>
@@ -72,6 +74,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             <ul className="mt-4 space-y-2.5 text-sm text-white/80">
               <li>European Union · EUR</li>
               <li>United States · USD</li>
+              <li><Link href="/account" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Your account & orders</Link></li>
               <li><Link href="/contact" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Help, order tracking & contact</Link></li>
               <li><Link href="/withdraw" className="transition hover:text-white hover:underline hover:decoration-amber hover:decoration-2 hover:underline-offset-4">Withdraw from contract</Link></li>
             </ul>
