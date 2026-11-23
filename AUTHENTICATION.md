@@ -132,9 +132,10 @@ To send verification codes through Resend using Supabase Auth:
 
 - **The Resend log is empty.** Supabase Auth sends OTP emails itself. The app's `RESEND_API_KEY` only sends order, contact and withdrawal email. Configure **Custom SMTP** above (or a Supabase Send Email Hook) so Supabase uses Resend.
 - **Resend shows `partially_verified`.** Sending is still blocked (`403 — domain is not verified`). Add the missing DNS record `rsend` → `rsend-euw1.forge.rmta.net` (CNAME, DNS-only, no proxy), then press **Verify** in Resend. Wait for **Verified**.
-- **Check Supabase Auth → Logs.** A line such as `Error sending confirmation email` is the SMTP/domain error; `Email rate limit exceeded` means the built-in email service is still active.
+- **Check Supabase Auth → Logs.** A line such as `Error sending confirmation email` is the SMTP/domain error; `Email rate limit exceeded` means the built-in email service is still active. Search the `error_id` returned by `/api/auth/otp` to find the exact SMTP response.
+- **`Error sending confirmation email` despite valid Resend credentials.** The Sender email field must be the bare address `orders@wegoshiiip.com`. If it contains `WEGO SHIIIP <orders@wegoshiiip.com>`, Resend's SMTP relay returns `501 Bad sender address syntax`. Remove any trailing spaces/newlines from the Sender email, Username (`resend`) and Password, and make sure the port matches the encryption: `465` with SSL, or `587` with STARTTLS.
 - **Check the template.** It must contain `{{ .Token }}`, not only `{{ .ConfirmationURL }}`.
-- Request a new code after fixing SMTP; the previous code expires.
+- Request a new code after fixing SMTP; the previous code expires. The app limits each email to 3 requests per minute, so wait for that window before retrying.
 
 ### C. Google OAuth Configuration
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).

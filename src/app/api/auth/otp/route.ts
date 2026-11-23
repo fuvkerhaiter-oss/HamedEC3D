@@ -14,6 +14,19 @@ const VerifyOtpSchema = z.object({
   token: z.string().trim().regex(/^\d{6}$/, "Code must be 6 digits"),
 });
 
+const SMTP_SEND_FAILURE = /error sending (confirmation email|magic link|email)/i;
+
+/** Supabase's raw SMTP error is not actionable for customers. */
+function friendlySendError(message: string): string {
+  if (SMTP_SEND_FAILURE.test(message)) {
+    return "We couldn't deliver the verification email. Please try again in a few minutes, or contact support@wegoshiiip.com if it keeps failing.";
+  }
+  if (/rate limit/i.test(message)) {
+    return "Too many verification emails were requested. Please wait a few minutes and try again.";
+  }
+  return message;
+}
+
 /**
  * POST /api/auth/otp — Send an OTP code or verify an entered code.
  * Includes rate-limiting to protect against abuse.
@@ -25,7 +38,10 @@ export async function POST(req: Request) {
   // If token is present, this is a verification request
   if (json && "token" in json) {
     if (rateLimited(`otp-verify:${ip}`, 10, 60_000)) {
-      return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
+      return NextResponse.json(
+        { error: "Too many attempts. Please wait a minute.", retryAfterSeconds: 60 },
+        { status: 429, headers: { "Retry-After": "60" } },
+      );
     }
 
     const parsed = VerifyOtpSchema.safeParse(json);
@@ -62,7 +78,10 @@ export async function POST(req: Request) {
 
   // Otherwise, this is a send OTP request
   if (rateLimited(`otp-send:${ip}`, 5, 60_000)) {
-    return NextResponse.json({ error: "Too many code requests. Please wait a minute." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many code requests. Please wait a minute.", retryAfterSeconds: 60 },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
   }
 
   const parsed = SendOtpSchema.safeParse(json);
@@ -71,7 +90,10 @@ export async function POST(req: Request) {
   }
 
   if (rateLimited(`otp-email:${parsed.data.email}`, 3, 60_000)) {
-    return NextResponse.json({ error: "Too many attempts for this email. Please wait a minute." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many attempts for this email. Please wait a minute.", retryAfterSeconds: 60 },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
   }
 
   if (!isSupabaseServerConfigured()) {
@@ -91,7 +113,12 @@ export async function POST(req: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error("[auth/otp] Supabase could not send verification email", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
+      });
+      return NextResponse.json({ error: friendlySendError(error.message) }, { status: 400 });
     }
 
     return NextResponse.json({
