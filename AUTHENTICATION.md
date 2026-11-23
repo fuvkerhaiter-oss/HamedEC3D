@@ -122,15 +122,19 @@ To send verification codes through Resend using Supabase Auth:
    - **Port**: `465` (SSL) or `587` (TLS)
    - **User**: `resend`
    - **Password**: `<YOUR_RESEND_API_KEY>`
-3. In **Authentication → Email Templates → Magic Link / Confirmation**:
+3. In **Authentication → Emails → Magic Link** and **Confirm signup**:
    - Set Subject: `Your WEGO SHIIIP verification code: {{ .Token }}`
-   - Body Template:
-     ```html
-     <h2>Your WEGO SHIIIP verification code: {{ .Token }}</h2>
-     <p>Enter this 6-digit code in the supermarket to verify your account.</p>
-     <p>This code expires shortly. If you did not request it, you can safely ignore this message.</p>
-     <p>Happy shopping,<br>The WEGO SHIIIP Team</p>
-     ```
+   - Paste the branded template from [`supabase/email-templates/magic-link.html`](./supabase/email-templates/magic-link.html).
+   - `{{ .Token }}` is essential: the sign-in window asks for a 6-digit code, so a link-only template leaves the customer stuck.
+   - The template only uses inline styles, so it renders in Gmail, Outlook, Apple Mail and mobile clients.
+
+### Troubleshooting: the code screen appears but no email arrives
+
+- **The Resend log is empty.** Supabase Auth sends OTP emails itself. The app's `RESEND_API_KEY` only sends order, contact and withdrawal email. Configure **Custom SMTP** above (or a Supabase Send Email Hook) so Supabase uses Resend.
+- **Resend shows `partially_verified`.** Sending is still blocked (`403 — domain is not verified`). Add the missing DNS record `rsend` → `rsend-euw1.forge.rmta.net` (CNAME, DNS-only, no proxy), then press **Verify** in Resend. Wait for **Verified**.
+- **Check Supabase Auth → Logs.** A line such as `Error sending confirmation email` is the SMTP/domain error; `Email rate limit exceeded` means the built-in email service is still active.
+- **Check the template.** It must contain `{{ .Token }}`, not only `{{ .ConfirmationURL }}`.
+- Request a new code after fixing SMTP; the previous code expires.
 
 ### C. Google OAuth Configuration
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
