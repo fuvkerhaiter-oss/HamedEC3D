@@ -40,10 +40,10 @@ export async function queueOrderEmail(
 ): Promise<boolean> {
   const o = await getCustomerOrder(tx, orderId);
   if (!o) return false;
-  const { subject, text } = orderEmail(kind, o, orderUrl(publicSiteUrl(), orderId), extra);
+  const { subject, text, html } = orderEmail(kind, o, orderUrl(publicSiteUrl(), orderId), extra);
   const status = getEmailProvider() ? "queued" : "not_configured";
-  const rows = await tx`insert into public.email_outbox (to_address, subject, body_text, template, status, related_order_id, dedupe_key)
-           values (${o.email}, ${subject}, ${text}, ${kind}, ${status}, ${orderId}, ${dedupeKey})
+  const rows = await tx`insert into public.email_outbox (to_address, subject, body_text, body_html, template, status, related_order_id, dedupe_key)
+           values (${o.email}, ${subject}, ${text}, ${html}, ${kind}, ${status}, ${orderId}, ${dedupeKey})
            on conflict (dedupe_key) where dedupe_key is not null do nothing returning id`;
   return rows.length > 0;
 }
@@ -56,14 +56,14 @@ export async function flushEmailOutbox(db: Db, limit = 20): Promise<{ sent: numb
   let failed = 0;
   for (let i = 0; i < limit; i++) {
     const done = await inTx(db, async (tx) => {
-      const [m] = await tx<{ id: string; to_address: string; subject: string; body_text: string }[]>`
-        select id, to_address, subject, body_text from public.email_outbox
+      const [m] = await tx<{ id: string; to_address: string; subject: string; body_text: string; body_html: string | null }[]>`
+        select id, to_address, subject, body_text, body_html from public.email_outbox
          where (status = 'queued' or (status = 'failed' and created_at > now() - make_interval(hours => ${MAX_ATTEMPT_AGE_HOURS})))
            and (sent_at is null)
          order by (status = 'failed'), created_at limit 1 for update skip locked`;
       if (!m) return null;
       try {
-        const r = await provider.send({ to: m.to_address, subject: m.subject, text: m.body_text, html: textToHtml(m.subject, m.body_text) });
+        const r = await provider.send({ to: m.to_address, subject: m.subject, text: m.body_text, html: m.body_html ?? textToHtml(m.subject, m.body_text) });
         await tx`update public.email_outbox set status = 'sent', provider = ${provider.id}, provider_message_id = ${r.messageId}, sent_at = now(), error = null where id = ${m.id}`;
         return "sent";
       } catch (e) {

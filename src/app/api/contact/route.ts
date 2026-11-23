@@ -3,6 +3,7 @@ import { z } from "zod";
 import { notify } from "@/lib/admin/services/notifications";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { getEmailProvider } from "@/lib/email/provider";
+import { customerMessageEmail } from "@/lib/email/templates";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
 
@@ -30,25 +31,24 @@ export async function POST(req: Request) {
   const { name, email, orderNumber, message } = parsed.data;
   if (!isDbConfigured()) return NextResponse.json({ error: "Messaging is not available right now. Please email us directly." }, { status: 503 });
   const order = orderNumber ? orderNumber.replace("#", "") : null;
-  const subject = `Customer message${order ? ` · order #${order}` : ""} · ${name}`;
-  const text = `From: ${name} <${email}>\n${order ? `Order: #${order}\n` : ""}\n${message}`;
+  const mail = customerMessageEmail({ name, email, orderNumber: order, message });
   const db = getSql();
 
-  await notify(db, { kind: "customer_message", title: subject, body: text, link: `mailto:${email}` });
+  await notify(db, { kind: "customer_message", title: mail.subject, body: mail.text, link: `mailto:${email}` });
   const to = process.env.SUPPORT_EMAIL ?? process.env.EMAIL_REPLY_TO;
   const provider = getEmailProvider();
   let status: "sent" | "failed" | "not_configured" = "not_configured";
   let messageId: string | null = null;
   if (provider && to) {
     try {
-      messageId = (await provider.send({ to, subject, text, replyTo: email })).messageId;
+      messageId = (await provider.send({ to, subject: mail.subject, text: mail.text, html: mail.html, replyTo: email })).messageId;
       status = "sent";
     } catch (e) {
       logError("contact email failed", e);
       status = "failed";
     }
   }
-  await db`insert into public.email_outbox (to_address, subject, body_text, template, status, provider, provider_message_id, sent_at)
-           values (${to ?? "(SUPPORT_EMAIL not set)"}, ${subject}, ${text}, 'customer_message', ${status}, ${provider?.id ?? null}, ${messageId}, ${status === "sent" ? new Date() : null})`;
+  await db`insert into public.email_outbox (to_address, subject, body_text, body_html, template, status, provider, provider_message_id, sent_at)
+           values (${to ?? "(SUPPORT_EMAIL not set)"}, ${mail.subject}, ${mail.text}, ${mail.html}, 'customer_message', ${status}, ${provider?.id ?? null}, ${messageId}, ${status === "sent" ? new Date() : null})`;
   return NextResponse.json({ ok: true });
 }

@@ -8,6 +8,7 @@ import type { Db } from "../db/client";
 import type { CurrencyCode } from "../money";
 import type { OrderStatus } from "../orders/state-machine";
 import { getEmailProvider } from "../email/provider";
+import { orderHistoryEmail } from "../email/templates";
 import { orderToken } from "./order-link";
 
 const DEV_SECRET = "dev-only-order-link-secret-not-for-production";
@@ -81,12 +82,11 @@ export async function requestHistoryLink(db: Db, email: string, siteUrl: string)
   if (!has?.n) return "no_orders";
   const url = new URL("/account/orders", siteUrl);
   url.searchParams.set("t", historyToken(e));
-  const subject = "Your WEGO SHIIIP orders";
-  const text = `Hello,\n\nHere is your private link to see all your WEGO SHIIIP orders, their tracking and refund status:\n\n${url.toString()}\n\nThe link works for ${HISTORY_LINK_TTL_HOURS} hours. If you didn't ask for it, you can ignore this email.\n\nWEGO SHIIIP · Happy Family, Happy Animals`;
+  const { subject, text, html } = orderHistoryEmail(url.toString(), HISTORY_LINK_TTL_HOURS);
   const status = getEmailProvider() ? "queued" : "not_configured";
   const bucket = new Date().toISOString().slice(0, 13); // one per hour
-  const rows = await db`insert into public.email_outbox (to_address, subject, body_text, template, status, dedupe_key)
-    values (${e}, ${subject}, ${text}, 'order_history_link', ${status}, ${`history:${e}:${bucket}`})
+  const rows = await db`insert into public.email_outbox (to_address, subject, body_text, body_html, template, status, dedupe_key)
+    values (${e}, ${subject}, ${text}, ${html}, 'order_history_link', ${status}, ${`history:${e}:${bucket}`})
     on conflict (dedupe_key) where dedupe_key is not null do nothing returning id`;
   if (!rows.length) return "throttled";
   return status === "queued" ? "queued" : "not_configured";

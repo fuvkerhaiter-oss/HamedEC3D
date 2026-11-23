@@ -6,9 +6,11 @@ import type { CustomerOrderView } from "../checkout/order-view";
 import { MARKETS } from "../markets";
 import { formatMoney } from "../money";
 import {
-  addressCard, button, detailRows, EMAIL_COLORS, escapeHtml, itemTable, label, link, note, orderHero, p, panel,
-  phtml, renderEmail, totalsTable, trackingCard, defaultSiteUrl, type EmailItem, type EmailTotal,
+  addressCard, button, detailRows, EMAIL_COLORS, escapeHtml, itemTable, label, link as inlineLink, note, orderHero, p,
+  panel, phtml, renderEmail, totalsTable, trackingCard, twoCols, defaultSiteUrl, type EmailItem, type EmailTotal,
 } from "./layout";
+
+export { textToHtml } from "./layout";
 
 export type OrderEmailKind =
   | "order_confirmed" | "order_shipped" | "order_delivered" | "order_refunded" | "order_cancelled" | "payment_failed" | "refund_partial";
@@ -112,7 +114,7 @@ export function orderEmail(
             addressCard("Shipping method", [o.shippingMethod ?? "Standard delivery", o.deliveryEstimate ? `Estimated ${o.deliveryEstimate.minDays}–${o.deliveryEstimate.maxDays} business days` : ""]),
           ),
           note("We'll email you the tracking number as soon as it ships."),
-          phtml(`<strong style="color:${EMAIL_COLORS.ink}">EU customers:</strong> you may withdraw from this purchase within 14 days of delivery. ${link(withdrawLink, "Withdraw from contract online")}.`),
+          phtml(`<strong style="color:${EMAIL_COLORS.ink}">EU customers:</strong> you may withdraw from this purchase within 14 days of delivery. ${inlineLink(withdrawLink, "Withdraw from contract online")}.`),
           orderLinkButton,
         ].join(""),
       });
@@ -157,7 +159,7 @@ export function orderEmail(
           label("In your parcel"),
           itemTable(itemsFor(o, fmt)),
           note("If something is missing or damaged, reply to this email with your order number and we'll sort it out."),
-          phtml(`<strong style="color:${EMAIL_COLORS.ink}">EU customers:</strong> the 14-day withdrawal period starts on the day of delivery. ${link(withdrawLink, "Withdraw from contract online")}.`),
+          phtml(`<strong style="color:${EMAIL_COLORS.ink}">EU customers:</strong> the 14-day withdrawal period starts on the day of delivery. ${inlineLink(withdrawLink, "Withdraw from contract online")}.`),
           orderLinkButton,
         ].join(""),
       });

@@ -66,6 +66,7 @@ export async function setPagePublished(db: Db, actor: Actor, id: string, publish
 // ───────────────────────── Email ─────────────────────────
 
 import { getEmailProvider } from "../../email/provider";
+import { textToHtml } from "../../email/templates";
 export { getEmailProvider, type EmailProvider } from "../../email/provider";
 
 export function emailStatus(): { configured: boolean; detail: string } {
@@ -75,15 +76,16 @@ export function emailStatus(): { configured: boolean; detail: string } {
 }
 
 /** Queues + sends an email. Without a provider the message is recorded as not_configured (never pretended as sent). */
-export async function sendEmail(db: Db, msg: { to: string; subject: string; text: string; template?: string; orderId?: string | null }) {
+export async function sendEmail(db: Db, msg: { to: string; subject: string; text: string; html?: string; template?: string; orderId?: string | null }) {
   const provider = getEmailProvider();
+  const html = msg.html ?? textToHtml(msg.subject, msg.text);
   const [row] = await db<{ id: string }[]>`
-    insert into public.email_outbox (to_address, subject, body_text, template, status, provider, related_order_id)
-    values (${msg.to}, ${msg.subject}, ${msg.text}, ${msg.template ?? null}, ${provider ? "queued" : "not_configured"}, ${provider?.id ?? null}, ${msg.orderId ?? null})
+    insert into public.email_outbox (to_address, subject, body_text, body_html, template, status, provider, related_order_id)
+    values (${msg.to}, ${msg.subject}, ${msg.text}, ${html}, ${msg.template ?? null}, ${provider ? "queued" : "not_configured"}, ${provider?.id ?? null}, ${msg.orderId ?? null})
     returning id`;
   if (!provider) return { id: row!.id, status: "not_configured" as const };
   try {
-    const res = await provider.send({ to: msg.to, subject: msg.subject, text: msg.text });
+    const res = await provider.send({ to: msg.to, subject: msg.subject, text: msg.text, html });
     await db`update public.email_outbox set status = 'sent', provider_message_id = ${res.messageId}, sent_at = now() where id = ${row!.id}`;
     return { id: row!.id, status: "sent" as const };
   } catch (e) {

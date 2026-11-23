@@ -12,6 +12,7 @@ import { inTx } from "../db/client";
 import { orderUrl } from "../checkout/order-link";
 import { getEmailProvider } from "../email/provider";
 import { publicSiteUrl } from "../email/outbox";
+import { button, detailRows, EMAIL_COLORS, h2, itemTable, label, note, panel, renderEmail, steps } from "../email/layout";
 import type { CurrencyCode } from "../money";
 import type { OrderStatus } from "./state-machine";
 import { notify } from "../admin/services/notifications";
@@ -190,7 +191,7 @@ export function withdrawalAckEmail(p: { orderNumber: number; fullName: string; s
       `<div style="height:18px"></div>`,
       button(p.orderLink, "View your order"),
       button(p.returnsLink, "Returns policy", "ghost"),
-      note(`<strong style="color:#0d0f0e">Keep this email:</strong> it is your proof of withdrawal. Questions? Just reply with your order number #${p.orderNumber}.`),
+      note(`<strong style="color:${EMAIL_COLORS.ink}">Keep this email:</strong> it is your proof of withdrawal. Questions? Just reply with your order number #${p.orderNumber}.`),
     ].join(""),
     footerNote: "You received this acknowledgement because a withdrawal was submitted for this order.",
   });
@@ -218,6 +219,7 @@ Returns policy: ${p.returnsLink}
 Keep this email: it is your proof of withdrawal. Questions? Just reply with your order number #${p.orderNumber}.
 
 WEGO SHIIIP · Happy Family, Happy Animals`,
+    html,
   };
 }
 
@@ -249,8 +251,8 @@ export async function submitWithdrawal(db: Db, input: SubmitWithdrawalInput, now
     });
     const recipients = [...new Set([input.confirmationEmail.toLowerCase(), ctx.email.toLowerCase()])];
     for (const to of recipients) {
-      await tx`insert into public.email_outbox (to_address, subject, body_text, template, status, related_order_id, dedupe_key)
-               values (${to}, ${mail.subject}, ${mail.text}, 'withdrawal_received', ${getEmailProvider() ? "queued" : "not_configured"}, ${input.orderId}, ${`withdrawal:${req!.id}:${to}`})
+      await tx`insert into public.email_outbox (to_address, subject, body_text, body_html, template, status, related_order_id, dedupe_key)
+               values (${to}, ${mail.subject}, ${mail.text}, ${mail.html}, 'withdrawal_received', ${getEmailProvider() ? "queued" : "not_configured"}, ${input.orderId}, ${`withdrawal:${req!.id}:${to}`})
                on conflict (dedupe_key) where dedupe_key is not null do nothing`;
     }
 
