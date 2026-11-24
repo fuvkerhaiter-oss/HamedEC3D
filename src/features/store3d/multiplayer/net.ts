@@ -102,7 +102,17 @@ export function startMultiplayer(): void {
     useNet.setState({ status: "unavailable", message: "Shared rooms aren't available on this device or server." });
     return;
   }
-  if (!localMode) sb ??= createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { params: { eventsPerSecond: 20 } } });
+  if (!localMode) {
+    sb ??= createClient(url!, key!, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storageKey: "sb-multiplayer-auth",
+      },
+      realtime: { params: { eventsPerSecond: 20 } },
+    });
+  }
   useNet.setState({ local: localMode });
   joinRoom(1);
 }

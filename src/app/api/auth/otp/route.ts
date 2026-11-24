@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
-import { createClient, isSupabaseServerConfigured } from "@/lib/supabase/server";
+import { createClient, createAdminClient, isSupabaseServerConfigured } from "@/lib/supabase/server";
+import { getEmailProvider } from "@/lib/email/provider";
+import { authOtpEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -57,11 +59,34 @@ export async function POST(req: Request) {
 
     try {
       const supabase = await createClient();
-      const { data, error } = await supabase.auth.verifyOtp({
+      let { data, error } = await supabase.auth.verifyOtp({
         email: parsed.data.email,
         token: parsed.data.token,
         type: "email",
       });
+
+      // If generic type 'email' failed, attempt 'magiclink' or 'signup' token types
+      if (error && (error.message.includes("Token") || error.message.includes("expired") || error.message.includes("invalid"))) {
+        const magicFallback = await supabase.auth.verifyOtp({
+          email: parsed.data.email,
+          token: parsed.data.token,
+          type: "magiclink",
+        });
+        if (!magicFallback.error) {
+          data = magicFallback.data;
+          error = null;
+        } else {
+          const signupFallback = await supabase.auth.verifyOtp({
+            email: parsed.data.email,
+            token: parsed.data.token,
+            type: "signup",
+          });
+          if (!signupFallback.error) {
+            data = signupFallback.data;
+            error = null;
+          }
+        }
+      }
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -103,6 +128,46 @@ export async function POST(req: Request) {
     }, { status: 503 });
   }
 
+  // Strategy 1: Direct Resend Delivery via Supabase Admin API
+  // If SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY and RESEND_API_KEY are configured,
+  // generate the OTP via admin API and send directly with Resend.
+  // This bypasses Supabase SMTP relay entirely, avoiding strict rate limits and SMTP configuration issues.
+  const admin = createAdminClient();
+  const emailProvider = getEmailProvider();
+
+  if (admin && emailProvider) {
+    try {
+      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: parsed.data.email,
+      });
+
+      if (linkError) {
+        console.warn("[auth/otp] admin.generateLink error, falling back to signInWithOtp:", {
+          message: linkError.message,
+          status: linkError.status,
+        });
+      } else if (linkData?.properties?.email_otp) {
+        const otp = linkData.properties.email_otp;
+        const { subject, text, html } = authOtpEmail(otp);
+        await emailProvider.send({
+          to: parsed.data.email,
+          subject,
+          text,
+          html,
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: "Verification code sent successfully.",
+        });
+      }
+    } catch (adminErr) {
+      console.warn("[auth/otp] Direct Resend delivery failed, falling back to signInWithOtp:", adminErr);
+    }
+  }
+
+  // Strategy 2: Fallback to Supabase built-in mailer / Custom SMTP
   try {
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -117,8 +182,12 @@ export async function POST(req: Request) {
         code: error.code,
         status: error.status,
         message: error.message,
+        hint: "To bypass Supabase SMTP issues, provide SUPABASE_SECRET_KEY and RESEND_API_KEY in environment variables, or check Supabase Dashboard -> Authentication -> SMTP Settings (sender must be bare email address like orders@wegoshiiip.com, not 'Name <email>').",
       });
-      return NextResponse.json({ error: friendlySendError(error.message) }, { status: 400 });
+      return NextResponse.json({
+        error: friendlySendError(error.message),
+        ...(process.env.NODE_ENV !== "production" ? { debugMessage: error.message } : {}),
+      }, { status: 400 });
     }
 
     return NextResponse.json({

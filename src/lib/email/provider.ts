@@ -6,8 +6,8 @@ export interface OutgoingEmail { to: string; subject: string; text: string; html
 export interface EmailProvider { id: string; send(msg: OutgoingEmail): Promise<{ messageId: string }> }
 
 export function getEmailProvider(env: NodeJS.ProcessEnv = process.env, doFetch: typeof fetch = fetch): EmailProvider | null {
-  const key = env.RESEND_API_KEY;
-  const from = env.EMAIL_FROM;
+  const key = env.RESEND_API_KEY?.trim();
+  const from = env.EMAIL_FROM?.trim() || (key ? "WEGO SHIIIP <orders@wegoshiiip.com>" : null);
   if (!key || !from) return null;
   return {
     id: "resend",
