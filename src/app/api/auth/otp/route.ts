@@ -13,7 +13,7 @@ const SendOtpSchema = z.object({
 
 const VerifyOtpSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
-  token: z.string().trim().regex(/^\d{6}$/, "Code must be 6 digits"),
+  token: z.string().trim().regex(/^\d{6,8}$/, "Code must be 6 to 8 digits"),
 });
 
 const SMTP_SEND_FAILURE = /error sending (confirmation email|magic link|email)/i;
@@ -160,6 +160,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           success: true,
           message: "Verification code sent successfully.",
+          otpLength: otp.length,
         });
       }
     } catch (adminErr) {
@@ -193,6 +194,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Verification code sent successfully.",
+      otpLength: 8,
     });
   } catch {
     return NextResponse.json({ error: "Failed to send code. Please try again." }, { status: 500 });

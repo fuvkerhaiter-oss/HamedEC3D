@@ -31,7 +31,8 @@ export function AuthModal() {
   const { isOpen, mode, email, closeAuth, setMode, setEmail } = useAuthStore();
   const { signInWithGoogle } = useAuth();
 
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [expectedLength, setExpectedLength] = useState(8);
+  const [otp, setOtp] = useState(["", "", "", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendSeconds, setResendSeconds] = useState(60);
@@ -58,12 +59,12 @@ export function AuthModal() {
   // Auto-focus first OTP input when entering OTP mode
   useEffect(() => {
     if (mode === "otp") {
-      setOtp(["", "", "", "", "", ""]);
+      setOtp((prev) => (prev.length === expectedLength ? prev : new Array(expectedLength).fill("")));
       setError(null);
       setResendSeconds(60);
       setTimeout(() => otpInputRefs.current[0]?.focus(), 50);
     }
-  }, [mode]);
+  }, [mode, expectedLength]);
 
   if (!isOpen) return null;
 
@@ -86,6 +87,9 @@ export function AuthModal() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to send code");
 
+      const len = typeof data.otpLength === "number" && (data.otpLength === 6 || data.otpLength === 8) ? data.otpLength : expectedLength;
+      setExpectedLength(len);
+      setOtp(new Array(len).fill(""));
       setMode("otp");
     } catch (err) {
       setError((err as Error).message);
@@ -96,8 +100,8 @@ export function AuthModal() {
 
   async function handleVerifyOtp(codeToVerify?: string) {
     const fullCode = codeToVerify || otp.join("");
-    if (fullCode.length !== 6) {
-      setError("Please enter all 6 digits of your verification code.");
+    if (fullCode.length !== expectedLength) {
+      setError(`Please enter all ${expectedLength} digits of your verification code.`);
       return;
     }
 
@@ -143,12 +147,12 @@ export function AuthModal() {
     setOtp(next);
 
     // Auto-advance
-    if (index < 5) {
+    if (index < expectedLength - 1) {
       otpInputRefs.current[index + 1]?.focus();
     } else {
       // Completed last digit -> auto verify
       const full = next.join("");
-      if (full.length === 6) {
+      if (full.length === expectedLength) {
         void handleVerifyOtp(full);
       }
     }
@@ -159,26 +163,36 @@ export function AuthModal() {
       otpInputRefs.current[index - 1]?.focus();
     } else if (e.key === "ArrowLeft" && index > 0) {
       otpInputRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < 5) {
+    } else if (e.key === "ArrowRight" && index < expectedLength - 1) {
       otpInputRefs.current[index + 1]?.focus();
     }
   }
 
   function handleOtpPaste(e: React.ClipboardEvent) {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
+    const rawPasted = e.clipboardData.getData("text").replace(/\D/g, "");
+    if (!rawPasted) return;
 
-    const next = [...otp];
+    let targetLen = expectedLength;
+    if (rawPasted.length === 8 && expectedLength !== 8) {
+      targetLen = 8;
+      setExpectedLength(8);
+    } else if (rawPasted.length === 6 && expectedLength !== 6) {
+      targetLen = 6;
+      setExpectedLength(6);
+    }
+
+    const pasted = rawPasted.slice(0, targetLen);
+    const next = new Array(targetLen).fill("");
     for (let i = 0; i < pasted.length; i++) {
       next[i] = pasted[i]!;
     }
     setOtp(next);
 
-    const focusIdx = Math.min(pasted.length, 5);
+    const focusIdx = Math.min(pasted.length, targetLen - 1);
     otpInputRefs.current[focusIdx]?.focus();
 
-    if (pasted.length === 6) {
+    if (pasted.length === targetLen) {
       void handleVerifyOtp(pasted);
     }
   }
@@ -428,13 +442,13 @@ export function AuthModal() {
                   WE SENT A LITTLE SECRET
                 </h3>
                 <p className="mt-1 text-xs text-ink-soft leading-relaxed">
-                  We sent a 6-digit verification code to <b className="text-ink font-mono">{email}</b>.
+                  We sent a {expectedLength}-digit verification code to <b className="text-ink font-mono">{email}</b>.
                   Check your inbox. If it is hiding, check the spam aisle!
                 </p>
               </div>
 
-              {/* 6 Digit Input */}
-              <div className="flex justify-center gap-2 sm:gap-2.5" onPaste={handleOtpPaste}>
+              {/* Digit Input (supports 6 or 8 digits) */}
+              <div className="flex justify-center gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
                 {otp.map((digit, idx) => (
                   <input
                     key={idx}
@@ -446,16 +460,34 @@ export function AuthModal() {
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className="h-12 w-11 sm:h-14 sm:w-12 rounded-2xl border-2 border-line bg-white text-center font-mono text-xl sm:text-2xl font-bold text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className={
+                      expectedLength === 8
+                        ? "h-11 w-8 sm:h-13 sm:w-10 rounded-xl sm:rounded-2xl border-2 border-line bg-white text-center font-mono text-lg sm:text-xl font-bold text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20"
+                        : "h-12 w-11 sm:h-14 sm:w-12 rounded-2xl border-2 border-line bg-white text-center font-mono text-xl sm:text-2xl font-bold text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    }
                     aria-label={`Digit ${idx + 1}`}
                   />
                 ))}
               </div>
 
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newLen = expectedLength === 6 ? 8 : 6;
+                    setExpectedLength(newLen);
+                    setOtp(new Array(newLen).fill(""));
+                  }}
+                  className="text-[11px] text-ink-soft hover:text-ink underline decoration-dotted"
+                >
+                  {expectedLength === 6 ? "Got an 8-digit code instead?" : "Got a 6-digit code instead?"}
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => handleVerifyOtp()}
-                disabled={loading || otp.join("").length !== 6}
+                disabled={loading || otp.join("").length !== expectedLength}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-amber py-3.5 font-bold text-ink shadow-[0_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
               >
                 {loading ? "Verifying…" : "Verify & Enter Supermarket 🛒"}
