@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const NEXT_COOKIE = "wego-auth-next";
+
 /**
  * Validates that a redirect path is safe and local to prevent open-redirect attacks.
  */
@@ -16,16 +18,40 @@ export function sanitizeRedirect(urlOrPath: string | null | undefined, fallback 
   return fallback;
 }
 
+function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function clearNextCookie(response: NextResponse): NextResponse {
+  response.cookies.set(NEXT_COOKIE, "", { path: "/", maxAge: 0 });
+  return response;
+}
+
 function redirectWithError(origin: string, next: string, message: string): NextResponse {
   const errorUrl = new URL(next, origin);
   errorUrl.searchParams.set("auth_error", message);
-  return NextResponse.redirect(errorUrl);
+  return clearNextCookie(NextResponse.redirect(errorUrl));
 }
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = sanitizeRedirect(requestUrl.searchParams.get("next"), "/account");
+  const next = sanitizeRedirect(
+    requestUrl.searchParams.get("next") ?? readCookie(request, NEXT_COOKIE),
+    "/account",
+  );
   const error = requestUrl.searchParams.get("error");
   const errorCode = requestUrl.searchParams.get("error_code");
   const errorDescription = requestUrl.searchParams.get("error_description");
@@ -40,7 +66,7 @@ export async function GET(request: Request) {
 
   if (!code) {
     // Nothing to exchange — send the visitor back without inventing an error.
-    return NextResponse.redirect(new URL(next, requestUrl.origin));
+    return clearNextCookie(NextResponse.redirect(new URL(next, requestUrl.origin)));
   }
 
   // Create the success response first so the Supabase server client can write
@@ -64,5 +90,5 @@ export async function GET(request: Request) {
     );
   }
 
-  return response;
+  return clearNextCookie(response);
 }

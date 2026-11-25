@@ -149,10 +149,14 @@ To send verification codes through Resend using Supabase Auth:
    - Toggle **Enable Google provider**.
    - Enter your **Client ID** and **Client Secret** obtained from Google Cloud.
 4. In **Authentication → URL Configuration**:
-   - **Site URL**: `https://your-domain.com` (or `http://localhost:3000` for local testing).
+   - **Site URL**: `https://www.your-domain.com` — it must be the exact host that serves this app. Do not use an apex domain that points at a registrar or another host.
    - **Redirect URLs**:
      - `http://localhost:3000/auth/callback`
-     - `https://your-domain.com/auth/callback`
+     - `https://www.your-domain.com/auth/callback`
+
+> **Exact match matters.** Supabase compares redirect URLs literally and the app sends `https://www.your-domain.com/auth/callback` with no query string. If that exact URL is missing, Supabase silently falls back to the **Site URL**, so the browser can land on the wrong domain after Google. Add `https://www.your-domain.com/**` if you need wildcard coverage.
+>
+> **The Client ID and Client Secret must come from the same Google client.** A secret from another client (or an old secret after pressing *Reset secret*) produces `error=server_error&error_code=unexpected_failure&error_description=Unable to exchange external code` right after the consent screen.
 
 ---
 

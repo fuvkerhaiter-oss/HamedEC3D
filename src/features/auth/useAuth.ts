@@ -73,10 +73,14 @@ export function useAuth() {
     }
     const supabase = createClient();
     const destination = redirectTo || window.location.pathname;
+    // Supabase matches redirect URLs exactly (no query string), so keep
+    // `redirectTo` clean and remember the destination in a short-lived cookie.
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `wego-auth-next=${encodeURIComponent(destination)}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           access_type: "offline",
           prompt: "select_account",
