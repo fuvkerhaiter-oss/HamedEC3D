@@ -9,7 +9,7 @@ This document describes the optional customer authentication system implemented 
 WEGO SHIIIP introduces a frictionless, three-tier visitor experience:
 
 1. **Continue as Guest (Zero Commitment)**: Visitors can immediately enter, explore the 3D supermarket, browse products, add items to their trolley, modify quantities, switch markets, and complete checkout as a guest. Authentication is **never mandatory**.
-2. **Passwordless Email OTP**: Users can sign in or create an account using their email address. A 6-digit verification code is delivered through Resend, establishing a secure session without passwords.
+2. **Passwordless Email OTP**: Users can sign in or create an account using their email address. A 6–8 digit verification code (8 digits on the hosted project) is delivered through Resend, establishing a secure session without passwords.
 3. **Continue with Google**: Returning and new users can authenticate with 1-click Google OAuth 2.0 PKCE.
 
 ### Separation of Customer & Administrative Auth
@@ -27,7 +27,7 @@ Authentication is integrated naturally without modal bombardment:
   - Displays user initial/avatar badge with a dropdown menu ("Overview", "Orders", "Saved Addresses", "Security & Privacy", "Sign Out") for authenticated shoppers.
 - **Interactive Auth Modal (`AuthModal`)**:
   - Funny, premium supermarket design with bouncing trolley animation, receipts, and playful copy ("No paperwork. No commitment. Just your trolley.", "One tiny verification code. Zero suspicious vegetables.").
-  - Full keyboard accessibility (Esc dismiss, numeric OTP auto-advance, backspace navigation, 6-digit paste support).
+  - Full keyboard accessibility (Esc dismiss, numeric OTP auto-advance, backspace navigation, 6–8 digit paste support).
   - Countdown timer for code resend (60 seconds) with rate-limiting protection.
   - 1-click Google button adhering to Google's official branding guidelines.
 - **Cart Drawer (`CartDrawer`)**:
@@ -125,7 +125,7 @@ To send verification codes through Resend using Supabase Auth:
 3. In **Authentication → Emails → Magic Link** and **Confirm signup**:
    - Set Subject: `Your WEGO SHIIIP verification code: {{ .Token }}`
    - Paste the branded template from [`supabase/email-templates/magic-link.html`](./supabase/email-templates/magic-link.html).
-   - `{{ .Token }}` is essential: the sign-in window asks for a 6-digit code, so a link-only template leaves the customer stuck.
+   - `{{ .Token }}` is essential: the sign-in window asks for a 6–8 digit code, so a link-only template leaves the customer stuck.
    - The template only uses inline styles, so it renders in Gmail, Outlook, Apple Mail and mobile clients.
 
 ### Troubleshooting: the code screen appears but no email arrives

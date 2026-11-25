@@ -13,7 +13,7 @@ Supabase Auth sends the sign-in OTP. The app's own Resend key does **not** send 
 4. Body: paste the full contents of [`magic-link.html`](./magic-link.html).
 5. Save both templates.
 
-The important part is `{{ .Token }}`. If the template only contains `{{ .ConfirmationURL }}`, the customer receives a link but the sign-in window asks for a 6-digit code, so they cannot continue.
+The important part is `{{ .Token }}`. If the template only contains `{{ .ConfirmationURL }}`, the customer receives a link but the sign-in window asks for a 6–8 digit code, so they cannot continue.
 
 ## Custom SMTP (required for real delivery)
 

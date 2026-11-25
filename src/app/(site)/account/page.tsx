@@ -16,12 +16,28 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default async function AccountPage() {
-  const user = await getAuthUser();
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ auth_error?: string }>;
+}) {
+  const [{ auth_error: authError }, user] = await Promise.all([searchParams, getAuthUser()]);
 
   if (!user) {
     return (
       <main className="mx-auto w-full max-w-4xl px-5 py-12">
+        {authError && (
+          <div
+            role="alert"
+            className="mx-auto mb-8 max-w-2xl rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-left text-sm text-red-800"
+          >
+            <p className="font-bold">We couldn&apos;t finish signing you in</p>
+            <p className="mt-1 break-words">{authError}</p>
+            <p className="mt-2 text-xs text-red-700/80">
+              Please try again below. If it keeps happening, contact support with this message.
+            </p>
+          </div>
+        )}
         <div className="text-center">
           <span className="inline-block rounded-full bg-amber/20 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-ink">
             Shopping Identity

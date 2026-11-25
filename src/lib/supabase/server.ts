@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import type { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { isDbConfigured, getSql } from "../db/client";
 
@@ -33,7 +34,7 @@ export function createAdminClient(): SupabaseClient | null {
   });
 }
 
-export async function createClient() {
+export async function createClient(response?: NextResponse) {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "placeholder-anon-key";
@@ -45,9 +46,16 @@ export async function createClient() {
       },
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Route handlers that return a redirect must write the session
+            // cookies onto that exact response, otherwise the browser never
+            // receives them and the user stays signed out.
+            if (response) {
+              response.cookies.set(name, value, options);
+            } else {
+              cookieStore.set(name, value, options);
+            }
+          });
         } catch {
           // The `setAll` method was called from a Server Component.
           // Ignored if middleware refreshes the session.

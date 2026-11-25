@@ -360,7 +360,7 @@ export function AuthModal() {
                   {mode === "signin" ? "Sign in to your trolley" : "Create your shopping pass"}
                 </h3>
                 <p className="mt-1 text-xs text-ink-soft">
-                  Passwordless authentication with a 6-digit verification code.
+                  Passwordless authentication with a one-time verification code.
                 </p>
               </div>
 
