@@ -1,5 +1,14 @@
 # Project Status
 
+## Admin home resilience + dashboard indexes (2026-11-25)
+- Symptom: live super-admin `/admin` showed `(panel)/error.tsx` ("This page didn't load"), while `/admin/login` worked and wrong passwords returned the normal message. So the DB was reachable and `admin_users` was queryable; one home-page query was failing/timing out.
+- Production checks (no DB credentials or Vercel logs): every table/column/enum used by the home page exists in `xgplrcvnpzjczsfnxcge`; the old `xnmgiluewsjbaqlhlfim` project has no admin tables (ruled out); REST reads are fast; `orders` full scans are fast on the current data. Exact failing query still unconfirmed.
+- Fix: each home section now loads independently (`load()` in `admin/(panel)/page.tsx`); a failure is logged as `[admin home: <section>]` and that section falls back to empty values, with a "Some numbers didn't load" notice instead of blanking the page. The error page now explains the failure accurately and shows the digest; `lowStockDefault` rejects non-integer/out-of-range values.
+- Fix: `AdminShell` no longer trusts `mm-admin-hidden-guides`; `features/admin/prefs.ts` parses it defensively (an object previously threw `hiddenGuides.includes is not a function` and produced Next's generic error page).
+- Migration `20261129000001_admin_dashboard_performance.sql` (additive): indexes for `orders(created_at)`, `orders(is_test, created_at)`, the "new customers" first-paid aggregate (partial index on `lower(email), created_at`), `refunds(created_at)`, and `admin_notification_reads(admin_user_id)`. **Push before deploying.**
+- Verified locally: poisoned localStorage still renders; renaming `refunds` makes only the summary fall back, the page renders "Hello" + the warning, and the log line names `summary`. Typecheck/lint clean, new unit tests pass.
+- Owner: push the migration, deploy, then reload `/admin`. If the warning appears, the Vercel log line `[admin home: <section>]` names the failing query.
+
 ## Legal pages visible locally + CMS renderer fix (2026-11-22)
 - /pages/terms etc. were 404 because no CMS pages existed in the local DB (seed never run). Ran `npm run content:legal` and published all 7 templates in the LOCAL DB only (they still contain [BRACKETS] + the TEMPLATE line). Supabase/production untouched: fill + review + publish there via Admin → Website Content.
 - Renderer: new `lib/storefront/cms-body.ts` (`parseCmsBody`): "# " heading = first line only (before, a heading with text right under it turned the whole section into a giant heading), bullet runs (• / -) → real lists, short unpunctuated first line → sub-heading. Tests `tests/unit/cms-body.test.ts` (4, incl. every legal template). Checked on :3000: terms, privacy, returns render properly, footer links present, no console errors.

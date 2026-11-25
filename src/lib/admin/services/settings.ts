@@ -22,5 +22,7 @@ export async function setSetting(db: Db, actor: Actor, key: string, value: unkno
 
 export async function lowStockDefault(db: Db): Promise<number> {
   const v = await getSetting(db, "store.default_low_stock_threshold");
-  return typeof v === "number" && v >= 0 ? v : 5;
+  // The query compares this against an int column; a float or out-of-range value would fail the whole
+  // dashboard. Keep the same bounds as the settings form (0–100000) and fall back to 5 otherwise.
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 100_000 ? v : 5;
 }

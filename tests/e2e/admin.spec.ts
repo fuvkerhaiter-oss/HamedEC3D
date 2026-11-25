@@ -38,6 +38,13 @@ test("admin requires a session; storefront accounts can't reach it", async ({ pa
   await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
 });
 
+test("a corrupt saved preference does not break the admin", async ({ page }) => {
+  await signIn(page, SUPER);
+  await page.evaluate(() => localStorage.setItem("mm-admin-hidden-guides", JSON.stringify({ old: true })));
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Hello");
+});
+
 test("support role is limited server-side (pages, nav and exports)", async ({ page }) => {
   await signIn(page, SUPPORT);
   const nav = page.getByRole("navigation", { name: "Admin" });

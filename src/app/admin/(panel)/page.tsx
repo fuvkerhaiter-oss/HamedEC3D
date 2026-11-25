@@ -1,16 +1,41 @@
 import Link from "next/link";
 import { DateRangeForm } from "@/features/admin/DateRangeForm";
 import { Icon, type IconName } from "@/features/admin/icons";
-import { BarChart, Card, EmptyState, fmtDate, fmtMoney, HBars, PageHeader, Stat, StatusBadge, statusLabel, Table, TestBadge } from "@/features/admin/ui";
-import { resolveRange } from "@/lib/admin/date-range";
+import { BarChart, Card, EmptyState, fmtDate, fmtMoney, HBars, Notice, PageHeader, Stat, StatusBadge, statusLabel, Table, TestBadge } from "@/features/admin/ui";
+import { daysIn, resolveRange } from "@/lib/admin/date-range";
 import { requirePage } from "@/lib/admin/guard";
 import type { Permission } from "@/lib/admin/permissions";
-import { dailySeries, ordersByStatus, overviewKpis, recentOrders, topProducts } from "@/lib/admin/services/finance";
+import { dailySeries, ordersByStatus, overviewKpis, recentOrders, topProducts, type DailyPoint, type OverviewKpis } from "@/lib/admin/services/finance";
 import { unreadCount } from "@/lib/admin/services/notifications";
 import { lowStockDefault } from "@/lib/admin/services/settings";
 import { getSql } from "@/lib/db/client";
+import { logError } from "@/lib/log";
 
 export const metadata = { title: "Home" };
+
+type RecentOrder = Awaited<ReturnType<typeof recentOrders>>[number];
+type StatusCount = Awaited<ReturnType<typeof ordersByStatus>>[number];
+type TopProduct = Awaited<ReturnType<typeof topProducts>>[number];
+
+const EMPTY_KPIS: OverviewKpis = {
+  revenueByCurrency: {}, paidOrders: 0, allOrders: 0, pendingPayment: 0, avgOrderByCurrency: {}, unitsSold: 0,
+  newCustomers: 0, refundsByCurrency: {}, toFulfill: 0, lowStock: 0, outOfStock: 0, publishedProducts: 0,
+  draftProducts: 0, failedSupplierOrders: 0,
+};
+
+/**
+ * One slow/failing query must never blank the whole dashboard. Failures are logged with the section
+ * name (so the server log identifies the culprit) and that card falls back to empty numbers.
+ */
+async function load<T>(section: string, work: Promise<T>, fallback: T, failed: string[]): Promise<T> {
+  try {
+    return await work;
+  } catch (err) {
+    logError(`admin home: ${section}`, err);
+    failed.push(section);
+    return fallback;
+  }
+}
 
 const money = (byCur: Record<string, number>) => {
   const entries = Object.entries(byCur).filter(([, v]) => v);
@@ -32,13 +57,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const range = resolveRange(sp);
   const sql = getSql();
+  const failed: string[] = [];
+  const emptySeries: DailyPoint[] = daysIn(range).map((day) => ({ day, orders: 0, revenue: {} }));
+  // Start the setting read in parallel too; overviewKpis only needs it once it arrives.
+  const lowStock = lowStockDefault(sql);
   const [k, series, statuses, top, recent, unread] = await Promise.all([
-    overviewKpis(sql, range, await lowStockDefault(sql)),
-    dailySeries(sql, range),
-    ordersByStatus(sql, range),
-    topProducts(sql, range, 6),
-    can("orders.view") ? recentOrders(sql) : Promise.resolve([]),
-    can("notifications.view") ? unreadCount(sql, session.user.id) : Promise.resolve(0),
+    load("summary", lowStock.then((n) => overviewKpis(sql, range, n)), EMPTY_KPIS, failed),
+    load("daily chart", dailySeries(sql, range), emptySeries, failed),
+    load("orders by step", ordersByStatus(sql, range), [] as StatusCount[], failed),
+    load("best sellers", topProducts(sql, range, 6), [] as TopProduct[], failed),
+    can("orders.view") ? load("latest orders", recentOrders(sql), [] as RecentOrder[], failed) : Promise.resolve([] as RecentOrder[]),
+    can("notifications.view") ? load("alerts", unreadCount(sql, session.user.id), 0, failed) : Promise.resolve(0),
   ]);
   const currencies = [...new Set(["EUR", ...Object.keys(k.revenueByCurrency)])];
 
@@ -76,6 +105,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         title={`Hello${session.user.fullName ? `, ${session.user.fullName.split(" ")[0]}` : ""}`}
         description="Here is what needs your attention, and how your shop is doing."
       />
+
+      {failed.length > 0 && (
+        <div className="mb-6">
+          <Notice tone="warn" title="Some numbers didn't load">
+            The rest of the page is shown. Refresh to try again.
+          </Notice>
+        </div>
+      )}
 
       <section aria-labelledby="todo-h" className="rounded-2xl border border-line bg-white">
         <header className="flex items-center justify-between gap-2 border-b border-line px-5 py-3">

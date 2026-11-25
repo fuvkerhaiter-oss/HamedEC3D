@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import { ADMIN_NAV, BREADCRUMB_LABELS, NAV_GROUPS, navItemFor, PAGE_GUIDES } from "./nav";
+import { parseHiddenGuides } from "./prefs";
 
 interface Props {
   user: { name: string; email: string; roleLabel: string };
@@ -85,11 +86,7 @@ export function AdminShell({ user, allowed, unread, logout, children }: Props) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of per-viewer preferences
     setCollapsed(readPref("mm-admin-collapsed") === "1");
-    try {
-      setHiddenGuides(JSON.parse(readPref("mm-admin-hidden-guides") ?? "[]"));
-    } catch {
-      setHiddenGuides([]);
-    }
+    setHiddenGuides(parseHiddenGuides(readPref("mm-admin-hidden-guides")));
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- close the drawer on navigation
   useEffect(() => setMobileOpen(false), [path]);
