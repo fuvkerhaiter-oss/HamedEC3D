@@ -154,7 +154,7 @@ function fadeTexture(): THREE.CanvasTexture {
 }
 
 /** Development only: `?supporters-demo=N` fills the sign with N labelled demo rows to check the layout/scrolling. */
-function devDemo(): SupportersWall | null {
+export function supportersDevDemo(): SupportersWall | null {
   if (process.env.NODE_ENV === "production" || typeof window === "undefined") return null;
   const n = Number(new URLSearchParams(window.location.search).get("supporters-demo"));
   if (!n) return null;
@@ -163,7 +163,7 @@ function devDemo(): SupportersWall | null {
 }
 
 export function SupportersBoard({ wall: wallIn }: { wall?: SupportersWall }) {
-  const wall = useMemo(() => devDemo() ?? wallIn ?? { title: DEFAULT_SUPPORTERS_TITLE, people: [] }, [wallIn]);
+  const wall = useMemo(() => supportersDevDemo() ?? wallIn ?? { title: DEFAULT_SUPPORTERS_TITLE, people: [] }, [wallIn]);
   const n = wall.people.length;
   const loop = n > ROWS;
   const len = loop ? n + GAP_ROWS : n;

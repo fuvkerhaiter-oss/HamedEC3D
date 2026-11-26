@@ -88,7 +88,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
             ) : (
               <kbd className="rounded-md bg-cream px-2 py-0.5 font-mono text-sm text-ink">E</kbd>
             )}
-            <span className="truncate text-sm sm:text-base">Review cart &amp; checkout</span>
+            <span className="truncate text-sm sm:text-base">{target.kind === "wheel" ? "Spin the lucky wheel" : "Review cart & checkout"}</span>
           </div>
         </div>
       )}

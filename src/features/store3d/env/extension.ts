@@ -33,6 +33,24 @@ export function supportersStandCollider(): Box {
   const hz = (width / 2) * s + (depth / 2) * c;
   return { min: [x - hx, 0, z - hz], max: [x + hx, 2, z + hz] };
 }
+/**
+ * Big "lucky wheel" with the supporters' names, on the other side of the hall from the supporters sign, facing the
+ * shopper who walks in from the old store (same yaw convention). Footprint in wheel-local metres: ±halfWidth across,
+ * `back` behind and `front` in front of the wheel face (covers the stand + the "coming soon" rope and sign).
+ */
+export const LUCKY_WHEEL = { x: 17.0, z: -2.85, yaw: -1.05, halfWidth: 1.6, back: 0.7, front: 1.35 } as const;
+
+/** Walk-blocking box around the wheel, its rope and sign (axis-aligned bounds of the rotated footprint). */
+export function luckyWheelCollider(): Box {
+  const { x, z, yaw, halfWidth, back, front } = LUCKY_WHEEL;
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  // Local x axis → world (cos, −sin); local z axis (the face direction) → world (sin, cos).
+  const corners = [[-halfWidth, -back], [halfWidth, -back], [halfWidth, front], [-halfWidth, front]].map(([lx, lz]) => [x + lx! * c + lz! * s, z - lx! * s + lz! * c] as const);
+  const xs = corners.map((p) => p[0]);
+  const zs = corners.map((p) => p[1]);
+  return { min: [Math.min(...xs), 0, Math.min(...zs)], max: [Math.max(...xs), 2, Math.max(...zs)] };
+}
 export const WALL_T = 0.3;
 
 /**
@@ -115,6 +133,7 @@ export function extensionColliders(env: EnvLayout): Box[] {
     // The chains: nobody walks into the wing yet (a little in front of the stanchions so the trolley stops at them).
     box([g - 0.55, 0, z0], [g - 0.25, 1.2, z1]),
     supportersStandCollider(), // supporters sign
+    luckyWheelCollider(), // lucky wheel
   ];
 }
 

@@ -51,6 +51,28 @@ export const ASSETS = {
     castShadow: true,
     receiveShadow: false,
   },
+  ps5: {
+    id: "ps5",
+    url: "/models/props/ps5.opt.glb",
+    purpose: "Prize display under the lucky wheel: PS5 retail box (node \"box\", with carry handle) + console (node \"console\")",
+    source: "source/PS5_Box.fbx + box.jpeg, converted by tools/assets/fbx-scene-to-glb.mjs (each node stands on y=0, metres)",
+    scale: 0.65, // the FBX is ~1.5× real size: console 0.60 m → a real PS5's ~0.39 m
+    rotation: [0, 0, 0],
+    position: [0, 0, 0],
+    castShadow: true,
+    receiveShadow: false,
+  },
+  gta6Case: {
+    id: "gta6Case",
+    url: "/models/props/gta6-case.opt.glb",
+    purpose: "Prize display under the lucky wheel: GTA VI game case (blue case + cover art), lying flat, cover up (+Y)",
+    source: "source/Grand Theft Auto 6.gltf (+ .bin, cover jpg, case png), packed by tools/assets/gltf-to-glb.mjs",
+    scale: 0.0345, // ≈4.0 × 4.9 units → a real 13.5 × 17 cm case
+    rotation: [0, 0, 0],
+    position: [0, 0, 0],
+    castShadow: true,
+    receiveShadow: false,
+  },
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetId = keyof typeof ASSETS;

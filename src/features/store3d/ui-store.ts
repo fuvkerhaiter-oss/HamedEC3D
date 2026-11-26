@@ -4,7 +4,8 @@ import { create } from "zustand";
 
 export type InteractionTarget =
   | { key: string; kind: "product"; productId: string; label: string }
-  | { key: "checkout"; kind: "checkout"; label: string };
+  | { key: "checkout"; kind: "checkout"; label: string }
+  | { key: "lucky-wheel"; kind: "wheel"; label: string };
 
 interface StoreUiState {
   /** Player is in control (walking/looking): pointer-locked on desktop, touch controls active on touch. */

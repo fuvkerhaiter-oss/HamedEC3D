@@ -38,3 +38,54 @@ export function playDrop(): void {
     // Audio is optional (blocked autoplay, unsupported browser).
   }
 }
+
+function audio(): AudioContext | null {
+  try {
+    if (!ctx) {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+    return ctx;
+  } catch {
+    return null;
+  }
+}
+
+/** Short wooden "clack" of the wheel's pointer flap hitting a peg. */
+export function playWheelTick(volume = 1): void {
+  const a = audio();
+  if (!a) return;
+  const now = a.currentTime;
+  const o = a.createOscillator();
+  const g = a.createGain();
+  o.type = "square";
+  o.frequency.setValueAtTime(1400 + Math.random() * 200, now);
+  o.frequency.exponentialRampToValueAtTime(500, now + 0.03);
+  g.gain.setValueAtTime(0.05 * volume, now);
+  g.gain.exponentialRampToValueAtTime(0.0008, now + 0.045);
+  o.connect(g).connect(a.destination);
+  o.start(now);
+  o.stop(now + 0.05);
+}
+
+/** Little rising chime when the wheel stops. */
+export function playWheelWin(): void {
+  const a = audio();
+  if (!a) return;
+  const now = a.currentTime;
+  [784, 988, 1175, 1568].forEach((f, i) => {
+    const t = now + i * 0.09;
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + 0.5);
+    o.connect(g).connect(a.destination);
+    o.start(t);
+    o.stop(t + 0.52);
+  });
+}

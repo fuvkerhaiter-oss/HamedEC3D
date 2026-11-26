@@ -258,7 +258,7 @@ function RoundButton({
 function ActionButtons() {
   const target = useStoreUi((s) => s.target);
   const count = useCart((s) => cartCount(s.lines));
-  const interactCaption = target ? (target.kind === "product" ? "Inspect" : "Checkout") : "Interact";
+  const interactCaption = target ? (target.kind === "product" ? "Inspect" : target.kind === "wheel" ? "Spin" : "Checkout") : "Interact";
 
   return (
     <div
