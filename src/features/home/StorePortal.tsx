@@ -165,13 +165,13 @@ export function StorePortal({ image, catalog }: { image: StaticImageData; catalo
           className="vsw-portal group absolute inset-0 z-10 block cursor-pointer text-left outline-none"
         >
           <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_48%,transparent_35%,rgb(17_21_19/0.5)_100%)]" />
-          <span className="absolute left-1/2 top-[48%] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 lg:left-[62%]">
+          <span className="absolute left-1/2 top-[60%] flex -translate-x-1/2 sm:top-[48%] -translate-y-1/2 flex-col items-center gap-2 lg:left-[62%]">
             <Image
               src={enterSign}
               alt=""
               priority
               sizes="(min-width: 640px) 380px, 72vw"
-              className={`h-auto w-[72vw] max-w-[300px] drop-shadow-[0_10px_30px_rgb(0_0_0/0.45)] transition duration-300 group-hover:scale-105 group-focus-visible:scale-105 sm:max-w-[380px] ${pending ? "animate-pulse" : ""}`}
+              className={`h-auto w-[60vw] max-w-[300px] drop-shadow-[0_10px_30px_rgb(0_0_0/0.45)] transition duration-300 group-hover:scale-105 group-focus-visible:scale-105 sm:max-w-[380px] ${pending ? "animate-pulse" : ""}`}
             />
             {pending && (
               <span className="flex items-center gap-2 rounded-full bg-ink/70 px-4 py-2 font-display text-sm font-semibold text-cream shadow-lg ring-1 ring-cream/20 backdrop-blur sm:text-base">

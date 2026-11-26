@@ -59,10 +59,8 @@ export function AuthModal() {
   // Auto-focus first OTP input when entering OTP mode
   useEffect(() => {
     if (mode === "otp") {
-      setOtp((prev) => (prev.length === expectedLength ? prev : new Array(expectedLength).fill("")));
-      setError(null);
-      setResendSeconds(60);
-      setTimeout(() => otpInputRefs.current[0]?.focus(), 50);
+      const t = setTimeout(() => otpInputRefs.current[0]?.focus(), 50);
+      return () => clearTimeout(t);
     }
   }, [mode, expectedLength]);
 
@@ -90,6 +88,8 @@ export function AuthModal() {
       const len = typeof data.otpLength === "number" && (data.otpLength === 6 || data.otpLength === 8) ? data.otpLength : expectedLength;
       setExpectedLength(len);
       setOtp(new Array(len).fill(""));
+      setError(null);
+      setResendSeconds(60);
       setMode("otp");
     } catch (err) {
       setError((err as Error).message);
@@ -416,7 +416,7 @@ export function AuthModal() {
                   onClick={closeAuth}
                   className="text-xs text-ink-soft underline decoration-dashed hover:text-ink"
                 >
-                  Never mind, I'll shop as a guest for now
+                  Never mind, I&apos;ll shop as a guest for now
                 </button>
               </div>
             </div>
@@ -506,7 +506,7 @@ export function AuthModal() {
                     }}
                     className="font-semibold text-ink underline hover:text-amber-800"
                   >
-                    Didn't receive it? Resend code now
+                    Didn&apos;t receive it? Resend code now
                   </button>
                 )}
               </div>

@@ -55,7 +55,7 @@ export async function setPagePublished(db: Db, actor: Actor, id: string, publish
   if (publish) {
     const [p] = await db<{ draft_body: string }[]>`select draft_body from public.cms_pages where id = ${id}`;
     if (!p?.draft_body.trim()) throw new Error("Write some content before publishing");
-    if (/^s*TEMPLATE/.test(p.draft_body)) throw new Error("This is still a template: fill the [brackets], have it checked, and delete the first “TEMPLATE —” line before publishing");
+    if (p.draft_body.trimStart().startsWith("TEMPLATE")) throw new Error("This is still a template: fill the [brackets], have it checked, and delete the first “TEMPLATE —” line before publishing");
     await db`update public.cms_pages set published_body = draft_body, status = 'published', published_at = now(), updated_by = ${actor.id} where id = ${id}`;
   } else {
     await db`update public.cms_pages set status = 'unpublished', updated_by = ${actor.id} where id = ${id}`;

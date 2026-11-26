@@ -32,10 +32,10 @@ const FEATURES = [
   { title: "Shop your way", image: feature3 },
 ];
 
-const STEPS: { title: string; body: string; keys: string[] }[] = [
-  { title: "Enter", body: "Click into the store and look around with your mouse.", keys: ["Click"] },
-  { title: "Explore", body: "Walk the aisles, aim at a product and press E to inspect it.", keys: ["W", "A", "S", "D", "E"] },
-  { title: "Add & go", body: "Add to cart from the shelf, keep exploring, check out when ready.", keys: ["C"] },
+const STEPS: { title: string; body: string; keys: string[]; touchBody: string; touchKeys: string[] }[] = [
+  { title: "Enter", body: "Click into the store and look around with your mouse.", keys: ["Click"], touchBody: "Tap the store picture to step inside. Turn your phone sideways for the best view.", touchKeys: ["Tap"] },
+  { title: "Explore", body: "Walk the aisles, aim at a product and press E to inspect it.", keys: ["W", "A", "S", "D", "E"], touchBody: "Use the joystick (bottom left) to walk and swipe anywhere else to look around.", touchKeys: ["Joystick", "Swipe"] },
+  { title: "Add & go", body: "Add to cart from the shelf, keep exploring, check out when ready.", keys: ["C"], touchBody: "Face a product and tap the hand button to inspect it, add it, then check out from the cart.", touchKeys: ["Hand", "Cart"] },
 ];
 
 // Real catalog categories + brand lines only (don't advertise departments we don't stock).
@@ -74,38 +74,40 @@ export default async function HomePage() {
     <>
       <JsonLd data={[organizationLd(site, SOCIAL), websiteLd(site)]} />
       <section className="vsw-hero-keep relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
-        {/* Phones: the logo comes first, then the store picture, then the copy (the h1 below is screen-reader only there). */}
-        <div aria-hidden className="vsw-hero-in relative z-10 mx-auto w-[min(86%,26rem)] pb-6 pt-8 lg:hidden">{heroLogo}</div>
         {/* The real first view of the 3D store (rendered from the scene: tools/assets/capture-store-preview.ts).
             Click = fly into the store. Between the logo and the copy on phones, right-anchored on large screens. */}
-        <div className="vsw-hero-photo relative z-0 aspect-[4/3] w-full overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
+        <div className="vsw-hero-photo relative z-0 aspect-[4/5] w-full overflow-hidden sm:aspect-[4/3] lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
           <StorePortal image={storeFirstView} catalog={{ categories, products, stockAllFaces, supporters }} />
+          {/* Phones: the logo sits on the store picture (the h1 below is screen-reader only there), fading into the copy below. */}
+          <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/3 bg-gradient-to-b from-ink/60 to-transparent lg:hidden" />
+          <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-ink to-transparent lg:hidden" />
+          <div aria-hidden className="vsw-hero-in pointer-events-none absolute inset-x-0 top-[5%] z-20 mx-auto w-[min(52%,15rem)] sm:w-[min(40%,17rem)] lg:hidden">{heroLogo}</div>
         </div>
         <div aria-hidden className="vsw-grid-bg absolute inset-0 -z-20" />
 
         {/* Copy column: its empty space lets clicks through to the store picture behind it. */}
-        <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl flex-col items-start gap-7 px-5 pb-14 pt-8 lg:py-28 [&>*]:pointer-events-auto">
+        <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl flex-col items-start gap-5 px-5 pb-10 pt-4 sm:gap-7 sm:pb-14 lg:py-28 [&>*]:pointer-events-auto">
           <h1 className="vsw-hero-in relative w-[min(100%,34rem)] max-lg:sr-only [--d:120ms]">
             <span className="sr-only">{home.heroTitle || "WEGO SHIIIP: online store and interactive 3D supermarket"}</span>
             <span className="block max-lg:hidden">{heroLogo}</span>
           </h1>
-          <p className="vsw-hero-in flex items-center gap-3 font-display text-xl font-semibold tracking-tight text-cream [--d:360ms] sm:text-2xl">
+          <p className="vsw-hero-in flex items-center gap-3 font-display text-lg font-semibold tracking-tight text-cream [--d:360ms] sm:text-2xl">
             <span aria-hidden className="h-px w-10 bg-amber" />
             Happy Family, Happy Animals
           </p>
-          <p className="vsw-hero-in max-w-lg text-lg leading-relaxed text-cream/75 drop-shadow-[0_2px_10px_rgb(0_0_0/0.5)] [--d:480ms]">
+          <p className="vsw-hero-in max-w-lg text-base leading-relaxed text-cream/75 sm:text-lg drop-shadow-[0_2px_10px_rgb(0_0_0/0.5)] [--d:480ms]">
             {home.heroSubtitle || "Step into an immersive 3D store, pick real products off the shelves and have them delivered across Europe and the USA."}
           </p>
-          <div className="vsw-hero-in flex flex-wrap gap-3 [--d:600ms]">
-            <Link href="/catalog" className="rounded-full border border-cream/30 bg-ink/30 px-7 py-4 font-semibold backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-cream/60 hover:bg-cream/10">
+          <div className="vsw-hero-in flex w-full flex-wrap gap-3 [--d:600ms] sm:w-auto">
+            <Link href="/catalog" className="w-full rounded-full text-center sm:w-auto border border-cream/30 bg-ink/30 px-7 py-4 font-semibold backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-cream/60 hover:bg-cream/10">
               Browse the catalog
             </Link>
           </div>
-          <dl className="vsw-hero-in mt-4 grid grid-cols-3 gap-6 border-t border-cream/15 pt-6 [--d:720ms] sm:gap-10">
+          <dl className="vsw-hero-in mt-2 grid w-full grid-cols-3 gap-4 border-t border-cream/15 pt-5 [--d:720ms] sm:mt-4 sm:w-auto sm:gap-10 sm:pt-6">
             {STATS.map(([value, label]) => (
               <div key={label}>
                 <dt className="eyebrow text-cream/50">{label}</dt>
-                <dd className="mt-1 font-display text-2xl text-cream sm:text-3xl">{value}</dd>
+                <dd className="mt-1 font-display text-xl text-cream sm:text-3xl">{value}</dd>
               </div>
             ))}
           </dl>
@@ -130,20 +132,20 @@ export default async function HomePage() {
 
       {departments.length > 0 && (
         <section aria-labelledby="shop-departments" className="bg-cream">
-          <div className="mx-auto max-w-6xl px-5 py-20">
+          <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Shop by department</p>
-                <h2 id="shop-departments" className="mt-3 font-display text-4xl leading-[1.05] sm:text-5xl">Real products, two ways to shop.</h2>
-                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">Browse the list or walk the aisles of our 3D store: same products, same prices, same cart. Prices in euro (VAT included) for the EU and in US dollars for the USA.</p>
+                <h2 id="shop-departments" className="mt-3 font-display text-3xl leading-[1.05] sm:text-5xl">Real products, two ways to shop.</h2>
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-lg">Browse the list or walk the aisles of our 3D store: same products, same prices, same cart. Prices in euro (VAT included) for the EU and in US dollars for the USA.</p>
               </div>
               <Link href="/catalog" className="btn-dark px-6 py-3">Shop all products</Link>
             </div>
-            <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ul className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 lg:grid-cols-4">
               {departments.map(({ c, items }) => (
                 <li key={c.id}>
-                  <Link href={categoryPath(c.slug)} className="group flex h-full flex-col rounded-2xl border-2 border-ink bg-white p-5 transition hover:-translate-y-1 hover:bg-amber">
-                    <span className="font-display text-2xl">{c.name}</span>
+                  <Link href={categoryPath(c.slug)} className="group flex h-full flex-col rounded-2xl border-2 border-ink bg-white p-4 transition hover:-translate-y-1 hover:bg-amber sm:p-5">
+                    <span className="font-display text-xl sm:text-2xl">{c.name}</span>
                     <span className="mt-1 text-sm text-ink-soft group-hover:text-ink">{items.length} product{items.length === 1 ? "" : "s"}</span>
                     <span className="mt-4 line-clamp-2 text-sm text-ink-soft group-hover:text-ink">{items.slice(0, 3).map((p) => p.name).join(" · ")}</span>
                   </Link>
@@ -152,7 +154,7 @@ export default async function HomePage() {
             </ul>
             {featured.length > 0 && (
               <>
-                <h3 className="mt-16 font-display text-2xl">In stock now</h3>
+                <h3 className="mt-12 font-display text-2xl sm:mt-16">In stock now</h3>
                 <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   {featured.map((p) => {
                     const cat = categories.find((c) => c.id === p.categoryId);
@@ -166,55 +168,59 @@ export default async function HomePage() {
       )}
 
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-24">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Why WEGO SHIIIP</p>
-              <h2 className="mt-4 max-w-xl font-display text-4xl leading-[1.04] sm:text-5xl">
+              <h2 className="mt-4 max-w-xl font-display text-3xl leading-[1.04] sm:text-5xl">
                 Shopping, reimagined as a <span className="vsw-mark">place you visit</span>.
               </h2>
             </div>
-            <p className="max-w-md text-lg leading-relaxed text-ink-soft lg:justify-self-end">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
+            <p className="max-w-md text-base leading-relaxed text-ink-soft sm:text-lg lg:justify-self-end">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
           </div>
           {/* 3D feature cards (artwork: src/assets/home/feature-*.webp, cut from "Modern Automation Feature Cards.webp"). */}
-          <div className="mt-14 grid gap-6 sm:grid-cols-3 sm:gap-4">
+          <div className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
             {FEATURES.map((f) => (
               <Image
                 key={f.title}
                 src={f.image}
                 alt={f.title}
-                sizes="(min-width: 1152px) 370px, (min-width: 640px) 32vw, 92vw"
-                className="h-auto w-full drop-shadow-[0_14px_22px_rgb(17_21_19/0.16)] transition duration-300 hover:-translate-y-1.5 hover:rotate-[-0.6deg]"
+                sizes="(min-width: 1152px) 370px, (min-width: 640px) 32vw, 75vw"
+                className="h-auto w-[75%] shrink-0 snap-center sm:w-full drop-shadow-[0_14px_22px_rgb(17_21_19/0.16)] transition duration-300 hover:-translate-y-1.5 hover:rotate-[-0.6deg]"
               />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-ink py-24 text-white">
+      <section className="bg-ink py-14 text-white sm:py-24">
         <div className="mx-auto max-w-6xl px-5">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">How it works</p>
-              <h2 className="mt-4 font-display text-4xl sm:text-5xl">Three steps to a full trolley.</h2>
+              <h2 className="mt-4 font-display text-3xl sm:text-5xl">Three steps to a full trolley.</h2>
             </div>
             <Link href="/store" className="group inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition hover:text-amber">
               Try it now <span aria-hidden className="transition group-hover:translate-x-1">→</span>
             </Link>
           </div>
-          <ol className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
+          <ol className="mt-10 grid gap-8 sm:mt-14 sm:grid-cols-3">
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex flex-col border-t-2 border-white/15 pt-6 transition-colors hover:border-amber">
-                <span className="font-display text-5xl leading-none text-amber">{i + 1}</span>
-                <h3 className="mt-6 font-display text-2xl">{s.title}</h3>
-                <p className="mt-2 leading-relaxed text-white/70">{s.body}</p>
-                <div className="mt-auto flex flex-wrap gap-1.5 pt-6">
-                  {s.keys.map((k) => (
+                <span className="font-display text-4xl leading-none text-amber sm:text-5xl">{i + 1}</span>
+                <h3 className="mt-4 font-display text-2xl sm:mt-6">{s.title}</h3>
+                {/* Phones/tablets get touch instructions instead of keyboard keys. */}
+                <p className="mt-2 leading-relaxed text-white/70 pointer-coarse:hidden">{s.body}</p>
+                <p className="mt-2 hidden leading-relaxed text-white/70 pointer-coarse:block">{s.touchBody}</p>
+                {[{ keys: s.keys, cls: "flex pointer-coarse:hidden" }, { keys: s.touchKeys, cls: "hidden pointer-coarse:flex" }].map(({ keys, cls }) => (
+                <div key={cls} className={`mt-auto flex-wrap gap-1.5 pt-5 sm:pt-6 ${cls}`}>
+                  {keys.map((k) => (
                     <kbd key={k} className="min-w-8 rounded-md border border-white/25 border-b-[3px] bg-white/5 px-2 py-1 text-center font-mono text-xs text-white">
                       {k}
                     </kbd>
                   ))}
                 </div>
+                ))}
               </li>
             ))}
           </ol>
@@ -222,7 +228,7 @@ export default async function HomePage() {
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-24">
           {/* 3D "Doors are open" banner (src/assets/home/doors-open-banner.webp). Its buttons are part of the artwork;
               real links sit exactly over them (positions in % of the image, measured from the file). */}
           <div className="relative transition duration-300 hover:-translate-y-1">

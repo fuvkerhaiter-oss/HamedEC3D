@@ -25,7 +25,9 @@ export async function updateSession(request: NextRequest) {
   if ((isAuthCode && hasPkceVerifier) || isProviderError) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
-    callbackUrl.searchParams.set("next", pathname);
+    // Leave `next` unset: the callback reads the destination saved in the
+    // wego-auth-next cookie (falls back to /account), not the Site URL path.
+    callbackUrl.searchParams.delete("next");
     return NextResponse.redirect(callbackUrl);
   }
 

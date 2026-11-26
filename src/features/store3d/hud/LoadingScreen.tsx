@@ -5,7 +5,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useProgress } from "@react-three/drei";
 import { prefersTouchControls } from "../input/device";
 import { useStoreUi } from "../ui-store";
-import entrance from "@/assets/loading/megamarket-entrance.webp";
+import entrance from "@/assets/hero/store-first-view.webp";
+import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 
 const DESKTOP_TIPS = [
   "WASD to walk · Shift to run",
@@ -82,24 +83,21 @@ function LoadingShell({ progress, leaving = false }: { progress: number | null; 
 
       {/* Brand mark */}
       <div className="vsw-load-card absolute left-0 top-0 flex items-center gap-2.5 p-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:p-8">
-        <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber font-display text-base text-ink shadow-[0_6px_20px_rgb(0_0_0/0.35)]">M</span>
-        <span className="font-display text-xl leading-none drop-shadow-[0_2px_10px_rgb(0_0_0/0.6)]">
-          Mega<span className="text-amber">Market</span>
-        </span>
+        <Image src={brandLogo} alt="WEGO SHIIIP" priority sizes="160px" className="h-auto w-28 drop-shadow-[0_4px_16px_rgb(0_0_0/0.5)] sm:w-40" />
       </div>
 
       {/* Progress card */}
       <div className="absolute inset-x-0 bottom-0 flex justify-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
-        <div className="vsw-load-card w-full max-w-lg rounded-3xl border border-cream/15 bg-ink/55 p-6 shadow-[0_20px_60px_rgb(0_0_0/0.45)] backdrop-blur-xl sm:p-7">
+        <div className="vsw-load-card w-full max-w-lg rounded-3xl border border-cream/15 bg-ink/55 p-6 [@media(max-height:480px)]:p-4 shadow-[0_20px_60px_rgb(0_0_0/0.45)] backdrop-blur-xl sm:p-7">
           <p className="eyebrow flex items-center gap-2 text-cream/60">
             <span className="h-1.5 w-1.5 rounded-full bg-amber shadow-[0_0_10px_var(--color-amber)]" />
             3D Store · Now loading
           </p>
           <div className="mt-2 flex items-end justify-between gap-4">
-            <p className="font-display text-3xl leading-[1.05] sm:text-4xl">
+            <p className="font-display text-3xl leading-[1.05] sm:text-4xl [@media(max-height:480px)]:text-2xl">
               Opening the doors<span className="vsw-dots text-amber" aria-hidden><span>.</span><span>.</span><span>.</span></span>
             </p>
-            <span className="font-display text-3xl tabular-nums leading-none text-amber sm:text-4xl">
+            <span className="font-display text-3xl tabular-nums leading-none text-amber sm:text-4xl [@media(max-height:480px)]:text-2xl">
               {pct === null ? "" : <>{pct}<span className="text-lg text-amber/70">%</span></>}
             </span>
           </div>
