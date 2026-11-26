@@ -9,6 +9,7 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { mapLive } from "../map/map-live";
 import { Billboard, Text, useGLTF } from "@react-three/drei";
 import { ASSETS } from "../assets/registry";
 import type { Rect } from "../collision";
@@ -66,6 +67,14 @@ export function BotShoppers({ env, obstacles, spawn, lowPower = false }: { env: 
     player.x = state.camera.position.x;
     player.z = state.camera.position.z;
     stepBots(bots, world, delta, player);
+    // Minimap dots (same array every frame).
+    for (let i = 0; i < bots.length; i++) {
+      const b = bots[i]!;
+      const d = (mapLive.bots[i] ??= { x: 0, z: 0, color: b.persona.color, name: b.persona.name });
+      d.x = b.motion.x;
+      d.z = b.motion.z;
+    }
+    mapLive.bots.length = bots.length;
     const t = state.clock.elapsedTime;
     for (let i = 0; i < bots.length; i++) {
       const b = bots[i]!;

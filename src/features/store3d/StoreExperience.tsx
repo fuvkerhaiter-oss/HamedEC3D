@@ -5,11 +5,16 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { Canvas, useThree } from "@react-three/fiber";
 import { KeyboardControls, PerformanceMonitor, PointerLockControls, useGLTF } from "@react-three/drei";
 import { rectsFromBoxes } from "./collision";
+import { shopColliders, wallsWithDoorGaps } from "./env/shop-interior";
+import { SHOP_UNITS } from "./env/shops";
+import { openShopIds } from "./wing/RentalShops";
 import { ASSETS } from "./assets/registry";
 import { BotShoppers } from "./bots/BotShoppers";
 import { botsEnabled } from "./bots/bots";
 import { KEYMAP } from "./controls";
 import { STORE_CONFIG, STORE_ENV } from "./env/supermarket";
+import { MapTracker } from "./map/MapTracker";
+import { MiniMap } from "./hud/MiniMap";
 import { Hud } from "./hud/Hud";
 import { LoadingScreen } from "./hud/LoadingScreen";
 import { RotateHint } from "./hud/RotateHint";
@@ -30,8 +35,14 @@ import { useTrolley } from "./trolley/trolley-store";
 import { buildTrolleyCatalog } from "./trolley/visuals";
 import { LOCK_ERROR_MESSAGE, useStoreUi } from "./ui-store";
 
-/** Walls and fixtures the shopper and trolley collide with (flat floor; see ./collision). */
-const OBSTACLES = rectsFromBoxes([...STORE_ENV.walls, ...STORE_ENV.fixtures]);
+/**
+ * Walls and fixtures the shopper and trolley collide with (flat floor; see ./collision). A rented shop its tenant
+ * opened gets a walk-through gap in the store wall plus its room's walls and fittings (env/shop-interior).
+ */
+function obstaclesFor(openIds: readonly string[]) {
+  const open = SHOP_UNITS.filter((u) => openIds.includes(u.id));
+  return rectsFromBoxes([...wallsWithDoorGaps(STORE_ENV.walls, open), ...STORE_ENV.fixtures, ...open.flatMap(shopColliders)]);
+}
 /** Demo bot shoppers: on in `next dev`, off in production unless NEXT_PUBLIC_STORE_BOTS=on (see ./bots/bots). */
 const BOTS = botsEnabled(process.env.NEXT_PUBLIC_STORE_BOTS, process.env.NODE_ENV);
 const BOT_SPAWN: [number, number] = [STORE_CONFIG.spawn[0], STORE_CONFIG.spawn[2]];
@@ -95,6 +106,8 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
     [catalog],
   );
   const trolleyCatalog = useMemo(() => buildTrolleyCatalog(catalog, layout.colors), [catalog, layout.colors]);
+  const openKey = openShopIds(catalog.shops).join(",");
+  const obstacles = useMemo(() => obstaclesFor(openKey ? openKey.split(",") : []), [openKey]);
   const setLocked = useStoreUi((s) => s.setLocked);
   // Phones/tablets: render budget decided once at mount (GL context options can't change later).
   // iOS (all browsers there are WebKit) gets the tightest budget: Safari kills a WebGL tab at a much lower
@@ -219,14 +232,15 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
           <fog attach="fog" args={["#e9e4da", 25, 60]} />
           <Suspense fallback={null}>
             <StoreScene env={STORE_ENV} layout={layout} catalog={catalog} lowPower={lowPower} />
-            <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} obstacles={OBSTACLES} trolley={<Trolley tc={trolleyCatalog} />} />
+            <Player spawn={STORE_CONFIG.spawn} spawnYaw={STORE_CONFIG.spawnYaw} obstacles={obstacles} trolley={<Trolley tc={trolleyCatalog} />} />
             <RemotePlayers tc={trolleyCatalog} />
-            {BOTS && playing && <BotShoppers env={STORE_ENV} obstacles={OBSTACLES} spawn={BOT_SPAWN} lowPower={lowPower} />}
+            {BOTS && playing && <BotShoppers env={STORE_ENV} obstacles={obstacles} spawn={BOT_SPAWN} lowPower={lowPower} />}
             <FlightLayer tc={trolleyCatalog} />
             <Interactor />
             <PeekTracker />
             <TouchLook />
             <InspectCamera />
+            <MapTracker />
             {embedded && <CinematicCamera />}
             <SceneReady />
           </Suspense>
@@ -237,6 +251,7 @@ export default function StoreExperience({ catalog, embedded = false }: { catalog
       {/* The hero preview is a picture: no HUD, no rooms, no loading screen (the hero shows the still image). */}
       {playing && <Hud catalog={catalog} />}
       {playing && <RoomHud />}
+      {playing && <MiniMap signs={layout.signs} />}
       {!embedded && <LoadingScreen />}
       {playing && <RotateHint />}
       {playing && contextLost && <ContextLostNotice />}

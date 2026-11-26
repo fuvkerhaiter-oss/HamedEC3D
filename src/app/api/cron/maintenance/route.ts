@@ -8,6 +8,8 @@ import { syncMissingPaymentFinancials } from "@/lib/payments/financials";
 import { processDueFulfillmentJobs } from "@/lib/fulfillment/worker";
 import { syncSupplierOrders } from "@/lib/fulfillment/tracking-sync";
 import { getPaymentProvider } from "@/lib/payments/registry";
+import { queueRentalReminders } from "@/lib/rentals/service";
+import { purgeOldVisits } from "@/lib/visitors/service";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,9 @@ export async function GET(req: Request) {
   // Daily backstop for the fulfillment worker (the frequent tick is /api/cron/fulfillment).
   const jobs = await processDueFulfillmentJobs(db, { limit: 10 });
   const sync = await syncSupplierOrders(db, { limit: 50 });
+  const rentalReminders = await queueRentalReminders(db); // shop rentals ending within 7 days
+  const visitsPurged = await purgeOldVisits(db); // visitor log retention (privacy policy)
   const emails = await flushEmailOutbox(db, 100);
   const financials = await syncMissingPaymentFinancials(db, (id) => getPaymentProvider(id)); // Stripe fees from balance transactions
-  return NextResponse.json({ expired, emails, financials, jobs: jobs.processed, sync });
+  return NextResponse.json({ expired, rentalReminders, visitsPurged, emails, financials, jobs: jobs.processed, sync });
 }

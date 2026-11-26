@@ -3,17 +3,18 @@
 /**
  * The new hall + "Coming soon" wing beyond the old far wall (layout in ../env/extension.ts):
  * floor/ceiling continue with the imported store's own materials and tile mapping, the moved fridge banks line the
- * hall, and a portal with a big 3D "COMING SOON" title is chained shut (iron chain model, padlock). Walking up to the
- * chains opens the 3D updates board (./UpdatesBoard).
+ * hall, and a portal with a big 3D "COMING SOON" title is chained shut (iron chain model, padlock). A fixed updates
+ * display stands in front of the chains (./UpdatesBoard).
  */
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Center, RoundedBox, Text, Text3D, useGLTF, useTexture } from "@react-three/drei";
 import { ASSETS } from "../assets/registry";
-import { GATE, GATE_X, NEW_END_X, OLD_END_X, WALL_T } from "../env/extension";
+import { GATE, GATE_X, NEW_END_X, OLD_END_X, UPDATES_DISPLAY, WALL_T } from "../env/extension";
 import type { EnvLayout } from "../env/types";
 import { chainSegments, type ChainSpan } from "./chains";
+import { doorHoles, intoStore, type WallSide } from "../env/shops";
 import { UpdatesBoard } from "./UpdatesBoard";
 import { SupportersBoard } from "./SupportersBoard";
 import { LuckyWheel } from "./LuckyWheel";
@@ -45,7 +46,7 @@ export function NewWing({ env, lowPower, supporters }: { env: EnvLayout; lowPowe
         <ComingSoonTitle z0={z0} z1={z1} />
       </Suspense>
       {!lowPower && <GateSpot from={[GATE_X - 5, env.ceilingY - 0.3, (z0 + z1) / 2]} to={[GATE_X, 1.6, (z0 + z1) / 2]} />}
-      <UpdatesBoard center={[GATE_X - 2.5, 0, (z0 + z1) / 2 - 0.3]} gate={[GATE_X, (z0 + z1) / 2]} />
+      <UpdatesBoard center={[UPDATES_DISPLAY.x, 0, (z0 + z1) / 2 + UPDATES_DISPLAY.zOffset]} />
       <SupportersBoard wall={supporters} />
       <LuckyWheel wall={supporters} lowPower={lowPower} />
     </group>
@@ -166,8 +167,8 @@ function Architecture({ env }: { env: EnvLayout }) {
       </mesh>
       <mesh geometry={parts.ceiling} material={ceilMat} />
       {/* Side walls + new far wall (inner faces), same plaster as the store. */}
-      <WallPlane material={parts.wall} position={[midX, h / 2, z0]} size={[len, h]} rotationY={0} />
-      <WallPlane material={parts.wall} position={[midX, h / 2, z1]} size={[len, h]} rotationY={Math.PI} />
+      <SideWall material={parts.wall} x0={x0} x1={NEW_END_X} h={h} z={z0} side="S" />
+      <SideWall material={parts.wall} x0={x0} x1={NEW_END_X} h={h} z={z1} side="N" />
       <mesh position={[NEW_END_X + WALL_T / 2, h / 2, (z0 + z1) / 2]}>
         <boxGeometry args={[WALL_T, h, z1 - z0 + 2 * WALL_T]} />
         <meshStandardMaterial color={GREEN} roughness={0.8} />
@@ -179,22 +180,51 @@ function Architecture({ env }: { env: EnvLayout }) {
           <meshStandardMaterial color="#2b2f2d" roughness={0.6} />
         </mesh>
       ))}
-      <CeilingLights x0={x0 + 0.8} x1={GATE_X - 0.8} z0={z0} z1={z1} y={h - 0.02} />
+      {/* One run over the whole open hall (imported store + extension); the store's own truss rig is removed in env/reshape. */}
+      <CeilingLights x0={env.interior.min[0] + 0.8} x1={GATE_X - 0.8} z0={z0} z1={z1} y={h - 0.02} />
       <CeilingLights x0={wingX + 0.8} x1={NEW_END_X - 0.8} z0={z0} z1={z1} y={h - 0.02} dim />
     </group>
   );
 }
 
-function WallPlane({ material, position, size, rotationY }: { material: THREE.Material; position: [number, number, number]; size: [number, number]; rotationY: number }) {
+/** Hall side wall (inner face) with the door holes of the rental shops in it (../env/shops, wing/RentalShops). */
+function SideWall({ material, x0, x1, h, z, side }: { material: THREE.Material; x0: number; x1: number; h: number; z: number; side: WallSide }) {
   const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(size[0], size[1]);
-    // World-scale UVs (≈ 2 m per texture repeat) so the plaster grain matches the old walls.
+    const shape = new THREE.Shape();
+    shape.moveTo(x0, 0);
+    shape.lineTo(x1, 0);
+    shape.lineTo(x1, h);
+    shape.lineTo(x0, h);
+    shape.closePath();
+    for (const [a, b, , top] of doorHoles(side, "hall")) {
+      const hole = new THREE.Path();
+      hole.moveTo(a, 0.001);
+      hole.lineTo(a, top);
+      hole.lineTo(b, top);
+      hole.lineTo(b, 0.001);
+      hole.closePath();
+      shape.holes.push(hole);
+    }
+    const g = new THREE.ShapeGeometry(shape);
+    const pos = g.getAttribute("position");
+    const nrm = g.getAttribute("normal");
     const uv = g.getAttribute("uv");
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * size[0]) / 2, (uv.getY(i) * size[1]) / 2);
+    const nz = intoStore(side);
+    for (let i = 0; i < pos.count; i++) {
+      // World-scale UVs (≈ 2 m per texture repeat), like the other new walls.
+      uv.setXY(i, (pos.getX(i) - x0) / 2, pos.getY(i) / 2);
+      pos.setZ(i, z);
+      nrm.setXYZ(i, 0, 0, nz);
+    }
+    if (nz < 0 && g.index) {
+      const idx = g.index.array as unknown as number[];
+      for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2]!, idx[i + 1]!];
+    }
+    g.computeBoundingSphere();
     return g;
-  }, [size]);
+  }, [x0, x1, h, z, side]);
   useLayoutEffect(() => () => geo.dispose(), [geo]);
-  return <mesh geometry={geo} material={material} position={position} rotation-y={rotationY} receiveShadow />;
+  return <mesh geometry={geo} material={material} receiveShadow />;
 }
 
 /** Long LED batten rows like the store's, emissive only (no extra lights); two instanced meshes per call. */
@@ -415,7 +445,7 @@ function GateChains({ z0, z1 }: { z0: number; z1: number }) {
   );
 }
 
-function Padlock({ position }: { position: [number, number, number] }) {
+export function Padlock({ position }: { position: [number, number, number] }) {
   const ref = useRef<THREE.Group>(null);
   // Hangs from the chain crossing and sways a little.
   useFrame(({ clock }) => {

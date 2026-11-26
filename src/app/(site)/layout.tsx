@@ -25,6 +25,7 @@ function Logo({ dark = false }: { dark?: boolean }) {
 const NAV = [
   { href: "/store", label: "3D Store" },
   { href: "/catalog", label: "Catalog" },
+  { href: "/rent-a-shop", label: "Rent a shop" },
   { href: "/contact", label: "Help" },
 ];
 

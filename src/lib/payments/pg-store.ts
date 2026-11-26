@@ -9,6 +9,7 @@ import { notify } from "../admin/services/notifications";
 import type { CurrencyCode } from "../money";
 import type { OrderStatus } from "../orders/state-machine";
 import { recordPaymentFinancials } from "./financials";
+import { handleRentalPaymentEvent } from "../rentals/webhook";
 import type { PaymentEvent } from "./types";
 import type { PaymentWebhookStore } from "./webhook";
 
@@ -77,6 +78,9 @@ export function pgWebhookStore(db: Db, opts: { isTest: boolean }): PaymentWebhoo
     },
     async recordPaymentFinancials(providerId, providerPaymentId, balance) {
       await recordPaymentFinancials(db, providerId, providerPaymentId, balance);
+    },
+    async handleOther(provider, event) {
+      return handleRentalPaymentEvent(db, provider, event);
     },
     async applyRefundUpdate(providerId, event) {
       const info = event.refund;

@@ -21,6 +21,10 @@ export interface CreateSessionInput {
    * `amount`, the provider shows every product line; otherwise it falls back to one line for `amount`.
    */
   breakdown?: OrderBreakdown;
+  /** Payment page lifetime (providers clamp it to what they allow; Stripe: 30 min – 23 h). Default: SESSION_TTL_SECONDS. */
+  expiresInSeconds?: number;
+  /** Don't require a billing address (shop rentals already collect the business details). Default false. */
+  noBillingAddress?: boolean;
 }
 
 export interface OrderBreakdown {

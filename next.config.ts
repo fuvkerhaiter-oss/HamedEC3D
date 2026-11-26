@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
       { source: "/account/:path*", headers: noReferrer },
       { source: "/admin", headers: privateHeaders },
       { source: "/admin/:path*", headers: privateHeaders },
+      { source: "/seller", headers: privateHeaders },
+      { source: "/seller/:path*", headers: privateHeaders },
       { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },

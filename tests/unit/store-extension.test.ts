@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rectsFromBoxes, step, type Motion, type ShopperShape } from "../../src/features/store3d/collision";
-import { FRIDGE_MOVES, GATE_X, NEW_END_X, OLD_END_X, extendLayout, fridgeMoveFor, moveXZ } from "../../src/features/store3d/env/extension";
+import { FIXTURE_REMOVALS, GATE_X, NEW_END_X, OLD_END_X, extendLayout, fixtureRemovalFor } from "../../src/features/store3d/env/extension";
 import { STORE_ENV, SUPERMARKET } from "../../src/features/store3d/env/supermarket";
 import type { Box } from "../../src/features/store3d/env/types";
 import { chainLength, chainPoint, chainSegments } from "../../src/features/store3d/wing/chains";
@@ -34,22 +34,17 @@ test("the old far wall is gone and the room now ends at the new far wall", () =>
   assert.equal(extendLayout(SUPERMARKET).walls.length, STORE_ENV.walls.length, "deterministic");
 });
 
-test("fridge banks are moved, not deleted: same count, same size, inside the new hall", () => {
-  assert.equal(STORE_ENV.fixtures.length, SUPERMARKET.fixtures.length);
-  for (const f of FRIDGE_MOVES) {
-    assert.ok(!STORE_ENV.fixtures.some((b) => b.min[0] === f.collider.min[0] && b.min[2] === f.collider.min[2]), `${f.id} left its old place`);
-    const [ax, az] = moveXZ(f, f.collider.min[0], f.collider.min[2]);
-    const [bx, bz] = moveXZ(f, f.collider.max[0], f.collider.max[2]);
-    // A quarter turn swaps the footprint's sides.
-    assert.ok(Math.abs(Math.abs(bx - ax) - (f.collider.max[2] - f.collider.min[2])) < 1e-6);
-    assert.ok(Math.abs(Math.abs(bz - az) - (f.collider.max[0] - f.collider.min[0])) < 1e-6);
-    for (const x of [ax, bx]) assert.ok(x > OLD_END_X && x < GATE_X - 0.35, `${f.id} x=${x.toFixed(2)} in the hall`);
-    for (const z of [az, bz]) assert.ok(z >= SUPERMARKET.interior.min[2] - 0.05 && z <= SUPERMARKET.interior.max[2] + 0.05, `${f.id} z=${z.toFixed(2)} inside`);
+test("removed fixtures (chest freezers, refrigerated cabinets) leave the layout; floor/walls/ceiling stay", () => {
+  assert.equal(STORE_ENV.fixtures.length, SUPERMARKET.fixtures.length - FIXTURE_REMOVALS.length);
+  for (const f of FIXTURE_REMOVALS) {
+    assert.ok(SUPERMARKET.fixtures.some((b) => b.min[0] === f.collider.min[0] && b.min[2] === f.collider.min[2]), `${f.id} existed`);
+    assert.ok(!STORE_ENV.fixtures.some((b) => b.min[0] === f.collider.min[0] && b.min[2] === f.collider.min[2]), `${f.id} removed`);
   }
-  assert.equal(fridgeMoveFor(13.5, 1, 0)?.id, "fridges-long");
-  assert.equal(fridgeMoveFor(13.5, 1, 6)?.id, "fridges-short");
-  assert.equal(fridgeMoveFor(13.5, 4, 0), null, "nothing above the fridges (wall/ceiling) moves");
-  assert.equal(fridgeMoveFor(5, 1, 0), null);
+  assert.equal(fixtureRemovalFor(13.5, 1, 0)?.id, "fridges-long");
+  assert.equal(fixtureRemovalFor(13.5, 1, 6)?.id, "fridges-short");
+  assert.equal(fixtureRemovalFor(13.5, 4, 0), null, "nothing above the fridges (wall/ceiling) goes");
+  assert.equal(fixtureRemovalFor(13.5, -0.02, 0), null, "floor stays");
+  assert.equal(fixtureRemovalFor(5, 1, 0), null);
 });
 
 test("a shopper walks from the old store into the new hall and is stopped by the chains", () => {

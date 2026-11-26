@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
     // Private / transactional areas (those pages also send noindex). Not blocked on purpose:
     // - catalog search/filter URLs: they carry noindex + a canonical, which crawlers only see if allowed in;
     // - /_next/image and /_next/static: product photos and CSS/JS that Google needs to render pages.
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/order", "/account", "/dev/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/order", "/account", "/seller", "/dev/"] },
     sitemap: `${site}/sitemap.xml`,
   };
 }

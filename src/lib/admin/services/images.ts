@@ -176,7 +176,15 @@ export async function deleteImages(db: Db, storage: MediaStorage | null, actor: 
 /** Removes storage objects no product_images row references, older than `graceMinutes` (in-flight uploads are safe). */
 export async function cleanupOrphans(db: Db, storage: MediaStorage, actor: Actor, graceMinutes = 60): Promise<{ scanned: number; deleted: string[] }> {
   const objects = await storage.list("");
-  const referenced = new Set((await db<{ storage_path: string }[]>`select storage_path from public.product_images where bucket = ${storage.bucket}`).map((r) => r.storage_path));
+  // Shop renters' product photos and logos (lib/tenants) live in the same bucket: they count as referenced too.
+  const referenced = new Set(
+    (
+      await db<{ storage_path: string }[]>`
+        select storage_path from public.product_images where bucket = ${storage.bucket}
+        union all select image_path from public.tenant_products where image_bucket = ${storage.bucket} and image_path is not null
+        union all select logo_path from public.tenant_accounts where logo_bucket = ${storage.bucket} and logo_path is not null`
+    ).map((r) => r.storage_path),
+  );
   const cutoff = Date.now() - graceMinutes * 60_000;
   const orphans = objects.filter((o) => !referenced.has(o.key) && OBJECT_KEY.test(o.key) && (o.createdAt?.getTime() ?? 0) < cutoff).map((o) => o.key);
   if (orphans.length) await storage.remove(orphans);

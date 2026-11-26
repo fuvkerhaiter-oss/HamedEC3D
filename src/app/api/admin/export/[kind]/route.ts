@@ -8,6 +8,7 @@ import { dailySeries, salesByCountry, topProducts } from "@/lib/admin/services/f
 import { maskEmail } from "@/lib/admin/services/people";
 import { exportProductsCsv } from "@/lib/admin/services/products";
 import { toDecimalString, type CurrencyCode } from "@/lib/money";
+import { listVisits } from "@/lib/visitors/service";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ const PERM: Record<string, Permission> = {
   sales: "analytics.view",
   "top-products": "analytics.view",
   countries: "analytics.view",
+  visitors: "admins.manage",
 };
 
 const dec = (amount: number | null, currency: string | null) => (amount === null || !currency ? "" : toDecimalString({ amount, currency: currency as CurrencyCode }));
@@ -63,6 +65,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   } else if (kind === "top-products") {
     const rows = await topProducts(sql, range, 100);
     csv = toCsv(["product", "currency", "units", "revenue"], rows.map((r) => [r.product_name, r.currency, r.units, dec(r.revenue, r.currency)]));
+  } else if (kind === "visitors") {
+    // Same filters as Change history → Website visitors (period presets only), at most 10 000 rows.
+    const f = { from: range.from, to: range.to, country: url.searchParams.get("country") ?? undefined, device: url.searchParams.get("device") ?? undefined, q: url.searchParams.get("q") ?? undefined, bots: url.searchParams.get("bots") === "1" };
+    const rows = [];
+    for (let p = 1; p <= 50; p++) {
+      const { rows: chunk } = await listVisits(sql, f, p, 200);
+      rows.push(...chunk);
+      if (chunk.length < 200) break;
+    }
+    csv = toCsv(
+      ["started_at_utc", "last_seen_utc", "ip", "country", "region", "city", "timezone", "device", "browser", "os", "screen", "language", "pages", "duration_s", "landing_page", "last_page", "referrer", "returning", "bot", "user_agent"],
+      rows.map((r) => [r.started_at.toISOString(), r.last_seen_at.toISOString(), r.ip, r.country, r.region, r.city, r.timezone, r.device, r.browser, r.os, r.screen, r.language,
+        r.page_views, r.duration_s, r.landing_path, r.last_path, r.referrer_host, r.is_returning, r.is_bot, r.user_agent]),
+    );
   } else {
     const rows = await salesByCountry(sql, range);
     csv = toCsv(["country", "currency", "orders", "revenue"], rows.map((r) => [r.country, r.currency, r.orders, dec(r.revenue, r.currency)]));

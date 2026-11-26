@@ -11,12 +11,14 @@ import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { ASSETS } from "./assets/registry";
 import { reshapeSupermarket } from "./env/reshape";
+import { RentalShops } from "./wing/RentalShops";
 import type { Box, EnvLayout } from "./env/types";
 import { useInteractable } from "./interactables";
 import type { ItemPlacement, PriceTag, StoreLayout } from "./layout";
 import { useStoreUi, type InteractionTarget } from "./ui-store";
 import { NewWing } from "./wing/NewWing";
 import type { SupportersWall } from "@/lib/storefront/supporters";
+import type { PublicShop } from "@/features/rentals/format";
 
 export interface StoreCatalog {
   categories: Category[];
@@ -25,6 +27,8 @@ export interface StoreCatalog {
   stockAllFaces?: boolean;
   /** Supporters wall at the chained wing (admin /admin/supporters); absent = empty board. */
   supporters?: SupportersWall;
+  /** Rental shop availability + approved brand names (lib/rentals/public); absent = every shop "for rent". */
+  shops?: PublicShop[];
 }
 
 const center = (b: Box) => b.min.map((v, i) => (v + b.max[i]!) / 2) as [number, number, number];
@@ -42,6 +46,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
       <Lighting env={env} lowPower={lowPower} />
       <SupermarketModel />
       <NewWing env={env} lowPower={lowPower} supporters={catalog.supporters} />
+      <RentalShops shops={catalog.shops} />
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {
         const placements = layout.items[p.id];

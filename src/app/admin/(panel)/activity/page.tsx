@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ActivityTabs } from "@/features/admin/ActivityTabs";
 import { Card, EmptyState, fmtDate, PageHeader, Table } from "@/features/admin/ui";
 import { requirePage } from "@/lib/admin/guard";
 import { listActivity } from "@/lib/admin/services/people";
@@ -9,13 +10,14 @@ export const metadata = { title: "Activity Log" };
 const ENTITY_LINK: Record<string, string> = { product: "/admin/products/", order: "/admin/orders/", supplier: "/admin/suppliers/", page: "/admin/content/" };
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requirePage("activity.view");
+  const session = await requirePage("activity.view");
   const sp = await searchParams;
   const page = Number(sp.page) || 1;
   const rows = await listActivity(getSql(), { q: sp.q, entity: sp.entity || undefined, page });
   return (
     <>
       <PageHeader title="Change history" description="Every change made in the admin: who did it, when, and what it was before and after. It can't be edited or deleted." />
+      <ActivityTabs active="changes" showVisitors={session.permissions.has("admins.manage")} />
       <form className="mb-4 flex flex-wrap gap-2">
         <input name="q" defaultValue={sp.q} placeholder="Search summary, action or id" className="admin-input !w-64 !py-1.5" aria-label="Search activity" />
         <select name="entity" defaultValue={sp.entity ?? ""} className="admin-input !w-auto !py-1.5" aria-label="Entity">

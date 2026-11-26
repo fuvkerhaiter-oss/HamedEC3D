@@ -33,13 +33,15 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/analytics", label: "Reports", hint: "Sales, profit and downloads", icon: "chart", permission: "analytics.view", group: "Money & delivery" },
   { href: "/admin/shipping", label: "Shipping prices", hint: "Countries you deliver to and what it costs", icon: "truck", permission: "shipping.manage", group: "Money & delivery" },
   { href: "/admin/suppliers", label: "Suppliers", hint: "Companies that send products to customers", icon: "supplier", permission: "suppliers.view", group: "Money & delivery" },
+  { href: "/admin/rentals", label: "Shop rentals", hint: "Brands renting the shops in the 3D store", icon: "store", permission: "orders.view", group: "Every day" },
+  { href: "/admin/rentals/tenants", label: "Shop tenants", hint: "Renters' shops, products, traffic and fees", icon: "customers", permission: "orders.view", group: "Every day" },
   { href: "/admin/dropshipping", label: "Dropshipping", hint: "Automatic supplier orders, kill switch, orders that need you", icon: "truck", permission: "suppliers.view", group: "Every day" },
 
   { href: "/admin/content", label: "Website text", hint: "Homepage banner and pages like Terms", icon: "text", permission: "content.manage", group: "Setup" },
   { href: "/admin/settings", label: "Shop settings", hint: "Shop name, taxes, invoice details", icon: "settings", permission: "settings.manage", group: "Setup" },
   { href: "/admin/supporters", label: "Supporters wall", hint: "Names on the 3D “supported us from the beginning” board", icon: "star", permission: "admins.manage", group: "Setup" },
   { href: "/admin/admins", label: "Team & logins", hint: "Who can sign in to this admin", icon: "team", permission: "admins.manage", group: "Setup" },
-  { href: "/admin/activity", label: "Change history", hint: "Who changed what, and when", icon: "history", permission: "activity.view", group: "Setup" },
+  { href: "/admin/activity", label: "Change history", hint: "Who changed what, and who visited the website", icon: "history", permission: "activity.view", group: "Setup" },
 ];
 
 /** The menu item a path belongs to (longest matching href wins, so /admin/products/images ≠ Products). */
@@ -56,6 +58,7 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
   ...Object.fromEntries(ADMIN_NAV.map((n) => [n.href.split("/").pop() || "admin", n.label])),
   new: "New",
   invoice: "Invoice",
+  visitors: "Website visitors",
 };
 
 /** "How this page works" guides — plain language, no technical words. Keyed by menu href. */
@@ -133,6 +136,14 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     what: "Basic information about your business: shop name, contact email, company details for invoices, and tax rates.",
     steps: ["Fill in your company details once — they are printed on invoices.", "Add the tax (VAT) rate for each country you sell to. Ask your accountant if unsure.", "Change your own password at the bottom."],
   },
+  "/admin/rentals": {
+    what: "Brands rent the four shop units in the 3D store from the public “Rent a shop” page. A booking becomes paid only when Stripe confirms the payment; the tenant gets a confirmation email and a reminder 7 days before the end.",
+    steps: ["When a new rental is paid, check the brand and tick “Show this name on the shop's sign”.", "Reply to the tenant's email to collect their logo and products.", "Anything marked “Needs you” was paid but couldn't be activated: move it to a free shop or refund it."],
+  },
+  "/admin/rentals/tenants": {
+    what: "Every brand renting a shop has its own dashboard (/seller) where they edit their brand, products and payment links. Here you see all of them: their shop, products, traffic and the monthly fee you charge them.",
+    steps: ["Open a tenant to see their products and how many shoppers view and click them.", "Set a monthly fee: it's added to their next rent payment (each month of it).", "Hide a product that breaks the rules, or pause the whole shop. They see the reason in their dashboard."],
+  },
   "/admin/supporters": {
     what: "The people who supported you from the beginning. Their names and countries scroll on a 3D board next to the “Coming soon” wing in the 3D store. Only super admins can change it.",
     steps: ["Type a name, pick the country and press “Add person”, or paste many names at once.", "Use the arrows to change the order and fix names right in the table.", "Press “Save and publish” — the 3D store shows the new list within a minute."],
@@ -143,6 +154,6 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
   },
   "/admin/activity": {
     what: "A diary of every change made in the admin: who did it, when, and what was before and after. Nobody can edit or delete it.",
-    steps: ["Search for a product, order number or person.", "Use it to find out what happened if something looks wrong."],
+    steps: ["Search for a product, order number or person.", "Use it to find out what happened if something looks wrong.", "Super admins: open “Website visitors” to see who visited the site — IP address, country and city, device, browser, time they came in and the pages they saw."],
   },
 };

@@ -5,7 +5,10 @@ import { create } from "zustand";
 export type InteractionTarget =
   | { key: string; kind: "product"; productId: string; label: string }
   | { key: "checkout"; kind: "checkout"; label: string }
-  | { key: "lucky-wheel"; kind: "wheel"; label: string };
+  | { key: "lucky-wheel"; kind: "wheel"; label: string }
+  | { key: string; kind: "shop"; shopId: string; label: string; rented: boolean }
+  /** A shop renter's product on their shelves (wing/TenantProducts). */
+  | { key: string; kind: "tenantProduct"; productId: string; shopId: string; label: string };
 
 interface StoreUiState {
   /** Player is in control (walking/looking): pointer-locked on desktop, touch controls active on touch. */
@@ -17,6 +20,10 @@ interface StoreUiState {
   /** What the crosshair is on (exactly one at a time). */
   target: InteractionTarget | null;
   openProductId: string | null;
+  /** Rental shop info panel ("Rent this shop"). */
+  openShopId: string | null;
+  /** Shop renter's product panel (hud/TenantProductPanel). */
+  openTenantProduct: { shopId: string; productId: string } | null;
   toast: { id: number; text: string } | null;
   /** Set when the browser refuses mouse capture (pointer lock); shown on the entry overlay. */
   lockError: string | null;
@@ -43,10 +50,12 @@ interface StoreUiState {
   setReady: (v: boolean) => void;
   setTarget: (t: InteractionTarget | null) => void;
   openProduct: (id: string | null) => void;
+  openShop: (id: string | null) => void;
+  openTenantProductPanel: (p: { shopId: string; productId: string } | null) => void;
   reset: () => void;
 }
 
-const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, toast: null, lockError: null, inspect: false, contextLost: false, stage: "play" as const, onLeave: null };
+const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, openShopId: null, openTenantProduct: null, toast: null, lockError: null, inspect: false, contextLost: false, stage: "play" as const, onLeave: null };
 
 export const LOCK_ERROR_MESSAGE =
   "Your browser didn't allow mouse capture. Wait a second and click again, or shop from the list view.";
@@ -66,6 +75,8 @@ export const useStoreUi = create<StoreUiState>()((set, get) => ({
   setStage: (stage) => set({ stage }),
   setTarget: (target) => set({ target }),
   openProduct: (openProductId) => set({ openProductId, target: null }),
+  openShop: (openShopId) => set({ openShopId, target: null }),
+  openTenantProductPanel: (openTenantProduct) => set({ openTenantProduct, target: null }),
   showToast: (text) => {
     const id = ++toastSeq;
     set({ toast: { id, text } });

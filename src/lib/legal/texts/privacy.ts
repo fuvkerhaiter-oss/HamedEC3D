@@ -74,6 +74,11 @@ Data: IP address, date and time, the page requested, browser type and error info
 Why: to deliver the website, detect and fix errors, and defend against attacks.
 Legal basis: legitimate interest (art. 6(1)(f)).
 
+Visitor log
+Data: IP address, approximate location derived from it by our hosting provider (country, region, city), device type, browser and operating system, screen size, language, time zone, the time you arrived, the pages you opened on our site and the website that sent you here. We do not use cookies for this and we do not share it with analytics or advertising companies. Only our owners (super administrators) can see it.
+Why: to understand how many people visit, from which countries and devices, to improve the site and to detect abuse.
+Legal basis: legitimate interest (art. 6(1)(f)). You can object at any time by writing to [PRIVACY EMAIL].
+
 Legal claims and authorities
 Where necessary, we use the relevant data to establish, exercise or defend legal claims and to answer lawful requests from public authorities (art. 6(1)(c) and (f)).
 
@@ -114,6 +119,7 @@ We keep data only as long as we need it, then delete or anonymise it.
 • Reviews and supporter-wall entries: until you ask us to remove them or we stop showing them.
 • Marketing consent and the list of people who unsubscribed: until you withdraw consent, then only your email on a "do not contact" list so we respect your choice.
 • Server and security logs: [30] days, unless needed to investigate an attack.
+• Visitor log: 90 days, then deleted automatically.
 • 3D store presence data: only while you are connected. Voice is never stored.
 • Data needed for a legal claim: until the claim is finally resolved.
 

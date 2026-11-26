@@ -10,6 +10,8 @@ import type { StoreCatalog } from "../StoreScene";
 import { addToTrolley } from "../trolley/addToTrolley";
 import { useStoreUi } from "../ui-store";
 import { ProductPanel } from "./ProductPanel";
+import { ShopRentPanel } from "./ShopRentPanel";
+import { TenantProductPanel } from "./TenantProductPanel";
 import { PauseMenu } from "./PauseMenu";
 import { ProductPeek } from "./ProductPeek";
 import { TouchControls } from "./TouchControls";
@@ -26,6 +28,8 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
   const toast = useStoreUi((s) => s.toast);
   const inspect = useStoreUi((s) => s.inspect);
   const product = openProductId ? catalog.products.find((p) => p.id === openProductId) ?? null : null;
+  const openShopId = useStoreUi((s) => s.openShopId);
+  const openTenantProduct = useStoreUi((s) => s.openTenantProduct);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -63,8 +67,8 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
     [],
   );
 
-  const showPause = ready && !locked && !product && !cartOpen && !inspect;
-  const showTouchControls = touchMode && ready && locked && !product && !cartOpen && !inspect;
+  const showPause = ready && !locked && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
+  const showTouchControls = touchMode && ready && locked && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
 
   return (
     <>
@@ -88,7 +92,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
             ) : (
               <kbd className="rounded-md bg-cream px-2 py-0.5 font-mono text-sm text-ink">E</kbd>
             )}
-            <span className="truncate text-sm sm:text-base">{target.kind === "wheel" ? "Spin the lucky wheel" : "Review cart & checkout"}</span>
+            <span className="truncate text-sm sm:text-base">{target.kind === "wheel" ? "Spin the lucky wheel" : target.kind === "tenantProduct" ? `See ${target.label}` : target.kind === "shop" ? (target.rented ? `${target.label} · rented` : `Rent ${target.label}`) : "Review cart & checkout"}</span>
           </div>
         </div>
       )}
@@ -123,6 +127,29 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
       )}
 
       {showPause && <PauseMenu touchMode={touchMode} onEnter={requestLock} />}
+
+      {openTenantProduct && (
+        <TenantProductPanel
+          shopId={openTenantProduct.shopId}
+          productId={openTenantProduct.productId}
+          shops={catalog.shops}
+          onClose={(resume) => {
+            useStoreUi.getState().openTenantProductPanel(null);
+            if (resume) requestLock();
+          }}
+        />
+      )}
+
+      {openShopId && (
+        <ShopRentPanel
+          shopId={openShopId}
+          shops={catalog.shops}
+          onClose={(resume) => {
+            useStoreUi.getState().openShop(null);
+            if (resume) requestLock();
+          }}
+        />
+      )}
 
       {product && (
         <ProductPanel

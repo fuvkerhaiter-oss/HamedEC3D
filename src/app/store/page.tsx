@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { getCatalog } from "@/lib/catalog/source";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
+import { loadPublicShops } from "@/lib/rentals/public";
 import Link from "next/link";
 import { StoreClient } from "@/features/store3d/StoreClient";
 import { categoryPath, isIndexable, productPath } from "@/lib/seo/site";
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
 };
 
 export default async function StorePage() {
-  const [{ categories, products }, settings] = await Promise.all([getCatalog(), getStorefrontSettings()]);
+  const [{ categories, products }, settings, shops] = await Promise.all([getCatalog(), getStorefrontSettings(), loadPublicShops()]);
   const listed = products.filter((p) => p.status === "published" && (isIndexable(p) || !products.some(isIndexable)));
   return (
     <>
@@ -46,7 +47,7 @@ export default async function StorePage() {
           <p>The 3D store needs JavaScript and WebGL. <Link href="/catalog">Shop the same products in the catalog</Link>.</p>
         </div>
       </noscript>
-      <StoreClient catalog={{ categories, products, stockAllFaces: settings.stockAllFaces, supporters: settings.supporters }} />
+      <StoreClient catalog={{ categories, products, stockAllFaces: settings.stockAllFaces, supporters: settings.supporters, shops }} />
     </>
   );
 }

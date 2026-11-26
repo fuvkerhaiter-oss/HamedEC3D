@@ -65,9 +65,9 @@ export function createStripeProvider(cfg: StripeConfig): PaymentProvider {
         client_reference_id: input.orderId,
         "metadata[order_id]": input.orderId,
         "payment_intent_data[metadata][order_id]": input.orderId,
-        billing_address_collection: "required",
+        billing_address_collection: input.noBillingAddress ? "auto" : "required",
         // Session lifetime: unpaid orders are released after it (checkout.session.expired).
-        expires_at: String(now() + SESSION_TTL_SECONDS),
+        expires_at: String(now() + Math.min(SESSION_TTL_SECONDS, Math.max(1800, input.expiresInSeconds ?? SESSION_TTL_SECONDS))),
       });
       if (input.label) f.set("payment_intent_data[description]", input.label);
       const b = input.breakdown && breakdownTotal(input.breakdown) === input.amount.amount ? input.breakdown : null;

@@ -96,6 +96,8 @@ export function useAuth() {
       await supabase.auth.signOut();
     }
     setUser(null);
+    // Full reload on purpose: drops every client cache tied to the old session.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/";
   }, [setUser]);
 

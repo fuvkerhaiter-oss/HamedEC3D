@@ -1,7 +1,7 @@
 /**
  * The store extension ("new wing"): the imported supermarket's far wall (x ≈ 14.1) is cut out at load time and
- * the hall continues for another ~20 m. The two fridge banks that stood against that wall are moved (not deleted)
- * onto the side walls of the new hall. Past the hall, behind a chained-off portal, is the "Coming soon" wing.
+ * the hall continues for another ~20 m. Some fixtures of the imported store are removed (FIXTURE_REMOVALS).
+ * Past the hall, behind a chained-off portal, is the "Coming soon" wing.
  *
  * Pure data + math (no three.js scene objects), shared by the renderer (reshape.ts, wing/*), the collision setup
  * and unit tests.
@@ -34,11 +34,14 @@ export function supportersStandCollider(): Box {
   return { min: [x - hx, 0, z - hz], max: [x + hx, 2, z + hz] };
 }
 /**
- * Big "lucky wheel" with the supporters' names, on the other side of the hall from the supporters sign, facing the
- * shopper who walks in from the old store (same yaw convention). Footprint in wheel-local metres: ±halfWidth across,
- * `back` behind and `front` in front of the wheel face (covers the stand + the "coming soon" rope and sign).
+ * Big "lucky wheel" with the supporters' names, against the north wall of the new hall between the old store and the
+ * supporters sign (moved there on the owner's request, 2026-11-27), facing into the hall and slightly toward the
+ * shopper who walks in from the old store (same yaw convention). Its footprint stays clear of the sign and the north
+ * wall. Footprint in
+ * wheel-local metres: ±halfWidth across, `back` behind and `front` in front of the wheel face (covers the stand + the
+ * "coming soon" rope and sign).
  */
-export const LUCKY_WHEEL = { x: 17.0, z: -2.85, yaw: -1.05, halfWidth: 1.6, back: 0.7, front: 1.35 } as const;
+export const LUCKY_WHEEL = { x: 17.6, z: 6.65, yaw: -2.73, halfWidth: 1.6, back: 0.7, front: 1.35 } as const;
 
 /** Walk-blocking box around the wheel, its rope and sign (axis-aligned bounds of the rotated footprint). */
 export function luckyWheelCollider(): Box {
@@ -51,68 +54,61 @@ export function luckyWheelCollider(): Box {
   const zs = corners.map((p) => p[1]);
   return { min: [Math.min(...xs), 0, Math.min(...zs)], max: [Math.max(...xs), 2, Math.max(...zs)] };
 }
+/**
+ * "What's new / coming soon" display (wing/UpdatesBoard): a fixed free-standing screen wall in front of the chained
+ * gate, facing back down the hall. Its x is past shop 04's door (env/shops.ts), so it never stands between the hall
+ * and that shop. Centre z = hall centre + zOffset; width runs across the hall, depth is the plinth.
+ */
+export const UPDATES_DISPLAY = { x: GATE_X - 1.3, zOffset: -0.3, width: 7.6, depth: 0.6 } as const;
+
+/** Walk-blocking box around the display's plinth. */
+export function updatesDisplayCollider(env: EnvLayout): Box {
+  const { x, zOffset, width, depth } = UPDATES_DISPLAY;
+  const zc = (env.interior.min[2] + env.interior.max[2]) / 2 + zOffset;
+  return { min: [x - depth / 2, 0, zc - width / 2], max: [x + depth / 2, 2, zc + width / 2] };
+}
 export const WALL_T = 0.3;
 
 /**
- * Fridge banks of the old far wall, by the region their geometry occupies in supermarket.glb, and where they go.
- * `rotationY` turns the bank (originally facing -X) to face into the new hall; `offset` is applied after it.
- * Rotation about +Y by θ: x' = x·cosθ + z·sinθ, z' = −x·sinθ + z·cosθ.
+ * Fixtures of the imported store removed on the owner's request (2026-11-26): the two low chest-freezer counters
+ * along the side walls (where the rental shop fronts are, env/shops.ts) and both refrigerated display-cabinet banks
+ * of the old far wall (they had been moved into the new hall; the owner asked for all of them to go). Triangles whose centroid lies in the region
+ * (minY..maxY keeps the floor and the wall) are dropped at load (env/reshape.ts); the collider leaves the layout.
  */
-export interface FridgeMove {
+export interface FixtureRemoval {
   id: string;
-  /** Triangles whose centroid lies in this region (x/z, y < 2.7) belong to the bank. */
-  region: { minX: number; maxX: number; minZ: number; maxZ: number };
-  /** Collider of the bank in the original layout. */
+  region: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
   collider: Box;
-  rotationY: number;
-  offset: [number, number];
 }
-
-export const FRIDGE_MOVES: FridgeMove[] = [
+export const FIXTURE_REMOVALS: FixtureRemoval[] = [
   {
-    // 8.9 m bank → south wall of the new hall, facing +Z.
-    id: "fridges-long",
-    region: { minX: 12.2, maxX: 14.2, minZ: -5.4, maxZ: 3.58 },
-    collider: { min: [12.275, 0.027, -5.296], max: [14.126, 2.524, 3.563] },
-    rotationY: Math.PI / 2,
-    offset: [20.9, 7.49],
+    id: "freezer-north",
+    region: { minX: -0.45, maxX: 8.65, minY: 0.1, maxY: 1.1, minZ: 7.1, maxZ: 8.1 },
+    collider: { min: [-0.354, 0.196, 7.174], max: [8.572, 0.998, 8.082] },
   },
   {
-    // 4.4 m bank → north wall of the new hall, facing -Z.
+    id: "freezer-south",
+    region: { minX: 7.4, maxX: 12.9, minY: 0.1, maxY: 1.1, minZ: -6.55, maxZ: -5.45 },
+    collider: { min: [7.466, 0.196, -6.411], max: [12.814, 0.998, -5.502] },
+  },
+  {
+    id: "fridges-long",
+    region: { minX: 12.2, maxX: 14.2, minY: 0.02, maxY: 2.7, minZ: -5.4, maxZ: 3.58 },
+    collider: { min: [12.275, 0.027, -5.296], max: [14.126, 2.524, 3.563] },
+  },
+  {
     id: "fridges-short",
-    region: { minX: 12.2, maxX: 14.2, minZ: 3.58, maxZ: 8.1 },
+    region: { minX: 12.2, maxX: 14.2, minY: 0.02, maxY: 2.7, minZ: 3.58, maxZ: 8.1 },
     collider: { min: [13.251, 0.027, 3.6], max: [14.126, 2.524, 8.016] },
-    rotationY: -Math.PI / 2,
-    offset: [27.6, -6.09],
   },
 ];
 
-const ALL_FRIDGE_REGION_MAX_Y = 2.7;
-
-export function fridgeMoveFor(cx: number, cy: number, cz: number): FridgeMove | null {
-  if (cy > ALL_FRIDGE_REGION_MAX_Y) return null;
-  for (const f of FRIDGE_MOVES) {
+export function fixtureRemovalFor(cx: number, cy: number, cz: number): FixtureRemoval | null {
+  for (const f of FIXTURE_REMOVALS) {
     const r = f.region;
-    if (cx >= r.minX && cx <= r.maxX && cz >= r.minZ && cz < r.maxZ) return f;
+    if (cx >= r.minX && cx <= r.maxX && cy >= r.minY && cy <= r.maxY && cz >= r.minZ && cz <= r.maxZ) return f;
   }
   return null;
-}
-
-/** Move a point (x, z) of a fridge bank to its new place. */
-export function moveXZ(f: FridgeMove, x: number, z: number): [number, number] {
-  const c = Math.cos(f.rotationY);
-  const s = Math.sin(f.rotationY);
-  return [x * c + z * s + f.offset[0], -x * s + z * c + f.offset[1]];
-}
-
-function movedBox(f: FridgeMove): Box {
-  const { min, max } = f.collider;
-  const a = moveXZ(f, min[0], min[2]);
-  const b = moveXZ(f, max[0], max[2]);
-  return {
-    min: [Math.min(a[0], b[0]), min[1], Math.min(a[1], b[1])],
-    max: [Math.max(a[0], b[0]), max[1], Math.max(a[1], b[1])],
-  };
 }
 
 const sameBox = (a: Box, b: Box) => a.min.every((v, i) => Math.abs(v - b.min[i]!) < 1e-3) && a.max.every((v, i) => Math.abs(v - b.max[i]!) < 1e-3);
@@ -134,10 +130,11 @@ export function extensionColliders(env: EnvLayout): Box[] {
     box([g - 0.55, 0, z0], [g - 0.25, 1.2, z1]),
     supportersStandCollider(), // supporters sign
     luckyWheelCollider(), // lucky wheel
+    updatesDisplayCollider(env), // updates display in front of the gate
   ];
 }
 
-/** The supermarket layout with the far wall removed, the fridge banks moved and the extension added. */
+/** The supermarket layout with the far wall and the removed fixtures gone and the extension added. */
 export function extendLayout(env: EnvLayout): EnvLayout {
   const farWall = (w: Box) => w.min[0] >= OLD_END_X - 0.01;
   const walls = env.walls.filter((w) => !farWall(w)).map((w) => {
@@ -145,11 +142,11 @@ export function extendLayout(env: EnvLayout): EnvLayout {
     if (w.max[0] >= OLD_END_X && w.min[0] < OLD_END_X) return { min: w.min, max: [NEW_END_X + WALL_T, w.max[1], w.max[2]] as Vec3 };
     return w;
   });
-  const fixtures = env.fixtures.filter((b) => !FRIDGE_MOVES.some((f) => sameBox(f.collider, b)));
+  const fixtures = env.fixtures.filter((b) => !FIXTURE_REMOVALS.some((f) => sameBox(f.collider, b)));
   return {
     ...env,
     interior: { min: env.interior.min, max: [NEW_END_X, env.interior.max[1], env.interior.max[2]] },
     walls: [...walls, ...extensionColliders(env)],
-    fixtures: [...fixtures, ...FRIDGE_MOVES.map(movedBox)],
+    fixtures,
   };
 }

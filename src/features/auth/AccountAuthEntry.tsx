@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useAuthStore } from "./auth-store";
 import { useAuth } from "./useAuth";
 
-export function AccountAuthEntry() {
+/** `next`: where Google sign-in returns to (the email-code sign-in reloads the current page). */
+export function AccountAuthEntry({ next = "/account" }: { next?: string } = {}) {
   const openAuth = useAuthStore((s) => s.openAuth);
   const { signInWithGoogle } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -14,7 +15,7 @@ export function AccountAuthEntry() {
     try {
       setGoogleError(null);
       setGoogleLoading(true);
-      await signInWithGoogle("/account");
+      await signInWithGoogle(next);
     } catch (err) {
       setGoogleError((err as Error).message || "Could not start Google sign-in. Please try again.");
       setGoogleLoading(false);

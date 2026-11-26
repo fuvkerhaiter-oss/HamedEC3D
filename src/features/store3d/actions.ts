@@ -17,7 +17,9 @@ export function interactWithTarget(): boolean {
     requestSpin(); // stays in play: the shopper watches the wheel
     return true;
   }
-  if (ui.target.kind === "product") ui.openProduct(ui.target.productId);
+  if (ui.target.kind === "shop") ui.openShop(ui.target.shopId);
+  else if (ui.target.kind === "tenantProduct") ui.openTenantProductPanel({ shopId: ui.target.shopId, productId: ui.target.productId });
+  else if (ui.target.kind === "product") ui.openProduct(ui.target.productId);
   else useCart.getState().setOpen(true);
   ui.releaseLock();
   return true;

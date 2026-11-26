@@ -27,12 +27,18 @@ export interface PaymentWebhookStore {
   holdFulfillment?(orderId: string, reason: string): Promise<void>;
   /** True when this provider session is the order's latest pending checkout (an older expired session must not cancel it). */
   isCurrentSession(orderId: string, providerId: string, providerSessionId: string): Promise<boolean>;
+  /**
+   * Payments that belong to something other than an order (shop rentals, lib/rentals). Returns null when the event
+   * is not theirs, so normal order processing continues.
+   */
+  handleOther?(provider: PaymentProvider, event: PaymentEvent): Promise<WebhookResult | null>;
 }
 
 export type WebhookResult =
   | { status: "processed"; orderStatus: OrderStatus }
   | { status: "refund"; outcome: RefundUpdateOutcome }
   | { status: "duplicate" }
+  | { status: "rental"; leaseId: string; leaseStatus: string; changed: boolean }
   | { status: "ignored"; reason: string };
 
 const sameMoney = (a: Money, b: Money) => a.amount === b.amount && a.currency === b.currency;
@@ -49,6 +55,9 @@ export async function handlePaymentWebhook(
 
   const fresh = await store.recordEventOnce(provider.id, event);
   if (!fresh) return { status: "duplicate" };
+
+  const other = store.handleOther ? await store.handleOther(provider, event) : null;
+  if (other) return other;
 
   if (event.type === "refund.updated") {
     const outcome = await store.applyRefundUpdate(provider.id, event);

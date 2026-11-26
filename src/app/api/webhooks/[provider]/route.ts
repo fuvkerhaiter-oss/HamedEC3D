@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { flushEmailOutbox } from "@/lib/email/outbox";
 import { getSql, isDbConfigured, type Tx } from "@/lib/db/client";
 import { pgWebhookStore } from "@/lib/payments/pg-store";
@@ -19,6 +20,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ provide
   try {
     // One transaction: if applying the event fails, the dedupe record rolls back too, so the provider's retry is processed.
     const result = await getSql().begin((tx) => handlePaymentWebhook(provider, raw, req.headers, pgWebhookStore(tx as unknown as Tx, { isTest: provider.isSandbox })));
+    if (result.status === "rental" && result.changed) {
+      // The 3D store's shop signs and the rental page's availability.
+      revalidatePath("/store");
+      revalidatePath("/rent-a-shop");
+    }
     after(async () => {
       // After the response: run the fulfillment job this payment queued (cron is the backstop if this is cut short).
       if (result.status === "processed" && result.orderStatus === "paid") await processDueFulfillmentJobs(getSql(), { limit: 2 }).catch((e) => logError("fulfillment kick failed", e));

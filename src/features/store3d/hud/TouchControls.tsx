@@ -258,7 +258,7 @@ function RoundButton({
 function ActionButtons() {
   const target = useStoreUi((s) => s.target);
   const count = useCart((s) => cartCount(s.lines));
-  const interactCaption = target ? (target.kind === "product" ? "Inspect" : target.kind === "wheel" ? "Spin" : "Checkout") : "Interact";
+  const interactCaption = target ? (target.kind === "product" || target.kind === "tenantProduct" ? "Inspect" : target.kind === "wheel" ? "Spin" : target.kind === "shop" ? (target.rented ? "Info" : "Rent") : "Checkout") : "Interact";
 
   return (
     <div
@@ -308,7 +308,7 @@ function PauseButton() {
       {...press}
       className="vsw-btn fixed z-20 flex h-11 w-11 touch-none items-center justify-center rounded-full"
       style={{
-        left: "calc(env(safe-area-inset-left, 0px) + 14px)",
+        left: "calc(env(safe-area-inset-left, 0px) + 30vw)",
         top: "calc(env(safe-area-inset-top, 0px) + 14px)",
       }}
     >
