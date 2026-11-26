@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthUser } from "@/lib/supabase/server";
 import { addCustomerAddress, listCustomerAddresses } from "@/lib/account/addresses";
 import { addressProblem } from "@/lib/shipping/address";
+import { rateLimited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (rateLimited(`address-add:${user.id}`, 20, 10 * 60_000)) return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
 
   const parsed = AddressBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

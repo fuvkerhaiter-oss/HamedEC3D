@@ -23,7 +23,8 @@ export const getAdminSession = cache(async (): Promise<AdminSession | null> => {
 
 export async function clientIp(): Promise<string | null> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+  const ip = h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return ip ? ip.slice(0, 64) : null;
 }
 
 export async function actorOf(s: AdminSession): Promise<Actor> {

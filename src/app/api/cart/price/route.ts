@@ -6,6 +6,7 @@ import { MARKETS } from "@/lib/markets";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { loadCouponForCode } from "@/lib/admin/services/coupons";
 import { logError } from "@/lib/log";
+import { clientIp, rateLimited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ const Body = z.object({
 
 /** Authoritative cart pricing: the client sends only variant ids + quantities (+ an optional code). */
 export async function POST(req: Request) {
+  const ip = clientIp(req);
+  if (rateLimited(`price:${ip}`, 120, 60_000)) return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid cart request" }, { status: 400 });
 
@@ -30,6 +33,8 @@ export async function POST(req: Request) {
     let cart = await priceCart(parsed.data.lines, reader, opts);
     let coupon: { code: string; applied: boolean; message: string } | undefined;
     if (parsed.data.couponCode) {
+      // Discount codes can be guessed: few tries per minute per visitor.
+      if (rateLimited(`coupon:${ip}`, 10, 60_000)) return NextResponse.json({ error: "Too many code attempts. Please wait a minute." }, { status: 429 });
       if (!isDbConfigured()) {
         coupon = { code: parsed.data.couponCode, applied: false, message: "Discount codes are not available yet." };
       } else {

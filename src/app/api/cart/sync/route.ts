@@ -5,6 +5,7 @@ import { loadUserCart, saveUserCart } from "@/lib/cart/persistence";
 import { mergeCartLines } from "@/lib/cart/merge";
 import { MAX_CART_LINES } from "@/lib/cart/pricing";
 import { MARKETS, type MarketId } from "@/lib/markets";
+import { rateLimited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ authenticated: false, message: "User is a guest" }, { status: 200 });
   }
+
+  if (rateLimited(`cart-sync:${user.id}`, 30, 60_000)) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const parsed = SyncBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

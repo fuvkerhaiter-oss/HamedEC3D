@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { baseSecurityHeaders, privateHeaders } from "./src/lib/security/headers";
 
 const PUBLIC_MEDIA_BUCKETS = ["products", "product-images"];
 
@@ -16,16 +17,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Pin the workspace root: a stray lockfile in the user's home directory otherwise confuses Turbopack.
   turbopack: { root: process.cwd() },
-  // Baseline security headers. HSTS only in production (HTTPS). Order/account pages carry signed tokens in
-  // the URL: no Referer is sent from them (e.g. when the customer opens a carrier tracking link).
+  poweredByHeader: false, // don't advertise the framework
+  // Security headers (CSP, clickjacking, HSTS, …): src/lib/security/headers.ts. Order/account pages carry signed
+  // tokens in the URL: no Referer is sent from them (e.g. when the customer opens a carrier tracking link).
   async headers() {
-    const base = [
-      { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "X-Frame-Options", value: "SAMEORIGIN" },
-      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "Permissions-Policy", value: "camera=(), geolocation=(), payment=(), microphone=(self)" }, // mic: 3D voice chat
-      ...(process.env.NODE_ENV === "production" ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }] : []),
-    ];
+    const base = baseSecurityHeaders();
     const noReferrer = [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "private, no-store" }];
     // Big public 3D/audio files (not hashed by the bundler; Next serves /public with max-age=0 by default →
     // a revalidation round-trip on every visit). Cached 7 days, then revalidated in the background.
@@ -38,6 +34,9 @@ const nextConfig: NextConfig = {
       { source: "/brand/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }] },
       { source: "/order", headers: noReferrer },
       { source: "/account/:path*", headers: noReferrer },
+      { source: "/admin", headers: privateHeaders },
+      { source: "/admin/:path*", headers: privateHeaders },
+      { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },
   images: {
