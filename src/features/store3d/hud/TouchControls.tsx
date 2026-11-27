@@ -296,6 +296,12 @@ function ActionButtons() {
   );
 }
 
+/**
+ * Left edge of the touch Pause button (top-left, 44px wide): right of the touch minimap (1rem + min(140px, 30vw)
+ * + 12px padding, see MiniMap) with a 10px gap. RoomHud sits right of it. CSS length, used inside calc().
+ */
+export const TOUCH_PAUSE_LEFT = "max(30vw, 1rem + min(140px, 30vw) + 22px)";
+
 function PauseButton() {
   const press = usePress(() => {
     haptic();
@@ -308,7 +314,7 @@ function PauseButton() {
       {...press}
       className="vsw-btn fixed z-20 flex h-11 w-11 touch-none items-center justify-center rounded-full"
       style={{
-        left: "calc(env(safe-area-inset-left, 0px) + 30vw)",
+        left: `calc(env(safe-area-inset-left, 0px) + ${TOUCH_PAUSE_LEFT})`,
         top: "calc(env(safe-area-inset-top, 0px) + 14px)",
       }}
     >

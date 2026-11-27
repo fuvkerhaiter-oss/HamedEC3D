@@ -181,7 +181,7 @@ To send verification codes through Resend using Supabase Auth:
 - **`src/lib/supabase/client.ts`**: Browser Supabase client via `@supabase/ssr`.
 - **`src/lib/supabase/server.ts`**: Server-side Supabase client with secure session validation.
 - **`src/lib/supabase/middleware.ts`**: SSR cookie session refresher.
-- **`src/middleware.ts`**: Next.js proxy middleware.
+- **`src/proxy.ts`**: Next.js proxy middleware.
 - **`src/app/auth/callback/route.ts`**: OAuth PKCE callback handler with open-redirect protection.
 - **`src/app/auth/signout/route.ts`**: Server-side sign-out handler.
 - **`src/lib/cart/merge.ts`**: Pure cart merging logic.

@@ -58,7 +58,7 @@ export async function createClient(response?: NextResponse) {
           });
         } catch {
           // The `setAll` method was called from a Server Component.
-          // Ignored if middleware refreshes the session.
+          // Ignored if the proxy (src/proxy.ts) refreshes the session.
         }
       },
     },

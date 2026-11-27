@@ -1,5 +1,16 @@
 # Project Status
 
+## Production readiness pass 2 (2026-11-27)
+- Audit: every API route has auth/secret, CSRF (proxy) and rate limits; dev simulator + local media are 404/off in production; 0 npm vulnerabilities; no stray console.log/TODOs.
+- `src/middleware.ts` → `src/proxy.ts` (Next 16 convention; removes the build deprecation warning). Same CSRF guard + Supabase session refresh.
+- Added `app/global-error.tsx` (root-layout failure, inline-styled) and `app/seller/error.tsx` (shop dashboard).
+- `/api/cron/maintenance`: shared `isCronAuthorized`, `maxDuration = 60`, each step isolated (one failure no longer skips the rest; logged, response 500 + `failed: [...]`).
+- **Bug fixed (phones)**: the touch minimap's box covered the Pause button (taps never reached it; caught by the phone e2e). Only the round map is now a tap target; Pause sits right of it via `TOUCH_PAUSE_LEFT` (`TouchControls.tsx`), which RoomHud also uses so the room chip never covers Pause.
+- Tests: typecheck/lint clean · unit 238/238 · e2e 15/15 · build OK (no deprecation warning). Not checked: real phone, Vercel deploy.
+- E2E: each DB port gets its own data folder (`e2e-<port>`). A Postgres left running by an earlier run kept `e2e` locked, so "fresh" runs silently used stale data (duplicate-slug / missing-image failures). If that happens: stop the stray `postgres.exe` or run with `E2E_DB_PORT=54341`.
+- `.env.example`: documented `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`, `NEXT_PUBLIC_SOCIAL_URLS`.
+- Still needs owner decisions/services: error monitoring (Sentry), distributed rate limit (Upstash/Vercel WAF; current limiter is per instance), Stripe live test end-to-end, legal review + publish of CMS legal pages in production, music licence.
+
 ## Shop renter dashboard + super-admin oversight (2026-11-27)
 - **/seller** (own layout, noindex/no-store): renters sign in with their customer account (Supabase OTP/Google, same email they rented with). Leases booked while signed out are claimed by verified email (`lib/tenants/service.ts` `ensureTenant`); a `tenant_accounts` row is created from their latest lease. Pages: Overview (setup checklist, status, 30-day views/Buy clicks chart, rent left), Brand & shop (open/close, logo upload, brand name, tagline, about, colour, socials, **3D sign name → needs admin approval**), Products (up to 48: photo upload, price, description, payment link, publish/draft, shelf order), Getting paid (how-to per provider, default link), Rent & billing (all leases incl. fees, extend via the existing RenewForm). Access: `lib/tenants/access.ts` (`requireSeller` in every page, `sellerAction` for actions; ownership enforced in SQL).
 - **Payments = the renter's own links** (owner's choice): Stripe Payment Links, PayPal, Shopify, Square, Lemon Squeezy, Gumroad, Etsy, Ko-fi recognised (`lib/tenants/payment-links.ts`: https only, no credentials/IP/localhost/own site). Shoppers' "Buy" → `/api/shop-products/[id]/buy` (counts, 302 to the renter's link, only while on show). **No money passes through the platform**; we count views (`/api/shop-products/[id]/view`) and Buy clicks per day (`tenant_product_stats`).

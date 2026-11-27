@@ -593,13 +593,18 @@ export function MiniMap({ signs }: { signs: Sign[] }) {
   return (
     <>
       <div
-        className={`fixed z-20 flex select-none flex-col items-center gap-2 ${touchMode ? "pointer-events-auto" : "pointer-events-none"}`}
+        className="pointer-events-none fixed z-20 flex select-none flex-col items-center gap-2"
         style={{ [touchMode ? "left" : "right"]: `calc(env(safe-area-inset-${touchMode ? "left" : "right"}, 0px) + 1rem)`, top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
-        onClick={toggle}
         role="img"
         aria-label={`Store map, turning with you. You are at: ${zone}`}
       >
-        <div className="rounded-full p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.55)] ring-1 ring-black/40" style={{ background: "radial-gradient(circle at 30% 25%, #3a3424, #0d1311 70%)" }}>
+        {/* Touch: only the round map is a tap target (the zone label must not cover the Pause button).
+            Touch size min(140px, 30vw) + 12px padding: TOUCH_PAUSE_LEFT (TouchControls) sits right of it. */}
+        <div
+          onClick={toggle}
+          className={`rounded-full p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.55)] ring-1 ring-black/40 ${touchMode ? "pointer-events-auto" : ""}`}
+          style={{ background: "radial-gradient(circle at 30% 25%, #3a3424, #0d1311 70%)" }}
+        >
           <CompassMap size={small} signs={signs} onZone={setZone} />
         </div>
         <div className="flex max-w-[16rem] items-center gap-2 rounded-full bg-ink/85 px-3.5 py-1.5 text-cream shadow-lg ring-1 ring-amber/40 backdrop-blur">

@@ -1,5 +1,5 @@
 /**
- * HTTP security headers (used by next.config.ts) and the site-wide cross-site request guard (used by middleware).
+ * HTTP security headers (used by next.config.ts) and the site-wide cross-site request guard (used by src/proxy.ts).
  * Pure functions with no Next/alias imports so next.config.ts can load this file directly and tests can cover it.
  */
 

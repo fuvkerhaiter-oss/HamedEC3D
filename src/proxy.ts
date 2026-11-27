@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { isCrossSiteRequest } from "@/lib/security/headers";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Site-wide CSRF guard: refuse state-changing requests sent from another site (before any session work).
   if (isCrossSiteRequest(request.method, request.nextUrl.pathname, request.headers)) {
     return NextResponse.json({ error: "Cross-site request refused" }, { status: 403, headers: { "Cache-Control": "no-store" } });
