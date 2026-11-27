@@ -17,6 +17,18 @@ Previous copies (`supermarket.glb`, `trolley.glb`) are kept until deletion is ap
 
 **Runtime change to supermarket.opt.glb** (file untouched): at load, `env/reshape.ts` drops the old far wall (triangles entirely at x ≥ 14.1) and moves the two fridge banks that stood against it onto the side walls of the new hall (see `env/extension.ts`).
 
+## Christmas decoration (2026-11-27)
+Sources in `christmas/` (owner-supplied, untouched, git-ignored like `3D models/`). Optimized copies in `public/models/xmas/` (meshopt + WebP ≤ 1024 px; `optimize-glb.mjs` gained `--tex=<px>` and now reads interleaved buffers). Rendered by `src/features/store3d/xmas/ChristmasDecor.tsx`.
+| File | Source | Before | After | Tris |
+|---|---|---|---|---|
+| `tree.opt.glb` | `xmas_tree_-_cartoonish__stylized..glb` (toon outlines, snowy base + presents) | 50.0 MB | 2.2 MB | 421k → 89k (`--simplify=0.05 --error=0.03 --tex=1024`); backdrop card `material_0` hidden at runtime |
+| `sleigh.opt.glb` | `santa_sleigh.glb` | 21.3 MB | 0.5 MB | 573k → 25k (`--simplify=0.04 --error=0.005`) |
+| `decorations.opt.glb` | `christmas_decorations.glb` (4 stockings `group6`, 2 snowman baubles `group4`, bunting `sweep4`) | 33.0 MB | 1.6 MB | 23k → 17k |
+| `model.opt.glb` | `source/model.glb` (Santa figure) | 5.9 MB | 0.3 MB | 12.5k |
+| `wreath.opt.glb` | `source/ChristmasWreath.glb` | 0.4 MB | 0.1 MB | 6.8k → 5.8k (flat-shaded, barely simplifies) |
+| `snowman.opt.glb` | `source/Snowmen2.fbx` → `fbx-scene-to-glb.mjs --node=snowman:Body1,Nose1,Arms1,Scarf1,Coals1 --unit=0.0022` + colour overrides (its body texture isn't in the folder) | 0.7 MB | 0.07 MB | 17k → 6k |
+| `lights.opt.glb` | `source/Christmas Light.fbx` → `fbx-scene-to-glb.mjs --node=lights:wire,bulb_0…bulb3_29 --unit=0.01`, bulbs emissive red/green/gold | 2.1 MB | 0.06 MB | 73k → 5k |
+
 ## Summary
 
 | File | Size | Tris | Units / orientation | Purpose | Decision |
@@ -98,3 +110,10 @@ The Sketchfab license and author for each file must be recorded here before prod
 python tools/assets/build_env.py "3D models/super_market_for_free.glb" public/models/env/supermarket.glb src/features/store3d/env/supermarket.layout.json
 python tools/assets/build_trolley.py "3D models/cart_basket.glb" public/models/props/trolley.glb
 ```
+
+## Audio
+
+| File | Source | Size | Notes |
+|---|---|---|---|
+| `public/audio/store-music.mp3` | existing | 2.4 MB | Store music outside the Christmas season. |
+| `public/audio/xmas/christmas-instrumental.mp3` | owner's file "All I Want for Christmas Is You (Official HQ Instrumental)" | 2.9 MB (from 3.9 MB) | ffmpeg: silence trimmed, loudnorm I=-18 TP=-2, mono 44.1 kHz, 96 kbps MP3, metadata/cover removed. **Commercial recording: needs a public performance licence before production use.** Swap via `XMAS_MUSIC_SRC` (xmas/hall-audio.ts). |

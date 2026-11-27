@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sign } from "../layout";
 import { STORE_ENV } from "../env/supermarket";
+import { CHRISTMAS_ON, XMAS_TREE } from "../env/christmas";
 import { GATE, GATE_X, LUCKY_WHEEL, NEW_END_X, OLD_END_X, SUPPORTERS_STAND } from "../env/extension";
 import { HALL_WALL, SHOP_DOOR, SHOP_UNITS, SIDE_WALL, wallOf } from "../env/shops";
 import { aisleLabels, headingUpRotation, MAP_BOUNDS, mapFrame, mapHeading, type MapFrame } from "../map/map-geometry";
@@ -229,6 +230,7 @@ function drawStatic(ctx: CanvasRenderingContext2D, f: MapFrame, signs: Sign[], l
     label(ctx, "ENTRANCE", px((ENTRANCE.x0 + ENTRANCE.x1) / 2), py(ENTRANCE.z - 0.9), Math.max(10, s * 0.48), "#7fe0a8", 800);
     label(ctx, "NEW HALL", px((OLD_END_X + gateX) / 2), py(1.6), Math.max(10, s * 0.5), C.soft, 800);
     label(ctx, "LUCKY WHEEL", px(LUCKY_WHEEL.x), py(LUCKY_WHEEL.z - 2.3), Math.max(9, s * 0.42), C.amber, 800);
+    if (CHRISTMAS_ON) label(ctx, "CHRISTMAS TREE", px(XMAS_TREE.x), py(XMAS_TREE.z), Math.max(9, s * 0.42), "#7fe0a8", 800);
     label(ctx, "SUPPORTERS", px(SUPPORTERS_STAND.x), py(SUPPORTERS_STAND.z - 1.4), Math.max(9, s * 0.4), C.cream, 700);
     label(ctx, "COMING SOON", px((gateX + NEW_END_X) / 2), py((z0 + z1) / 2), Math.max(12, s * 0.8), C.amber, 800);
   }
@@ -367,6 +369,7 @@ function zoneName(x: number, z: number, aisles: { text: string; x: number; z: nu
     if (Math.abs(x - u.x) < SHOP_DOOR.width / 2 + 1.2 && Math.abs(z - w) < 3.2) return `${u.label} · for rent`;
   }
   if (near(LUCKY_WHEEL.x, LUCKY_WHEEL.z, 4.5)) return "Lucky wheel";
+  if (CHRISTMAS_ON && near(XMAS_TREE.x, XMAS_TREE.z, XMAS_TREE.radius + 2)) return "Christmas tree";
   if (near(SUPPORTERS_STAND.x, SUPPORTERS_STAND.z, 3.5)) return "Supporters wall";
   const co = STORE_ENV.checkout;
   if (co && near((co.min[0] + co.max[0]) / 2, (co.min[2] + co.max[2]) / 2, 3)) return "Checkout";
@@ -454,6 +457,7 @@ function CompassMap({ size, signs, onZone }: { size: number; signs: Sign[]; onZo
       put("ENTRANCE", (ENTRANCE.x0 + ENTRANCE.x1) / 2, ENTRANCE.z - 1.3, "#7fe0a8");
       if (STORE_ENV.checkout) put("CHECKOUT", -10.9, 6.4, "#7fe0a8");
       put("LUCKY WHEEL", LUCKY_WHEEL.x, LUCKY_WHEEL.z - 2.3, C.amber);
+      if (CHRISTMAS_ON) put("XMAS TREE", XMAS_TREE.x, XMAS_TREE.z, "#7fe0a8");
 
       // View cone + the shopper's arrow (always pointing up).
       const reach = size * 0.38;

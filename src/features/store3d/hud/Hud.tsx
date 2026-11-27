@@ -5,7 +5,7 @@ import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
 import { useCart } from "@/features/cart/cart-store";
 import { interactWithTarget, openCartFromStore } from "../actions";
-import { isMusicMuted, setMusicDucked, stopStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
+import { getMusicVolume, isMusicMuted, setMusicDucked, setMusicVolume, stopStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
 import type { StoreCatalog } from "../StoreScene";
 import { addToTrolley } from "../trolley/addToTrolley";
 import { useStoreUi } from "../ui-store";
@@ -171,23 +171,42 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
   );
 }
 
+/** Mute button + volume slider (both remembered in localStorage by music.ts). */
 function MusicToggle() {
   const muted = useSyncExternalStore(subscribeMusicMuted, isMusicMuted, () => false);
+  const volume = useSyncExternalStore(subscribeMusicMuted, getMusicVolume, () => 0.5);
   return (
-    <button
-      type="button"
-      onClick={toggleMusicMuted}
-      aria-pressed={!muted}
-      aria-label={muted ? "Turn music on" : "Turn music off"}
-      title={muted ? "Music off (M)" : "Music on (M)"}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-ink/70 text-cream shadow-lg ring-1 ring-cream/20 backdrop-blur transition hover:bg-ink"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M9 18V5l12-2v13" />
-        <circle cx="6" cy="18" r="3" fill="currentColor" />
-        <circle cx="18" cy="16" r="3" fill="currentColor" />
-        {muted && <path d="M3 3l18 18" className="text-amber" stroke="currentColor" />}
-      </svg>
-    </button>
+    <div className="flex h-10 items-center gap-1 rounded-full bg-ink/70 pr-3 text-cream shadow-lg ring-1 ring-cream/20 backdrop-blur">
+      <button
+        type="button"
+        onClick={toggleMusicMuted}
+        aria-pressed={!muted}
+        aria-label={muted ? "Turn music on" : "Turn music off"}
+        title={muted ? "Music off (M)" : "Music on (M)"}
+        className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-ink"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" fill="currentColor" />
+          <circle cx="18" cy="16" r="3" fill="currentColor" />
+          {muted && <path d="M3 3l18 18" className="text-amber" stroke="currentColor" />}
+        </svg>
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={volume}
+        onChange={(e) => {
+          setMusicVolume(Number(e.target.value));
+          if (isMusicMuted()) toggleMusicMuted(); // moving the slider turns the music back on
+        }}
+        aria-label="Music volume"
+        aria-valuetext={`${Math.round(volume * 100)}%`}
+        title="Music volume"
+        className={`h-1 w-20 cursor-pointer accent-amber transition-opacity ${muted ? "opacity-40" : ""}`}
+      />
+    </div>
   );
 }

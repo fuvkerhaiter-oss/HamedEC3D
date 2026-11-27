@@ -1,6 +1,6 @@
 /**
  * Web optimization for the store's GLB copies (non-destructive: writes a NEW file next to the input).
- *   node tools/assets/optimize-glb.mjs <in.glb> <out.glb> [--simplify=<ratio>] [--error=<relative error>] [--webp=<quality>]
+ *   node tools/assets/optimize-glb.mjs <in.glb> <out.glb> [--simplify=<ratio>] [--error=<relative error>] [--webp=<quality>] [--tex=<max px>]
  *
  * - Optional mesh simplification (meshoptimizer; error is relative to the mesh size, UV/normal seams kept).
  * - Vertex-cache/fetch reordering, then EXT_meshopt_compression of every vertex/index buffer.
@@ -19,6 +19,8 @@ const opt = Object.fromEntries(flags.map((f) => f.replace(/^--/, "").split("="))
 const ratio = opt.simplify ? Number(opt.simplify) : 1;
 const maxError = opt.error ? Number(opt.error) : 0.001;
 const webpQuality = opt.webp ? Number(opt.webp) : 88;
+/** --tex=<px>: cap the longest texture side (0 = keep the source resolution). */
+const maxTex = opt.tex ? Number(opt.tex) : 0;
 
 await MeshoptEncoder.ready;
 await MeshoptSimplifier.ready;
@@ -39,8 +41,15 @@ function readAccessor(i) {
   const bv = gltf.bufferViews[a.bufferView];
   const Arr = ARRAY[a.componentType];
   const n = COMPONENTS[a.type];
-  if (a.sparse || (bv.byteStride && bv.byteStride !== n * Arr.BYTES_PER_ELEMENT)) throw new Error(`accessor ${i}: interleaved/sparse not supported`);
+  if (a.sparse) throw new Error(`accessor ${i}: sparse not supported`);
   const off = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0);
+  const elem = n * Arr.BYTES_PER_ELEMENT;
+  if (bv.byteStride && bv.byteStride !== elem) {
+    // Interleaved: de-interleave into a tight copy.
+    const copy = new Uint8Array(a.count * elem);
+    for (let v = 0; v < a.count; v++) copy.set(bin.subarray(off + v * bv.byteStride, off + v * bv.byteStride + elem), v * elem);
+    return { arr: new Arr(copy.buffer), n, count: a.count };
+  }
   const copy = new Uint8Array(bin.subarray(off, off + a.count * n * Arr.BYTES_PER_ELEMENT)); // aligned copy
   return { arr: new Arr(copy.buffer), n, count: a.count };
 }
@@ -140,7 +149,9 @@ const images = [];
 for (const im of gltf.images ?? []) {
   const bv = gltf.bufferViews[im.bufferView];
   const src = bin.subarray(bv.byteOffset ?? 0, (bv.byteOffset ?? 0) + bv.byteLength);
-  const webp = await sharp(src).webp({ quality: webpQuality, effort: 6, alphaQuality: 90 }).toBuffer();
+  const img = sharp(src);
+  if (maxTex) img.resize({ width: maxTex, height: maxTex, fit: "inside", withoutEnlargement: true });
+  const webp = await img.webp({ quality: webpQuality, effort: 6, alphaQuality: 90 }).toBuffer();
   imgBefore += src.byteLength;
   imgAfter += webp.byteLength;
   bufferViews.push({ buffer: 0, byteOffset: push(new Uint8Array(webp)), byteLength: webp.byteLength });

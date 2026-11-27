@@ -7,6 +7,7 @@
  * and unit tests.
  */
 import type { Box, EnvLayout, Vec3 } from "./types";
+import { CHRISTMAS_ON, christmasColliders } from "./christmas";
 
 /** Inner face of the removed far wall in supermarket.glb. */
 export const OLD_END_X = 14.145;
@@ -146,7 +147,7 @@ export function extendLayout(env: EnvLayout): EnvLayout {
   return {
     ...env,
     interior: { min: env.interior.min, max: [NEW_END_X, env.interior.max[1], env.interior.max[2]] },
-    walls: [...walls, ...extensionColliders(env)],
+    walls: [...walls, ...extensionColliders(env), ...(CHRISTMAS_ON ? christmasColliders() : [])],
     fixtures,
   };
 }

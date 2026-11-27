@@ -17,6 +17,9 @@ import { useInteractable } from "./interactables";
 import type { ItemPlacement, PriceTag, StoreLayout } from "./layout";
 import { useStoreUi, type InteractionTarget } from "./ui-store";
 import { NewWing } from "./wing/NewWing";
+import { ChristmasDecor } from "./xmas/ChristmasDecor";
+import { XmasSpeakers } from "./xmas/XmasSpeakers";
+import { CHRISTMAS_ON } from "./env/christmas";
 import type { SupportersWall } from "@/lib/storefront/supporters";
 import type { PublicShop } from "@/features/rentals/format";
 
@@ -47,6 +50,8 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
       <SupermarketModel />
       <NewWing env={env} lowPower={lowPower} supporters={catalog.supporters} />
       <RentalShops shops={catalog.shops} />
+      {CHRISTMAS_ON && <ChristmasDecor env={env} lowPower={lowPower} />}
+      {CHRISTMAS_ON && <XmasSpeakers env={env} lowPower={lowPower} />}
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {
         const placements = layout.items[p.id];
