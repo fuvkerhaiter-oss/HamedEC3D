@@ -1,5 +1,12 @@
 # Project Status
 
+## Free (complimentary) shop rentals from /admin/rentals (2026-11-27)
+- Super admins see a **"Give a free rental"** card on `/admin/rentals`: free shop, renter email, months (1–12), currency (for later paid renewals), brand, contact, country, note. Creates an `active` lease starting now: amount 0, `provider = 'complimentary'`, no Stripe session, no webhook, no platform fee, `paid_at` null (revenue unchanged). Same per-shop advisory lock + availability check as a paid booking (no overlap with a paying tenant or live hold). Sends the normal confirmation email ("Free (complimentary rental)"). `admin_note` says who gave it; audit log `rental.grant_free`. Badge "Free (given by admin)" in the admin list; `/seller/billing` shows "Free".
+- Renter flow: they sign in at `/seller` with that email (verified) → `ensureTenant` claims the lease → brand, products, open shop. They can extend later through Stripe like any tenant. Cancel from the admin = `cancelled` (not "refunded"), shop freed.
+- Code: `grantComplimentaryLease` in `lib/rentals/service.ts`, `ComplimentaryGrantInput` in `lib/rentals/schema.ts`, `leaseGrantFreeAction` (orders.manage + SUPER_ADMIN check) in `admin/(panel)/rentals/actions.ts`.
+- **Migration `20261204000001_complimentary_leases.sql`** (push before deploying): `amount > 0` check becomes `amount > 0 or (amount = 0 and provider = 'complimentary' and provider_payment_id is null)`. No new column, no data change.
+- Tests: unit 249/249 (3 new), integration `complimentary-rentals.test.ts` 6/6 + shop-rentals + tenant-storefronts pass; typecheck + lint clean; build OK. Not checked: the form in a browser, production.
+
 ## Christmas music from 4 ceiling speakers (2026-11-27)
 - While the Christmas decoration is on, the store music is the owner's Christmas instrumental (`public/audio/xmas/christmas-instrumental.mp3`: 3.9 MB stereo → **2.9 MB mono 96 kbps**, silence trimmed, loudness-normalised -18 LUFS). Swap it by replacing the file or changing `XMAS_MUSIC_SRC` in `xmas/hall-audio.ts` (one constant). Outside the season the old `store-music.mp3` plays as before.
 - **LICENCE (owner decision, blocking for production):** it is a commercial recording. Playing it on the public store needs a public performance / streaming licence (e.g. via SACEM/GEMA/PRS in the EU, ASCAP/BMI/SESAC + label in the US, or a licensed in-store music service). Until then, replace it with royalty-free/licensed music or set `NEXT_PUBLIC_CHRISTMAS=off` (that also turns off the decoration).

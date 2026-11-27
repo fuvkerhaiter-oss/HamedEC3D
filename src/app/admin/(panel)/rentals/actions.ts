@@ -6,7 +6,10 @@ import { bool, optStr, reqStr, str, uuid } from "@/lib/admin/form";
 import { logActivity } from "@/lib/admin/audit";
 import { fromDecimalString } from "@/lib/money";
 import { isShopId } from "@/lib/rentals/availability";
-import { cancelLease, getLease, moveLease, RentalError, resolveReview, setLeaseDisplay, setLeaseNote, shopLabel } from "@/lib/rentals/service";
+import { ComplimentaryGrantInput } from "@/lib/rentals/schema";
+import {
+  cancelLease, getLease, grantComplimentaryLease, moveLease, RentalError, resolveReview, setLeaseDisplay, setLeaseNote, shopLabel,
+} from "@/lib/rentals/service";
 
 const refresh = () => {
   revalidatePath("/admin/rentals");
@@ -87,3 +90,15 @@ export const leaseMoveAction = adminAction(
     return { ok: true, message: `Moved to ${shopLabel(shopId)}.` };
   },
 );
+
+export const leaseGrantFreeAction = adminAction("orders.manage", ComplimentaryGrantInput, async (input, { session, sql, actor }) => {
+  if (session.user.role !== "SUPER_ADMIN") throw new UserError("Only a super admin can give a free rental.");
+  const l = await friendly(() => grantComplimentaryLease(sql, input, { grantedBy: session.user.fullName || "a super admin" }));
+  await logActivity(sql, actor, {
+    action: "rental.grant_free", entity: "shop_lease", entityId: l.id,
+    summary: `Gave a complimentary rental of ${shopLabel(l.shop_id)} (${l.reference}) for ${l.months} month${l.months > 1 ? "s" : ""}, free, no payment`,
+    after: { shopId: l.shop_id, months: l.months, amount: 0, provider: l.provider, complimentary: true, endsAt: l.ends_at },
+  });
+  refresh();
+  return { ok: true, message: `${shopLabel(l.shop_id)} is theirs until ${l.ends_at!.toISOString().slice(0, 10)}. They sign in at /seller with that email.` };
+});

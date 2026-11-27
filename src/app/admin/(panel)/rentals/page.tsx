@@ -9,8 +9,8 @@ import { toDecimalString } from "@/lib/money";
 import type { LeaseStatus } from "@/lib/rentals/availability";
 import { LAUNCH_PROMO, promoActive, quoteAll, rentalPlan } from "@/lib/rentals/pricing";
 import { toPublicShops } from "@/lib/rentals/public";
-import { getShopStates, listLeases, rentalStats, shopLabel, type LeaseRow } from "@/lib/rentals/service";
-import { leaseActivateAction, leaseCancelAction, leaseDisplayAction, leaseMoveAction, leaseNoteAction } from "./actions";
+import { COMPLIMENTARY_MAX_MONTHS, getShopStates, isComplimentary, listLeases, rentalStats, shopLabel, type LeaseRow } from "@/lib/rentals/service";
+import { leaseActivateAction, leaseCancelAction, leaseDisplayAction, leaseGrantFreeAction, leaseMoveAction, leaseNoteAction } from "./actions";
 
 export const metadata = { title: "Shop rentals" };
 export const dynamic = "force-dynamic";
@@ -43,7 +43,8 @@ function leasePhase(l: LeaseRow, now: Date): string | null {
 }
 
 export default async function RentalsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
-  await requirePage("orders.view");
+  const session = await requirePage("orders.view");
+  const superAdmin = session.user.role === "SUPER_ADMIN";
   const { status = "", q = "" } = await searchParams;
   const sql = getSql();
   const valid = FILTERS.some((f) => f.id === status) ? status : "";
@@ -90,6 +91,48 @@ export default async function RentalsPage({ searchParams }: { searchParams: Prom
         </p>
       </Card>
 
+      {superAdmin && (
+        <Card title="Give a free rental" className="mt-6">
+          <p className="text-sm text-ink-soft">
+            Super admins only. Gives a free shop for a number of months, starting now: amount 0, no Stripe payment. The person signs in at{" "}
+            <code>/seller</code> with this email (verified) and the rental is theirs. It is saved in the history as given by you.
+          </p>
+          {shops.some((s) => s.state === "available") ? (
+            <ActionForm action={leaseGrantFreeAction} submitLabel="Give free rental" className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" confirm="Give this shop for free? No payment is taken.">
+              <label className="block text-sm">Shop
+                <select name="shopId" required className="admin-input mt-1" defaultValue="">
+                  <option value="" disabled>Pick a free shop…</option>
+                  {SHOP_UNITS.filter((u) => shops.find((s) => s.id === u.id)?.state === "available").map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm">Email of the renter
+                <input name="email" type="email" required maxLength={254} autoComplete="off" className="admin-input mt-1" />
+              </label>
+              <label className="block text-sm">Months
+                <input name="months" type="number" min={1} max={COMPLIMENTARY_MAX_MONTHS} defaultValue={1} required className="admin-input mt-1" />
+              </label>
+              <label className="block text-sm">Currency (for later renewals)
+                <select name="currency" defaultValue="USD" className="admin-input mt-1"><option>USD</option><option>EUR</option></select>
+              </label>
+              <label className="block text-sm">Brand name
+                <input name="brandName" required minLength={2} maxLength={60} className="admin-input mt-1" />
+              </label>
+              <label className="block text-sm">Contact name
+                <input name="contactName" required minLength={2} maxLength={120} className="admin-input mt-1" />
+              </label>
+              <label className="block text-sm">Country (2 letters)
+                <input name="country" required minLength={2} maxLength={2} placeholder="US" className="admin-input mt-1 uppercase" />
+              </label>
+              <label className="block text-sm">Note (optional)
+                <input name="note" maxLength={500} placeholder="Why it's free (e.g. owner test)" className="admin-input mt-1" />
+              </label>
+            </ActionForm>
+          ) : (
+            <p className="mt-3 text-sm">No shop is free right now.</p>
+          )}
+        </Card>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (
           <Link key={f.id} href={`/admin/rentals${f.id ? `?status=${f.id}` : ""}`} className={`rounded-full px-3 py-1.5 text-sm ${valid === f.id ? "bg-ink text-cream" : "bg-white ring-1 ring-line"}`}>
@@ -120,6 +163,7 @@ export default async function RentalsPage({ searchParams }: { searchParams: Prom
                 {phase && <Badge tone={phase === "Ended" ? "gray" : "blue"}>{phase}</Badge>}
                 {l.status === "active" && !l.display_approved && <Badge tone="amber">Sign not approved</Badge>}
                 {l.renews_lease_id && <Badge>Extension</Badge>}
+                {isComplimentary(l) && <Badge tone="blue">Free (given by admin)</Badge>}
                 {l.is_test && <TestBadge />}
                 <span className="ml-auto text-sm">{fmtMoney(l.amount, l.currency)} · {rentalPlan(l.plan).name}</span>
               </summary>

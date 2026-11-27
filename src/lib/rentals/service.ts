@@ -17,7 +17,7 @@ import type { PaymentProvider } from "../payments/types";
 import { SHOP_UNITS } from "@/features/store3d/env/shops";
 import { allShopStates, canActivate, leaseStart, RENTAL_HOLD_MINUTES, RENTAL_SESSION_SECONDS, shopState, type LeaseLite, type LeaseStatus, type ShopState } from "./availability";
 import { addMonths, LAUNCH_PROMO, quotePlan, rentalPlan, type RentalCurrency, type RentalPlanId } from "./pricing";
-import type { RentalBooking } from "./schema";
+import { COMPLIMENTARY_MAX_MONTHS, type RentalBooking } from "./schema";
 import { monthlyFeeFor } from "../tenants/service";
 
 export class RentalError extends Error {
@@ -253,7 +253,9 @@ async function queueLeaseConfirmation(tx: Db, l: LeaseRow) {
     { label: "Shop", value: shop },
     { label: "Brand", value: l.brand_name },
     { label: "Plan", value: `${rentalPlan(l.plan).name} · ${l.months} month${l.months > 1 ? "s" : ""}` },
-    { label: "Paid", value: `${formatMoney({ amount: l.amount, currency: l.currency })}${l.promo_name ? ` (${l.promo_name})` : ""}` },
+    l.provider === COMPLIMENTARY_PROVIDER
+      ? { label: "Price", value: "Free (complimentary rental)" }
+      : { label: "Paid", value: `${formatMoney({ amount: l.amount, currency: l.currency })}${l.promo_name ? ` (${l.promo_name})` : ""}` },
     { label: "From", value: day(l.starts_at) },
     { label: "Until", value: day(l.ends_at) },
   ];
@@ -371,7 +373,7 @@ export async function cancelLease(
       if (r.status === "failed" || r.status === "canceled") throw new RentalError(`The provider refused the refund (${r.status}). Nothing was changed.`);
     }
     const refunded = l.refunded_amount + refund;
-    const status: LeaseStatus = refunded >= l.amount ? "refunded" : "cancelled";
+    const status: LeaseStatus = l.amount > 0 && refunded >= l.amount ? "refunded" : "cancelled"; // a free lease is cancelled, not refunded
     const [u] = await tx<LeaseRow[]>`
       update public.shop_leases set status = ${status}, refunded_amount = ${refunded}, cancelled_at = now(), cancel_reason = ${opts.reason},
              ends_at = case when ends_at is not null and starts_at < now() and ends_at > now() then now() else ends_at end, updated_at = now()
@@ -400,6 +402,70 @@ export async function moveLease(db: Db, id: string, shopId: string): Promise<voi
     if (st.state !== "available") throw new RentalError(`${shopLabel(shopId)} is not free.`);
     await tx`update public.shop_leases set shop_id = ${shopId}, updated_at = now() where id = ${id} or renews_lease_id = ${id}`;
   });
+}
+
+// ───────────────────────── complimentary (free) rentals ─────────────────────────
+
+/** `provider` value of a lease a super admin gave for free. The DB allows amount = 0 only with this provider. */
+export const COMPLIMENTARY_PROVIDER = "complimentary";
+export const COMPLIMENTARY_LABEL = "Complimentary";
+export { COMPLIMENTARY_MAX_MONTHS };
+
+export interface ComplimentaryGrant {
+  shopId: string;
+  /** Who gets the shop: signing in at /seller with this verified email makes the lease theirs (claimLeases). */
+  email: string;
+  months: number;
+  currency: RentalCurrency;
+  brandName: string;
+  contactName: string;
+  country: string;
+  note?: string | null;
+}
+
+/** Plan stored on a free lease (the table only knows the three paid plans): nearest by length, display only. */
+export function complimentaryPlan(months: number): RentalPlanId {
+  return months >= 12 ? "yearly" : months >= 3 ? "quarterly" : "monthly";
+}
+
+export const isComplimentary = (l: Pick<LeaseRow, "provider">) => l.provider === COMPLIMENTARY_PROVIDER;
+
+/**
+ * Super admin: give a shop for free. Creates an `active` lease, amount 0, starting now, with no payment provider
+ * involved (no Stripe session, no webhook). Same per-shop advisory lock and availability check as a paid booking,
+ * so it never overlaps a paying tenant or a live payment hold. The tenant gets the normal confirmation email.
+ */
+export async function grantComplimentaryLease(db: Db, g: ComplimentaryGrant, opts: { grantedBy: string; now?: Date }): Promise<LeaseRow> {
+  const months = Math.trunc(g.months);
+  if (!(months >= 1 && months <= COMPLIMENTARY_MAX_MONTHS)) throw new RentalError(`Months: 1 to ${COMPLIMENTARY_MAX_MONTHS}.`);
+  const now = opts.now ?? new Date();
+  const lease = await inTx(db, async (tx) => {
+    await lockShop(tx, g.shopId);
+    const state = shopState(g.shopId, await liveLeases(tx, g.shopId), now);
+    if (state.state === "rented") throw new RentalError(`${shopLabel(g.shopId)} is already rented. Pick a free shop.`);
+    if (state.state === "held") throw new RentalError(`Someone is paying for ${shopLabel(g.shopId)} right now. Pick another shop or try again in ${RENTAL_HOLD_MINUTES} minutes.`);
+    const end = addMonths(now, months);
+    const note = [`Complimentary rental given by ${opts.grantedBy} on ${now.toISOString().slice(0, 10)}.`, g.note?.trim()].filter(Boolean).join(" ").slice(0, 2000);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const [row] = await tx<LeaseRow[]>`
+          insert into public.shop_leases (reference, shop_id, plan, months, currency, amount, regular_amount, promo_name, status,
+            brand_name, contact_name, email, category, description, country, fee_amount,
+            display_name, display_approved, is_test, terms_accepted_at, hold_expires_at, starts_at, ends_at, provider, admin_note)
+          values (${newReference()}, ${g.shopId}, ${complimentaryPlan(months)}, ${months}, ${g.currency}, 0, 0, ${COMPLIMENTARY_LABEL}, 'active',
+            ${g.brandName}, ${g.contactName}, ${g.email.trim().toLowerCase()}, 'Other',
+            ${"Complimentary rental given by the WEGO SHIIIP team."}, ${g.country}, 0,
+            ${g.brandName.slice(0, 40)}, false, false, ${now}, ${now}, ${now}, ${end}, ${COMPLIMENTARY_PROVIDER}, ${note})
+          returning *`;
+        return row!;
+      } catch (e) {
+        if ((e as { code?: string }).code === "23505" && attempt < 4) continue; // reference collision: draw again
+        throw e;
+      }
+    }
+  });
+  await queueLeaseConfirmation(db, lease);
+  return lease;
 }
 
 /** Daily (maintenance cron): remind tenants 7 days before their paid time ends, once per lease. */

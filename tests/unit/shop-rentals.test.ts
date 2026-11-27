@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { allShopStates, canActivate, leaseStart, shopState, type LeaseLite } from "../../src/lib/rentals/availability";
 import { addMonths, discountPercent, LAUNCH_PROMO, quotePlan } from "../../src/lib/rentals/pricing";
-import { RentalBookingBody } from "../../src/lib/rentals/schema";
+import { ComplimentaryGrantInput, RentalBookingBody } from "../../src/lib/rentals/schema";
+import { complimentaryPlan } from "../../src/lib/rentals/service";
 import { leaseIdFromEvent } from "../../src/lib/rentals/webhook";
 import { leaseToken, verifyLeaseToken, orderToken } from "../../src/lib/checkout/order-link";
 
@@ -85,5 +86,25 @@ describe("rental booking + links", () => {
     assert.equal(verifyLeaseToken(id, orderToken(id)), false);
     assert.equal(leaseIdFromEvent({ orderId: `lease_${id}` }), id);
     assert.equal(leaseIdFromEvent({ orderId: id }), null);
+  });
+});
+
+describe("complimentary (free) rentals", () => {
+  const base = { shopId: "shop-1", email: " Owner@Example.COM ", months: "1", currency: "USD", brandName: "Brand", contactName: "Owner", country: "us" };
+  it("form input: email lowercased, months coerced, a sent amount is stripped (always free)", () => {
+    const r = ComplimentaryGrantInput.parse({ ...base, amount: "2000", note: "" });
+    assert.equal(r.email, "owner@example.com");
+    assert.equal(r.months, 1);
+    assert.equal(r.country, "US");
+    assert.equal(r.note, null);
+    assert.equal("amount" in r, false);
+  });
+  it("rejects unknown shops and months outside 1–12", () => {
+    for (const bad of [{ shopId: "shop-99" }, { months: "0" }, { months: "13" }, { months: "1.5" }, { email: "nope" }]) {
+      assert.equal(ComplimentaryGrantInput.safeParse({ ...base, ...bad }).success, false, JSON.stringify(bad));
+    }
+  });
+  it("stores the nearest plan by length", () => {
+    assert.deepEqual([1, 2, 3, 11, 12].map(complimentaryPlan), ["monthly", "monthly", "quarterly", "quarterly", "yearly"]);
   });
 });

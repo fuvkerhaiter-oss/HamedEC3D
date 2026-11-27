@@ -4,7 +4,7 @@ import { RenewForm } from "@/features/rentals/RenewForm";
 import { Callout, PageTitle, Panel, Pill } from "@/features/seller/ui";
 import { leaseToken } from "@/lib/checkout/order-link";
 import { quoteAll, rentalPlan } from "@/lib/rentals/pricing";
-import { shopLabel, type LeaseRow } from "@/lib/rentals/service";
+import { isComplimentary, shopLabel, type LeaseRow } from "@/lib/rentals/service";
 import { requireSeller } from "@/lib/tenants/access";
 import { currentLease, paidUntil } from "@/lib/tenants/service";
 
@@ -53,7 +53,7 @@ export default async function SellerBillingPage() {
                       <td className="px-3 py-3">{shopLabel(l.shop_id)} · {rentalPlan(l.plan).name}</td>
                       <td className="px-3 py-3 text-ink-soft">{l.starts_at ? `${fmtDay(l.starts_at)} → ${fmtDay(l.ends_at)}` : "—"}</td>
                       <td className="px-3 py-3 text-right tabular-nums">
-                        {fmtPrice(l.amount, l.currency)}
+                        {isComplimentary(l) ? "Free" : fmtPrice(l.amount, l.currency)}
                         {l.fee_amount > 0 && <span className="block text-[11px] text-ink-soft">incl. {fmtPrice(l.fee_amount, l.currency)} platform fee</span>}
                         {l.refunded_amount > 0 && <span className="block text-[11px] text-red-700">−{fmtPrice(l.refunded_amount, l.currency)} refunded</span>}
                       </td>
