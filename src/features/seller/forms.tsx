@@ -7,6 +7,8 @@ import { checkPaymentLink, PAYMENT_LINK_PROVIDERS } from "@/lib/tenants/payment-
 import type { SellerResult } from "@/lib/tenants/access";
 import { saveProductAction, saveProfileAction, setOpenAction } from "@/app/seller/actions";
 import { SignPreview } from "./ui";
+import { SignFontPicker, SignFontInput } from "@/features/rentals/SignFontPicker";
+import { DEFAULT_SIGN_FONT } from "@/lib/rentals/sign-fonts";
 
 type Action = (prev: SellerResult | null, fd: FormData) => Promise<SellerResult>;
 
@@ -75,76 +77,107 @@ export function ProfileForm({
   signName,
   signApproved,
 }: {
-  t: { brand_name: string; tagline: string | null; about: string | null; accent_color: string; website: string | null; instagram: string | null; tiktok: string | null; contact_email: string | null; contact_phone: string | null; default_payment_url: string | null };
+  t: {
+    brand_name: string;
+    tagline: string | null;
+    about: string | null;
+    accent_color: string;
+    sign_font: string;
+    website: string | null;
+    instagram: string | null;
+    tiktok: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+    default_payment_url: string | null;
+  };
   signName: string;
   signApproved: boolean;
 }) {
   const [state, action] = useActionState(saveProfileAction as Action, null);
   const [sign, setSign] = useState(signName);
   const [accent, setAccent] = useState(t.accent_color);
+  const [fontId, setFontId] = useState(t.sign_font || DEFAULT_SIGN_FONT);
   const fe = (!state?.ok && state?.fieldErrors) || {};
   return (
-    <form action={action} className="grid gap-6 lg:grid-cols-[1fr_300px]">
-      <div className="space-y-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Brand name" htmlFor="brandName" error={fe.brandName}>
-            <input id="brandName" name="brandName" className={inputCls} defaultValue={t.brand_name} maxLength={60} required />
-          </Field>
-          <Field label="Name on your 3D sign" htmlFor="signName" error={fe.signName} hint="Up to 40 characters. A new name is checked by our team before it shows.">
-            <input id="signName" name="signName" className={inputCls} value={sign} onChange={(e) => setSign(e.target.value)} maxLength={40} required />
-          </Field>
-        </div>
-        <Field label="Tagline" htmlFor="tagline" error={fe.tagline} hint="One line under your name, e.g. “Handmade dog toys from Milan”.">
-          <input id="tagline" name="tagline" className={inputCls} defaultValue={t.tagline ?? ""} maxLength={90} />
-        </Field>
-        <Field label="About your brand" htmlFor="about" error={fe.about} hint="Shown when shoppers look at your products.">
-          <textarea id="about" name="about" className={inputCls} defaultValue={t.about ?? ""} maxLength={1500} rows={4} />
-        </Field>
-        <Field label="Brand colour" error={fe.accentColor} hint="Used for your sign and product labels in the store.">
-          <div className="flex flex-wrap items-center gap-2">
-            {SWATCHES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setAccent(c)}
-                aria-label={`Colour ${c}`}
-                aria-pressed={accent === c}
-                className={`h-8 w-8 rounded-full ring-1 ring-line transition ${accent === c ? "scale-110 outline outline-2 outline-offset-2 outline-ink" : ""}`}
-                style={{ background: c }}
-              />
-            ))}
-            <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-line bg-white" aria-label="Custom colour" />
-            <input type="hidden" name="accentColor" value={accent} />
+    <form action={action} className="space-y-6">
+      {/* Two-column: fields left, live sign preview right */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <div className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Brand name" htmlFor="brandName" error={fe.brandName}>
+              <input id="brandName" name="brandName" className={inputCls} defaultValue={t.brand_name} maxLength={60} required />
+            </Field>
+            <Field label="Name on your 3D sign" htmlFor="signName" error={fe.signName} hint="Up to 40 characters. A new name is checked by our team before it shows.">
+              <input id="signName" name="signName" className={inputCls} value={sign} onChange={(e) => setSign(e.target.value)} maxLength={40} required />
+            </Field>
           </div>
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Website" htmlFor="website" error={fe.website}>
-            <input id="website" name="website" className={inputCls} defaultValue={t.website ?? ""} placeholder="mybrand.com" />
+          <Field label="Tagline" htmlFor="tagline" error={fe.tagline} hint="One line under your name, e.g. &ldquo;Handmade dog toys from Milan&rdquo;.">
+            <input id="tagline" name="tagline" className={inputCls} defaultValue={t.tagline ?? ""} maxLength={90} />
           </Field>
-          <Field label="Instagram" htmlFor="instagram" error={fe.instagram}>
-            <input id="instagram" name="instagram" className={inputCls} defaultValue={t.instagram ?? ""} placeholder="mybrand" />
+          <Field label="About your brand" htmlFor="about" error={fe.about} hint="Shown when shoppers look at your products.">
+            <textarea id="about" name="about" className={inputCls} defaultValue={t.about ?? ""} maxLength={1500} rows={4} />
           </Field>
-          <Field label="TikTok" htmlFor="tiktok" error={fe.tiktok}>
-            <input id="tiktok" name="tiktok" className={inputCls} defaultValue={t.tiktok ?? ""} placeholder="mybrand" />
+          <Field label="Brand colour" error={fe.accentColor} hint="Used for your sign and product labels in the store.">
+            <div className="flex flex-wrap items-center gap-2">
+              {SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setAccent(c)}
+                  aria-label={`Colour ${c}`}
+                  aria-pressed={accent === c}
+                  className={`h-8 w-8 rounded-full ring-1 ring-line transition ${accent === c ? "scale-110 outline outline-2 outline-offset-2 outline-ink" : ""}`}
+                  style={{ background: c }}
+                />
+              ))}
+              <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-line bg-white" aria-label="Custom colour" />
+              <input type="hidden" name="accentColor" value={accent} />
+            </div>
           </Field>
-          <Field label="Customer contact email" htmlFor="contactEmail" error={fe.contactEmail}>
-            <input id="contactEmail" name="contactEmail" type="email" className={inputCls} defaultValue={t.contact_email ?? ""} />
-          </Field>
-          <Field label="Phone" htmlFor="contactPhone" error={fe.contactPhone}>
-            <input id="contactPhone" name="contactPhone" className={inputCls} defaultValue={t.contact_phone ?? ""} />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Website" htmlFor="website" error={fe.website}>
+              <input id="website" name="website" className={inputCls} defaultValue={t.website ?? ""} placeholder="mybrand.com" />
+            </Field>
+            <Field label="Instagram" htmlFor="instagram" error={fe.instagram}>
+              <input id="instagram" name="instagram" className={inputCls} defaultValue={t.instagram ?? ""} placeholder="mybrand" />
+            </Field>
+            <Field label="TikTok" htmlFor="tiktok" error={fe.tiktok}>
+              <input id="tiktok" name="tiktok" className={inputCls} defaultValue={t.tiktok ?? ""} placeholder="mybrand" />
+            </Field>
+            <Field label="Customer contact email" htmlFor="contactEmail" error={fe.contactEmail}>
+              <input id="contactEmail" name="contactEmail" type="email" className={inputCls} defaultValue={t.contact_email ?? ""} />
+            </Field>
+            <Field label="Phone" htmlFor="contactPhone" error={fe.contactPhone}>
+              <input id="contactPhone" name="contactPhone" className={inputCls} defaultValue={t.contact_phone ?? ""} />
+            </Field>
+          </div>
+          <input type="hidden" name="defaultPaymentUrl" value={t.default_payment_url ?? ""} />
         </div>
-        <input type="hidden" name="defaultPaymentUrl" value={t.default_payment_url ?? ""} />
-        <div className="flex flex-wrap items-center gap-3">
-          <Submit>Save brand</Submit>
-          <Result state={state} />
-        </div>
+
+        {/* Live sign preview — sticky on desktop */}
+        <aside className="space-y-2 lg:sticky lg:top-6 lg:self-start">
+          <p className="text-sm font-semibold">Your sign in the store</p>
+          <SignPreview name={sign || t.brand_name} accent={accent} fontId={fontId} pending={sign.trim() !== signName || !signApproved} />
+          <p className="text-xs text-ink-soft">
+            {signApproved && sign.trim() === signName
+              ? "Approved and showing above your shop."
+              : "Shows \u201cOpening soon\u201d until our team approves the name."}
+          </p>
+        </aside>
       </div>
-      <aside className="space-y-2">
-        <p className="text-sm font-semibold">Your sign in the store</p>
-        <SignPreview name={sign || t.brand_name} accent={accent} pending={sign.trim() !== signName || !signApproved} />
-        <p className="text-xs text-ink-soft">{signApproved && sign.trim() === signName ? "Approved and showing above your shop." : "Shows “Opening soon” until our team approves the name."}</p>
-      </aside>
+
+      {/* Typography picker — full width below */}
+      <fieldset className="rounded-2xl bg-sand/40 p-5 ring-1 ring-line">
+        <legend className="mb-1 px-1 text-sm font-semibold">Sign typography</legend>
+        <p className="mb-4 px-1 text-xs text-ink-soft">Pick the typeface for your shop&#39;s name on the 3D sign. The preview above updates as you choose.</p>
+        <SignFontPicker value={fontId} accent={accent} onChange={setFontId} />
+        <SignFontInput value={fontId} />
+      </fieldset>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Submit>Save brand</Submit>
+        <Result state={state} />
+      </div>
     </form>
   );
 }
@@ -162,6 +195,7 @@ export function DefaultLinkForm({ t, signName }: { t: Parameters<typeof ProfileF
           ["tagline", t.tagline],
           ["about", t.about],
           ["accentColor", t.accent_color],
+          ["signFont", t.sign_font],
           ["website", t.website],
           ["instagram", t.instagram],
           ["tiktok", t.tiktok],

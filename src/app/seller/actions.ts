@@ -9,7 +9,9 @@ import { ownHosts, sellerAction } from "@/lib/tenants/access";
 import { ProductInput, ProfileInput } from "@/lib/tenants/schema";
 import {
   createProduct,
+  deleteAdSlide,
   deleteProduct,
+  moveAdSlide,
   moveProduct,
   removeImageIfUnused,
   setDoorStyle,
@@ -86,4 +88,18 @@ export const deleteProductAction = sellerAction(z.object({ id: uuid }), async ({
   if (img && storage) await removeImageIfUnused(sql, storage, img.bucket, img.path);
   refresh();
   redirect("/seller/products?deleted=1");
+});
+
+export const moveAdSlideAction = sellerAction(z.object({ id: uuid, dir: z.enum(["up", "down"]) }), async ({ id, dir }, { sql, tenant }) => {
+  await moveAdSlide(sql, tenant.id, id, dir === "up" ? -1 : 1);
+  refresh();
+  return { ok: true };
+});
+
+export const deleteAdSlideAction = sellerAction(z.object({ id: uuid }), async ({ id }, { sql, tenant }) => {
+  const img = await deleteAdSlide(sql, tenant.id, id);
+  const storage = getMediaStorage();
+  if (img && storage) await removeImageIfUnused(sql, storage, img.bucket, img.path);
+  refresh();
+  return { ok: true, message: "Ad slide removed." };
 });

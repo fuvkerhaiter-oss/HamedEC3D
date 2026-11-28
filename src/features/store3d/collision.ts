@@ -14,6 +14,8 @@ export interface Rect {
   maxX: number;
   minZ: number;
   maxZ: number;
+  /** Top height of the obstacle (m); when the player jumps above this, they clear it. */
+  maxY?: number;
 }
 
 /** Body shape in body-local XZ: circle at the origin + box at (offsetX, offsetZ) with half sizes, turning with yaw. */
@@ -34,7 +36,7 @@ export interface Motion {
 export function rectsFromBoxes(boxes: readonly Box[], minY = 0.05, maxY = 2): Rect[] {
   return boxes
     .filter((b) => b.max[1] > minY && b.min[1] < maxY)
-    .map((b) => ({ minX: b.min[0], maxX: b.max[0], minZ: b.min[2], maxZ: b.max[2] }));
+    .map((b) => ({ minX: b.min[0], maxX: b.max[0], minZ: b.min[2], maxZ: b.max[2], maxY: b.max[1] }));
 }
 
 const MAX_STEP = 0.08; // m per sub-step (< half the thinnest obstacle)
@@ -105,8 +107,18 @@ function pushOut(m: Motion) {
   }
 }
 
+/** Highest walkable surface under the player at their current height (0 = floor). */
+export function groundHeightAt(x: number, z: number, radius: number, rects: readonly Rect[], playerY: number): number {
+  let g = 0;
+  for (const r of rects) {
+    if (r.maxY === undefined || r.maxY > 2.6) continue;
+    if (playerY + 0.25 >= r.maxY && circleRect(x, z, radius, r) && r.maxY > g) g = r.maxY;
+  }
+  return g;
+}
+
 /** Push the shopper (at its current yaw) out of every obstacle it overlaps. Returns true if anything was hit. */
-export function resolve(m: Motion, yaw: number, shape: ShopperShape, rects: readonly Rect[]): boolean {
+export function resolve(m: Motion, yaw: number, shape: ShopperShape, rects: readonly Rect[], playerY = 0): boolean {
   // Three.js yaw about +Y: local (x, z) → world (x·cos + z·sin, −x·sin + z·cos).
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const { offsetX, offsetZ, halfX, halfZ } = shape.box;
@@ -114,6 +126,7 @@ export function resolve(m: Motion, yaw: number, shape: ShopperShape, rects: read
   for (let it = 0; it < ITERATIONS; it++) {
     let moved = false;
     for (const r of rects) {
+      if (r.maxY !== undefined && r.maxY <= 2.6 && playerY >= r.maxY - 0.12) continue;
       if (circleRect(m.x, m.z, shape.radius, r)) {
         pushOut(m);
         moved = true;
@@ -140,7 +153,7 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
  * whatever is in the way. Turning towards a shelf pushes the shopper back instead of swinging the trolley
  * through it. Always resolves at least once.
  */
-export function step(m: Motion, fromYaw: number, toYaw: number, dt: number, shape: ShopperShape, rects: readonly Rect[]): void {
+export function step(m: Motion, fromYaw: number, toYaw: number, dt: number, shape: ShopperShape, rects: readonly Rect[], playerY = 0): void {
   const dist = Math.hypot(m.vx, m.vz) * dt;
   const turn = wrap(toYaw - fromYaw);
   const n = Math.min(200, Math.max(1, Math.ceil(dist / MAX_STEP), Math.ceil(Math.abs(turn) / MAX_TURN)));
@@ -148,6 +161,6 @@ export function step(m: Motion, fromYaw: number, toYaw: number, dt: number, shap
   for (let i = 1; i <= n; i++) {
     m.x += m.vx * h;
     m.z += m.vz * h;
-    resolve(m, fromYaw + (turn * i) / n, shape, rects);
+    resolve(m, fromYaw + (turn * i) / n, shape, rects, playerY);
   }
 }

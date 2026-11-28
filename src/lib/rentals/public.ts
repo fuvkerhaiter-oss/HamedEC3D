@@ -1,13 +1,20 @@
 import { SHOP_ROOM, SHOP_UNITS } from "@/features/store3d/env/shops";
 import { shopWhere, type PublicShop, type PublicStorefront } from "@/features/rentals/format";
-import { loadDoorStyles, loadStorefronts } from "../tenants/service";
+import { loadAdSlides, loadDoorStyles, loadShopLogos, loadSignFonts, loadStorefronts } from "../tenants/service";
 import { getSql, isDbConfigured } from "../db/client";
 import { logError } from "../log";
 import { allShopStates, type ShopState } from "./availability";
 import type { DoorStyle } from "./door-style";
 import { getShopStates } from "./service";
 
-export function toPublicShops(states: readonly ShopState[], storefronts: Record<string, PublicStorefront> = {}, doors: Record<string, DoorStyle> = {}): PublicShop[] {
+export function toPublicShops(
+  states: readonly ShopState[],
+  storefronts: Record<string, PublicStorefront> = {},
+  doors: Record<string, DoorStyle> = {},
+  logos: Record<string, string> = {},
+  signFonts: Record<string, string> = {},
+  adSlides: Record<string, string[]> = {},
+): PublicShop[] {
   return SHOP_UNITS.map((u) => {
     const s = states.find((x) => x.shopId === u.id) ?? { shopId: u.id, state: "available" as const };
     return {
@@ -21,6 +28,9 @@ export function toPublicShops(states: readonly ShopState[], storefronts: Record<
       brand: s.state === "rented" ? s.brand : null,
       storefront: s.state === "rented" ? (storefronts[u.id] ?? null) : null,
       door: s.state === "rented" ? (doors[u.id] ?? null) : null,
+      logoUrl: s.state === "rented" ? (logos[u.id] ?? null) : null,
+      signFont: s.state === "rented" ? (signFonts[u.id] ?? null) : null,
+      adSlides: s.state === "rented" ? (adSlides[u.id] ?? []) : [],
     };
   });
 }
@@ -30,7 +40,7 @@ export async function loadPublicShops(): Promise<PublicShop[]> {
   if (!isDbConfigured()) return toPublicShops(allShopStates([]));
   try {
     const sql = getSql();
-    const [states, storefronts, doors] = await Promise.all([
+    const [states, storefronts, doors, logos, signFonts, adSlides] = await Promise.all([
       getShopStates(sql),
       loadStorefronts(sql).catch((e) => {
         logError("tenant storefronts failed", e);
@@ -40,8 +50,20 @@ export async function loadPublicShops(): Promise<PublicShop[]> {
         logError("shop door styles failed", e);
         return {};
       }),
+      loadShopLogos(sql).catch((e) => {
+        logError("shop logos failed", e);
+        return {};
+      }),
+      loadSignFonts(sql).catch((e) => {
+        logError("shop sign fonts failed", e);
+        return {};
+      }),
+      loadAdSlides(sql).catch((e) => {
+        logError("shop ad slides failed", e);
+        return {};
+      }),
     ]);
-    return toPublicShops(states, storefronts, doors);
+    return toPublicShops(states, storefronts, doors, logos, signFonts, adSlides);
   } catch (e) {
     logError("rental shop states failed", e);
     return toPublicShops(allShopStates([]));

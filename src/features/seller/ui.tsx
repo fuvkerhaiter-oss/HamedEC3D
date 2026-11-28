@@ -1,5 +1,6 @@
 /** Building blocks of the shop renter dashboard (/seller). Server-safe (no hooks). */
 import Link from "next/link";
+import { signFont, signText } from "@/lib/rentals/sign-fonts";
 
 export function PageTitle({ title, description, actions, eyebrow }: { title: string; description?: React.ReactNode; actions?: React.ReactNode; eyebrow?: string }) {
   return (
@@ -72,12 +73,20 @@ export function Callout({ tone = "info", title, children }: { tone?: "info" | "w
 }
 
 /** Small amber-on-ink preview of the shop's 3D fascia sign. */
-export function SignPreview({ name, accent, pending }: { name: string; accent: string; pending?: boolean }) {
+export function SignPreview({ name, accent, fontId, pending }: { name: string; accent: string; fontId?: string | null; pending?: boolean }) {
+  const f = signFont(fontId);
   return (
     <div className="rounded-xl bg-[#0d1311] p-1.5 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}` }}>
       <div className="rounded-lg border border-white/10 px-4 py-3 text-center">
-        <p className="truncate font-display text-xl font-extrabold tracking-[0.12em]" style={{ color: accent }}>
-          {name.toUpperCase()}
+        <p
+          className="truncate text-xl tracking-[0.06em]"
+          style={{
+            color: accent,
+            fontFamily: `var(${f.cssVar}), "Arial Black", sans-serif`,
+            fontWeight: f.weight,
+          }}
+        >
+          {signText(name, f)}
         </p>
         <p className="mt-0.5 text-[10px] tracking-[0.3em] text-white/70">{pending ? "AWAITING APPROVAL" : "NOW OPEN"}</p>
       </div>

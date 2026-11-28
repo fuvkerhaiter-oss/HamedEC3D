@@ -102,6 +102,37 @@ export const FIXTURE_REMOVALS: FixtureRemoval[] = [
     region: { minX: 12.2, maxX: 14.2, minY: 0.02, maxY: 2.7, minZ: 3.58, maxZ: 8.1 },
     collider: { min: [13.251, 0.027, 3.6], max: [14.126, 2.524, 8.016] },
   },
+  // Center-aisle supermarket gondola shelving removed to open the main concourse for rental shops + plaza.
+  {
+    id: "gondola-l2",
+    region: { minX: -6.8, maxX: 1.15, minY: 0.02, maxY: 2.5, minZ: -0.15, maxZ: 1.45 },
+    collider: { min: [-6.674, 0.056, -0.054], max: [1.024, 2.354, 1.359] },
+  },
+  {
+    id: "gondola-l3",
+    region: { minX: -6.8, maxX: 1.15, minY: 0.02, maxY: 2.5, minZ: 3.4, maxZ: 5.05 },
+    collider: { min: [-6.682, 0.056, 3.517], max: [1.016, 2.354, 4.93] },
+  },
+  {
+    id: "gondola-r3",
+    region: { minX: 2.95, maxX: 10.9, minY: 0.02, maxY: 2.5, minZ: 3.4, maxZ: 5.05 },
+    collider: { min: [3.076, 0.056, 3.517], max: [10.774, 2.354, 4.93] },
+  },
+  {
+    id: "gondola-r2",
+    region: { minX: 2.95, maxX: 10.9, minY: 0.02, maxY: 2.5, minZ: -0.15, maxZ: 1.45 },
+    collider: { min: [3.069, 0.056, -0.054], max: [10.767, 2.354, 1.359] },
+  },
+  {
+    id: "gondola-l1",
+    region: { minX: -6.8, maxX: 1.15, minY: 0.02, maxY: 2.5, minZ: -3.95, maxZ: -2.35 },
+    collider: { min: [-6.682, 0.056, -3.865], max: [1.016, 2.354, -2.451] },
+  },
+  {
+    id: "gondola-r1",
+    region: { minX: 2.95, maxX: 10.9, minY: 0.02, maxY: 2.5, minZ: -3.95, maxZ: -2.35 },
+    collider: { min: [3.076, 0.056, -3.865], max: [10.774, 2.354, -2.451] },
+  },
 ];
 
 export function fixtureRemovalFor(cx: number, cy: number, cz: number): FixtureRemoval | null {
@@ -135,6 +166,27 @@ export function extensionColliders(env: EnvLayout): Box[] {
   ];
 }
 
+/** Central plaza islands replacing the removed main-store gondolas (kept low & central so every shop front stays clear). */
+export const PLAZA_PROPS = {
+  center: { x: 2.0, z: 0.65, radius: 2.15 },
+  claw: { x: -4.0, z: 0.65, halfX: 0.9, halfZ: 0.9 },
+  ducky: { x: 8.0, z: 0.65, radius: 1.45 },
+  benches: [
+    { x: -1.1, z: 0.65, halfX: 0.85, halfZ: 0.42 },
+    { x: 5.1, z: 0.65, halfX: 0.85, halfZ: 0.42 },
+  ],
+} as const;
+
+export function plazaColliders(): Box[] {
+  const { center, claw, ducky, benches } = PLAZA_PROPS;
+  return [
+    box([center.x - center.radius, 0, center.z - center.radius], [center.x + center.radius, 2, center.z + center.radius]),
+    box([claw.x - claw.halfX, 0, claw.z - claw.halfZ], [claw.x + claw.halfX, 2.5, claw.z + claw.halfZ]),
+    box([ducky.x - ducky.radius, 0, ducky.z - ducky.radius], [ducky.x + ducky.radius, 2.5, ducky.z + ducky.radius]),
+    ...benches.map((b) => box([b.x - b.halfX, 0, b.z - b.halfZ], [b.x + b.halfX, 1.0, b.z + b.halfZ])),
+  ];
+}
+
 /** The supermarket layout with the far wall and the removed fixtures gone and the extension added. */
 export function extendLayout(env: EnvLayout): EnvLayout {
   const farWall = (w: Box) => w.min[0] >= OLD_END_X - 0.01;
@@ -148,6 +200,8 @@ export function extendLayout(env: EnvLayout): EnvLayout {
     ...env,
     interior: { min: env.interior.min, max: [NEW_END_X, env.interior.max[1], env.interior.max[2]] },
     walls: [...walls, ...extensionColliders(env), ...(CHRISTMAS_ON ? christmasColliders() : [])],
-    fixtures,
+    fixtures: [...fixtures, ...plazaColliders()],
+    runs: [],
+    faces: [],
   };
 }

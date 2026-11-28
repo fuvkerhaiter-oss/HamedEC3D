@@ -1,5 +1,11 @@
 # Project Status
 
+## Playful 3D shop fronts + logo signs (2026-11-28)
+- New `store3d/wing/ShopSign.tsx` replaces the black lightbox fascia + slim canopy of every rental unit: bevelled "bubble" sign board in the shop colour (near-black/default colours → house orange #ff5b2e) with cream outline, cartoon drop shadow and 44 chasing marquee bulbs (one InstancedMesh per shop, colours updated 8×/s); brand name as fat cartoon lettering (stacked extrusion, ink outline, glossy gradient) drawn into a CanvasTexture with the site font (Bricolage, loaded via document.fonts); big round logo medallion popping out of the left end (logo, else brand initial, else a smiling shopping bag for free shops) that wobbles/bounces with twinkling stars; striped scalloped awning over the door. Fits under the 6.07 m wall top.
+- Logo on the sign from day one: `PublicShop.logoUrl` (`loadShopLogos` in lib/tenants/service.ts, any running non-suspended lease with an uploaded logo), not only once the shop is opened.
+- Account menu: "My rented shop" → /seller (renters had no link to their dashboard).
+- Checked on :3000 (dev, ?cam=) with a temporary local-only lease: free shop (FOR RENT + bag) and rented (TRIO SHOP + "T"). Not checked: a real uploaded logo on the sign, real phones, FPS. typecheck + lint clean, unit 271/271, rental integration tests pass. Not deployed.
+
 ## Final pre-deployment pass (2026-11-28) — full report: PRODUCTION_READINESS_2026-11-28.md
 - **Bug fixed**: Admin → Shipping refused every weight-based method (regex `/^d+$/` missing a backslash). Tier/country parsing now pure + tested (`parseRateTiers`, `parseZoneCountries` in lib/shipping/quote.ts); unknown country codes are refused with a message instead of dropped.
 - **Publish gate**: photo + description ≥ 40 chars + category + priced variants; sample products can't be published in production; CSV import reports rows kept as draft (`keptDraft`).

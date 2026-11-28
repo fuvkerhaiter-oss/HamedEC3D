@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { localChannel } from "./local-channel";
+import { cleanEmote, EMOTE_DURATION_MS, type EmoteId } from "./emotes";
 import { multiplayerEnabled, VOICE_CONSENT_KEY } from "./rooms";
 import { BASKET_MAX, cleanBasket, cleanColor, cleanName, cleanPose, MAX_ROOMS, packBasket, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type MemberMeta, type Pose } from "./rooms";
 
@@ -44,6 +45,8 @@ interface NetState {
   muted: string[];
   /** The shopper asked to talk but has not accepted the voice notice yet (RoomHud shows it). */
   voiceConsentNeeded: boolean;
+  /** Currently playing emote on my avatar (null when idle). */
+  myEmote: EmoteId | null;
 }
 
 const ID = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -61,10 +64,13 @@ export const useNet = create<NetState>()(() => ({
   micError: null,
   muted: [],
   voiceConsentNeeded: false,
+  myEmote: null,
 }));
 
 /** Latest pose per remote shopper (mutable, read every frame by the avatars; never triggers renders). */
 export const remotePoses = new Map<string, { pose: Pose; at: number }>();
+/** Active emote per remote shopper (mutable, read every frame by the avatars; never triggers renders). */
+export const remoteEmotes = new Map<string, { emote: EmoteId; startedAt: number }>();
 
 const ICE: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 if (process.env.NEXT_PUBLIC_TURN_URL) {
@@ -84,6 +90,7 @@ let micTrack: MediaStreamTrack | null = null;
 let audioCtx: AudioContext | null = null;
 let myBasket: string[] = [];
 let basketTimer: ReturnType<typeof setTimeout> | null = null;
+let emoteTimer: ReturnType<typeof setTimeout> | null = null;
 const peers = new Map<string, Peer>();
 // Dev-only handle for browser testing.
 if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") (window as unknown as { __mmNet?: unknown }).__mmNet = { peers, remotePoses };
@@ -135,6 +142,7 @@ export function stopMultiplayer(): void {
 function leaveRoom() {
   for (const id of [...peers.keys()]) dropPeer(id);
   remotePoses.clear();
+  remoteEmotes.clear();
   channel?.remove();
   channel = null;
 }
@@ -166,6 +174,7 @@ function joinRoom(n: number) {
   ch.on("presence", { event: "sync" }, () => ch === channel && onSync(ch))
     .on("broadcast", { event: "sig" }, ({ payload }) => ch === channel && onSignal(payload as Signal))
     .on("broadcast", { event: "pose" }, ({ payload }) => ch === channel && onBroadcastPose(payload as { from: string; p: unknown }))
+    .on("broadcast", { event: "emote" }, ({ payload }) => ch === channel && onBroadcastEmote(payload as { from: string; e: unknown }))
     .subscribe((status) => {
       if (ch !== channel) return;
       if (status === "SUBSCRIBED") ch.track(myMeta()).catch(() => {});
@@ -235,7 +244,12 @@ function newPeer(id: string): Peer {
 function setupDc(peer: Peer, dc: RTCDataChannel) {
   peer.dc = dc;
   dc.onmessage = (e) => {
-    const pose = cleanPose(safeJson(e.data));
+    const data = safeJson(e.data);
+    if (data && typeof data === "object" && !Array.isArray(data) && "e" in data) {
+      applyRemoteEmote(peer.id, (data as { e: unknown }).e);
+      return;
+    }
+    const pose = cleanPose(data);
     if (pose) remotePoses.set(peer.id, { pose, at: performance.now() });
   };
 }
@@ -325,6 +339,44 @@ export function sendPose(x: number, y: number, z: number, yaw: number, now: numb
     lastSent = pose;
     channel.send({ type: "broadcast", event: "pose", payload: { from: ID, p: pose } }).catch(() => {});
   }
+}
+
+function applyRemoteEmote(from: string, raw: unknown) {
+  if (raw === null) {
+    remoteEmotes.delete(from);
+    return;
+  }
+  const emote = cleanEmote(raw);
+  if (emote) remoteEmotes.set(from, { emote, startedAt: performance.now() });
+}
+
+function onBroadcastEmote(msg: { from: string; e: unknown }) {
+  if (!msg || typeof msg.from !== "string" || msg.from === ID) return;
+  applyRemoteEmote(msg.from, msg.e);
+}
+
+/** Trigger (or stop, if null / same emote) an emote on my avatar and broadcast it to everyone in the room. */
+export function triggerEmote(emote: EmoteId | null): void {
+  const cur = useNet.getState().myEmote;
+  const next = emote && emote === cur ? null : emote;
+  if (emoteTimer) {
+    clearTimeout(emoteTimer);
+    emoteTimer = null;
+  }
+  useNet.setState({ myEmote: next });
+  if (next) {
+    emoteTimer = setTimeout(() => {
+      emoteTimer = null;
+      useNet.setState({ myEmote: null });
+    }, EMOTE_DURATION_MS);
+  }
+  const msg = JSON.stringify({ e: next });
+  for (const p of peers.values()) {
+    if (p.dc?.readyState === "open") {
+      try { p.dc.send(msg); } catch { /* ignore */ }
+    }
+  }
+  channel?.send({ type: "broadcast", event: "emote", payload: { from: ID, e: next } }).catch(() => {});
 }
 
 function onBroadcastPose(msg: { from: string; p: unknown }) {

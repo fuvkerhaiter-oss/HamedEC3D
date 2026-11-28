@@ -5,15 +5,14 @@
  * (the tree alone is 400 meshes in the source) and repeated props are drawn as InstancedMeshes, so the whole
  * decoration costs a few dozen draw calls. Bulbs and the tree's fairy lights twinkle; snow falls over the store.
  */
-import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { Text, useGLTF } from "@react-three/drei";
+import { RoundedBox, useGLTF } from "@react-three/drei";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { EnvLayout } from "../env/types";
 import {
   XMAS_BANNER,
-  XMAS_END_CAPS,
   XMAS_LIGHT_SPANS,
   XMAS_ORNAMENTS,
   XMAS_SANTA,
@@ -61,7 +60,7 @@ export function ChristmasDecor({ env, lowPower }: { env: EnvLayout; lowPower: bo
       <Suspense fallback={null}>
         <WallDecorations lowPower={lowPower} />
       </Suspense>
-      <Banner />
+      <Banner ceilingY={env.ceilingY} />
       <Snowfall env={env} count={lowPower ? 500 : 1400} />
     </group>
   );
@@ -231,11 +230,7 @@ function Wreaths() {
     return p;
   }, [scene]);
   const matrices = useMemo(
-    () =>
-      XMAS_END_CAPS.faces.flatMap((f) =>
-        // Wreath faces +Z in the model; turned to face out of the cap, standing on its top.
-        XMAS_END_CAPS.z.map((z) => compose([f.x - f.dir * 0.15, XMAS_END_CAPS.top, z], (f.dir * Math.PI) / 2)),
-      ).concat(XMAS_WALL_WREATHS.map(([x, y, z, yaw]) => compose([x, y, z], yaw, [1.4, 1.4, 1.4]))),
+    () => XMAS_WALL_WREATHS.map(([x, y, z, yaw]) => compose([x, y, z], yaw, [1.4, 1.4, 1.4])),
     [],
   );
   return <Instanced parts={parts} matrices={matrices} />;
@@ -312,24 +307,173 @@ function OrnamentStrings() {
 
 // ───────────────────────────── banner + snow ─────────────────────────────
 
-function Banner() {
+const XMAS_TV_SLIDES = [
+  "/images/xmas/merry-christmas-market.png",
+  "/images/xmas/corgi-updates.png",
+  "/images/xmas/corgi-promotion.png",
+] as const;
+
+const TV_W = 4.6;
+const TV_H = (TV_W * 9) / 16; // 2.5875 m (16:9)
+const SLIDE_SECONDS = 5.0;
+const FADE_SECONDS = 0.85;
+
+/** Big double-sided ceiling-suspended 16:9 Smart TV with smooth crossfade + subtle zoom animations. */
+function Banner({ ceilingY }: { ceilingY: number }) {
   const { x, y, z } = XMAS_BANNER;
+  const [textures, setTextures] = useState<(THREE.Texture | null)[]>([null, null, null]);
+  const frontMats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  const backMats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  const frontMeshes = useRef<(THREE.Mesh | null)[]>([]);
+  const backMeshes = useRef<(THREE.Mesh | null)[]>([]);
+  const dots = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  const progressBar = useRef<THREE.Mesh>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const loader = new THREE.TextureLoader();
+    const loaded: (THREE.Texture | null)[] = [null, null, null];
+    XMAS_TV_SLIDES.forEach((url, i) => {
+      loader.load(url, (tex) => {
+        if (!alive) {
+          tex.dispose();
+          return;
+        }
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        loaded[i] = tex;
+        setTextures([...loaded]);
+      });
+    });
+    return () => {
+      alive = false;
+      loaded.forEach((t) => t?.dispose());
+    };
+  }, []);
+
+  useFrame(({ clock }) => {
+    const n = XMAS_TV_SLIDES.length;
+    const total = n * SLIDE_SECONDS;
+    const t = clock.elapsedTime % total;
+    const cur = Math.floor(t / SLIDE_SECONDS);
+    const prev = (cur - 1 + n) % n;
+    const localT = t - cur * SLIDE_SECONDS;
+    const fade = Math.min(1, localT / FADE_SECONDS);
+    const smooth = fade * fade * (3 - 2 * fade); // smoothstep
+
+    for (let i = 0; i < n; i++) {
+      const opacity = i === cur ? smooth : i === prev ? 1 - smooth : 0;
+      const fm = frontMats.current[i];
+      const bm = backMats.current[i];
+      if (fm) fm.opacity = opacity;
+      if (bm) bm.opacity = opacity;
+
+      // Subtle Ken Burns zoom on the active slide
+      const zoom = i === cur ? 1 + (localT / SLIDE_SECONDS) * 0.035 : i === prev ? 1.035 : 1;
+      const fMesh = frontMeshes.current[i];
+      const bMesh = backMeshes.current[i];
+      if (fMesh) {
+        fMesh.visible = opacity > 0.005;
+        fMesh.scale.set(zoom, zoom, 1);
+      }
+      if (bMesh) {
+        bMesh.visible = opacity > 0.005;
+        bMesh.scale.set(zoom, zoom, 1);
+      }
+
+      const d = dots.current[i];
+      if (d) d.opacity = i === cur ? 1 : 0.35;
+    }
+
+    if (progressBar.current) {
+      const p = Math.max(0.001, localT / SLIDE_SECONDS);
+      progressBar.current.scale.x = p;
+      progressBar.current.position.x = (-(TV_W - 0.3) * (1 - p)) / 2;
+    }
+  });
+
+  const tvY = Math.min(y + 0.25, ceilingY - TV_H / 2 - 0.28);
+  const poleLen = Math.max(0.15, ceilingY - (tvY + TV_H / 2));
+
   return (
-    <group position={[x, y, z]} rotation={[0, -Math.PI / 2, 0]}>
-      <mesh position={[0, 0, -0.03]}>
-        <boxGeometry args={[4.6, 1.05, 0.04]} />
-        <meshStandardMaterial color="#8f0f1c" roughness={0.7} />
+    <group position={[x, tvY, z]} rotation={[0, -Math.PI / 2, 0]}>
+      {/* ceiling support poles & flange plates */}
+      {[-TV_W * 0.32, TV_W * 0.32].map((px, i) => (
+        <group key={i} position={[px, TV_H / 2, 0]}>
+          <mesh position={[0, poleLen / 2, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, poleLen, 12]} />
+            <meshStandardMaterial color="#23272b" metalness={0.85} roughness={0.25} />
+          </mesh>
+          <mesh position={[0, poleLen - 0.02, 0]}>
+            <cylinderGeometry args={[0.12, 0.12, 0.04, 16]} />
+            <meshStandardMaterial color="#d9b25a" metalness={0.75} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+      {/* sleek satin-black bezel + gold trim */}
+      <RoundedBox args={[TV_W + 0.14, TV_H + 0.14, 0.12]} radius={0.03} smoothness={2}>
+        <meshStandardMaterial color="#111418" metalness={0.7} roughness={0.25} />
+      </RoundedBox>
+      <RoundedBox args={[TV_W + 0.18, TV_H + 0.18, 0.05]} radius={0.03} smoothness={2}>
+        <meshStandardMaterial color="#d9b25a" metalness={0.75} roughness={0.3} />
+      </RoundedBox>
+
+      {/* double-sided screens (front toward entrance −X, back toward hall +X) */}
+      {([1, -1] as const).map((dir) => (
+        <group key={dir} rotation-y={dir < 0 ? Math.PI : 0}>
+          <mesh position={[0, 0, 0.064]}>
+            <planeGeometry args={[TV_W - 0.12, TV_H - 0.12]} />
+            <meshBasicMaterial color="#0b0e12" />
+          </mesh>
+          {textures.map(
+            (tex, i) =>
+              tex && (
+                <mesh
+                  key={i}
+                  ref={(el) => {
+                    if (dir > 0) frontMeshes.current[i] = el;
+                    else backMeshes.current[i] = el;
+                  }}
+                  position={[0, 0, 0.066 + i * 0.001]}
+                >
+                  <planeGeometry args={[TV_W - 0.16, TV_H - 0.16]} />
+                  <meshBasicMaterial
+                    ref={(el) => {
+                      if (dir > 0) frontMats.current[i] = el;
+                      else backMats.current[i] = el;
+                    }}
+                    map={tex}
+                    transparent
+                    opacity={0}
+                    toneMapped={false}
+                  />
+                </mesh>
+              ),
+          )}
+          {/* slide dots */}
+          <group position={[0, -TV_H / 2 + 0.14, 0.072]}>
+            {XMAS_TV_SLIDES.map((_, i) => (
+              <mesh key={i} position={[(i - 1) * 0.14, 0, 0]}>
+                <circleGeometry args={[0.032, 14]} />
+                <meshBasicMaterial
+                  ref={(el) => {
+                    if (dir > 0) dots.current[i] = el;
+                  }}
+                  color="#f7c416"
+                  transparent
+                  opacity={0.4}
+                  toneMapped={false}
+                />
+              </mesh>
+            ))}
+          </group>
+        </group>
+      ))}
+      {/* subtle animated progress bar on front screen */}
+      <mesh ref={progressBar} position={[0, -TV_H / 2 + 0.08, 0.073]}>
+        <planeGeometry args={[TV_W - 0.3, 0.018]} />
+        <meshBasicMaterial color="#f7c416" transparent opacity={0.85} toneMapped={false} />
       </mesh>
-      <mesh position={[0, 0, -0.05]}>
-        <boxGeometry args={[4.72, 1.17, 0.02]} />
-        <meshStandardMaterial color="#d9b25a" metalness={0.7} roughness={0.35} />
-      </mesh>
-      <Text position={[0, 0.14, 0]} fontSize={0.46} color="#fff6e0" anchorX="center" anchorY="middle" letterSpacing={0.04} fontWeight={800}>
-        MERRY CHRISTMAS
-      </Text>
-      <Text position={[0, -0.3, 0]} fontSize={0.17} color="#f3cf7a" anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        HAPPY FAMILY · HAPPY ANIMALS
-      </Text>
     </group>
   );
 }

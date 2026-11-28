@@ -9,20 +9,20 @@
  */
 import type { Box } from "../env/types";
 
-/** The Christmas track (mono 96 kbps MP3, ~2.9 MB). Fetched only when the shopper enters the store. */
-export const XMAS_MUSIC_SRC = process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC?.startsWith("/audio/") ? process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC : "/audio/store-music.mp3";
+/** The Christmas track (fetched only when the shopper enters the store). */
+export const XMAS_MUSIC_SRC = process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC?.startsWith("/audio/") ? process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC : "/audio/xmas/christmas-song.mp3";
 
 /**
- * Speaker sound: a gentle inverse distance curve so the level stays almost even anywhere in the hall, with only a
- * slight lean toward the nearest corner. `gain` per speaker keeps the sum of the four close to a single direct source.
+ * 8D spatial speaker sound: HRTF binaural panning from the 4 corner speakers plus a gentle 8D spatial sweep
+ * around the listener so the music wraps around the hall in 3D space.
  */
 export const XMAS_SPEAKER = {
   inset: 1.2, // m in from each wall corner
-  belowCeiling: 0.35, // m
-  refDistance: 14,
-  rolloff: 0.35,
+  belowCeiling: 0.45, // m
+  refDistance: 8,
+  rolloff: 0.75,
   maxDistance: 120,
-  gain: 0.3,
+  gain: 0.72,
 } as const;
 
 /** Hall reverb: short generated impulse, mixed in quietly. */

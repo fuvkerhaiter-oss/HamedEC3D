@@ -125,7 +125,7 @@ export default async function SellerOverview() {
         <div className="space-y-6">
           <Panel title="Your shop">
             <div id="open" className="space-y-4">
-              <SignPreview name={signName} accent={tenant.accent_color} pending={!signApproved} />
+              <SignPreview name={signName} accent={tenant.accent_color} fontId={tenant.sign_font} pending={!signApproved} />
               <OpenToggle open={tenant.storefront_open && !tenant.suspended} blocker={openBlocker(!!lease, tenant.suspended, stats.published)} />
               {(missingLinks > 0 || noPhoto > 0) && (
                 <ul className="space-y-1 text-xs text-ink-soft">

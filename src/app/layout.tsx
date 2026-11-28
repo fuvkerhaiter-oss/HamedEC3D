@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { signFontVariables } from "./sign-fonts";
 import { Bricolage_Grotesque, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { SITE_NAME, siteUrl } from "@/lib/seo/site";
@@ -38,7 +39,7 @@ export const viewport: Viewport = { themeColor: "#0d0f0e" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} ${signFontVariables}`} suppressHydrationWarning>
       {/* Browser extensions inject attributes on <body> (e.g. location="…") before hydration. */}
       <body className="min-h-dvh font-sans antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>

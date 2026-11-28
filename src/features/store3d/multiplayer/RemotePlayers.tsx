@@ -7,7 +7,8 @@ import { Billboard, Text, useGLTF } from "@react-three/drei";
 import { ASSETS } from "../assets/registry";
 import { basketSlot, TROLLEY, unitJitter } from "../trolley/geometry";
 import { ITEM_BOX, itemMaterial, useBasketUnits, type TrolleyCatalog } from "../trolley/visuals";
-import { remotePoses, sendPose, setListener, setMyBasket, setVoicePosition, useNet, voiceLevel, type Member } from "./net";
+import { EMOTE_DURATION_MS, emoteDef, type EmoteId } from "./emotes";
+import { remoteEmotes, remotePoses, sendPose, setListener, setMyBasket, setVoicePosition, useNet, voiceLevel, type Member } from "./net";
 
 const EYE_HEIGHT = 1.6; // poses are camera positions; feet are this far below
 /** Same place as my own trolley: in front of the shopper, origin on the floor (avatar-local, front = -Z). */
@@ -54,11 +55,17 @@ export function RemotePlayers({ tc }: { tc: TrolleyCatalog }) {
 
 function Avatar({ member, trolley, tc }: { member: Member; trolley: THREE.Object3D; tc: TrolleyCatalog }) {
   const root = useRef<THREE.Group>(null);
+  const char = useRef<THREE.Group>(null);
+  const head = useRef<THREE.Group>(null);
+  const leftArm = useRef<THREE.Group>(null);
+  const rightArm = useRef<THREE.Group>(null);
+  const emoteBadge = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
   const cart = useRef<THREE.Group>(null);
   const plus = useRef<THREE.Group>(null);
   const placed = useRef(false);
   const motion = useRef({ speed: 0, jiggle: 0, popId: 0, popAt: -10 });
+  const [activeEmote, setActiveEmote] = useState<EmoteId | null>(null);
   const body = useMemo(() => new THREE.MeshStandardMaterial({ color: member.color, roughness: 0.55 }), [member.color]);
   const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#3bdc7a", transparent: true, opacity: 0 }), []);
   const model = useMemo(() => {
@@ -141,19 +148,86 @@ function Avatar({ member, trolley, tc }: { member: Member; trolley: THREE.Object
       p.position.y = 2.15 + a * 0.45;
       p.scale.setScalar(a < 0.18 ? (a / 0.18) * 1.3 : 1.3 - Math.min(0.3, (a - 0.18) * 1.5));
     }
+
+    // Emote choreography (visible to all shoppers in the room)
+    const em = remoteEmotes.get(member.id);
+    const emAge = em ? performance.now() - em.startedAt : Infinity;
+    const curEmote = em && emAge < EMOTE_DURATION_MS ? em.emote : null;
+    if (curEmote !== activeEmote) setActiveEmote(curEmote);
+    const ch = char.current;
+    const hd = head.current;
+    const la = leftArm.current;
+    const ra = rightArm.current;
+    const eb = emoteBadge.current;
+    if (eb) {
+      eb.visible = !!curEmote;
+      if (curEmote) eb.position.y = 2.12 + Math.sin(t * 5) * 0.04;
+    }
+    if (ch && hd && la && ra) {
+      if (curEmote === "dance") {
+        ch.position.y = Math.abs(Math.sin(t * 8)) * 0.14;
+        ch.rotation.z = Math.sin(t * 4) * 0.14;
+        ch.rotation.y = Math.sin(t * 2) * 0.35;
+        hd.rotation.z = -Math.sin(t * 4) * 0.2;
+        hd.rotation.x = Math.sin(t * 8) * 0.12;
+        la.rotation.set(-0.4 + Math.sin(t * 8) * 0.9, 0, -0.55 - Math.cos(t * 4) * 0.3);
+        ra.rotation.set(-0.4 - Math.sin(t * 8) * 0.9, 0, 0.55 + Math.cos(t * 4) * 0.3);
+      } else if (curEmote === "wave") {
+        ch.position.y = Math.abs(Math.sin(t * 3)) * 0.04;
+        ch.rotation.set(0, 0, 0);
+        hd.rotation.set(0, 0, Math.sin(t * 4) * 0.12);
+        la.rotation.set(ARM.tilt, 0, 0);
+        ra.rotation.set(-2.3, 0, 0.45 + Math.sin(t * 11) * 0.5);
+      } else if (curEmote === "spin") {
+        ch.position.y = Math.abs(Math.sin(t * 5)) * 0.1;
+        ch.rotation.set(0, t * 7.5, 0);
+        hd.rotation.set(0, 0, 0);
+        la.rotation.set(0, 0, -1.35);
+        ra.rotation.set(0, 0, 1.35);
+      } else if (curEmote === "cheer") {
+        ch.position.y = Math.abs(Math.sin(t * 9)) * 0.22;
+        ch.rotation.set(0, 0, 0);
+        hd.rotation.set(-0.2, 0, Math.sin(t * 6) * 0.1);
+        la.rotation.set(-2.6, 0, -0.4 + Math.sin(t * 9) * 0.2);
+        ra.rotation.set(-2.6, 0, 0.4 - Math.sin(t * 9) * 0.2);
+      } else if (curEmote === "dab") {
+        ch.position.y = 0;
+        ch.rotation.set(0.08, -0.35, 0.1);
+        hd.rotation.set(0.35, 0.4, -0.25);
+        la.rotation.set(-1.3, 0.9, -0.4);
+        ra.rotation.set(-2.1, -0.3, 1.15);
+      } else if (curEmote === "laugh") {
+        ch.position.y = Math.abs(Math.sin(t * 16)) * 0.06;
+        ch.rotation.set(-0.18 + Math.sin(t * 16) * 0.06, 0, 0);
+        hd.rotation.set(-0.32 + Math.sin(t * 16) * 0.12, 0, 0);
+        la.rotation.set(-0.8, 0.5, 0.3);
+        ra.rotation.set(-0.8, -0.5, -0.3);
+      } else {
+        ch.position.y *= 0.8;
+        ch.rotation.set(ch.rotation.x * 0.8, ch.rotation.y * 0.8, ch.rotation.z * 0.8);
+        hd.rotation.set(hd.rotation.x * 0.8, hd.rotation.y * 0.8, hd.rotation.z * 0.8);
+        la.rotation.set(la.rotation.x + (ARM.tilt - la.rotation.x) * 0.2, 0, la.rotation.z * 0.8);
+        ra.rotation.set(ra.rotation.x + (ARM.tilt - ra.rotation.x) * 0.2, 0, ra.rotation.z * 0.8);
+      }
+    }
   });
 
   return (
     <group ref={root} visible={false}>
-      <mesh geometry={GEO.body} material={body} position={[0, 0.66, 0]} castShadow />
-      <group position={[0, 1.42, 0]}>
-        <mesh geometry={GEO.head} material={SKIN} castShadow />
-        <mesh geometry={GEO.eye} material={EYE} position={[-0.07, 0.03, -0.18]} />
-        <mesh geometry={GEO.eye} material={EYE} position={[0.07, 0.03, -0.18]} />
+      <group ref={char}>
+        <mesh geometry={GEO.body} material={body} position={[0, 0.66, 0]} castShadow />
+        <group ref={head} position={[0, 1.42, 0]}>
+          <mesh geometry={GEO.head} material={SKIN} castShadow />
+          <mesh geometry={GEO.eye} material={EYE} position={[-0.07, 0.03, -0.18]} />
+          <mesh geometry={GEO.eye} material={EYE} position={[0.07, 0.03, -0.18]} />
+        </group>
+        <group ref={leftArm} position={[-0.22, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
+          <mesh geometry={GEO.arm} material={body} position={[0, (ARM.len - 0.11) / 2, 0]} scale={[1, ARM.len - 0.11, 1]} />
+        </group>
+        <group ref={rightArm} position={[0.22, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
+          <mesh geometry={GEO.arm} material={body} position={[0, (ARM.len - 0.11) / 2, 0]} scale={[1, ARM.len - 0.11, 1]} />
+        </group>
       </group>
-      {[-0.2, 0.2].map((ax) => (
-        <mesh key={ax} geometry={GEO.arm} material={body} position={[ax, ARM.mid[0], ARM.mid[1]]} rotation-x={ARM.tilt} scale={[1, ARM.len - 0.11, 1]} />
-      ))}
       <group ref={cart} position={[0, 0, TROLLEY_Z]}>
         <primitive object={model} scale={ASSETS.trolley.scale} rotation={ASSETS.trolley.rotation} position={ASSETS.trolley.position} />
         {items.map((it, i) => (
@@ -177,6 +251,13 @@ function Avatar({ member, trolley, tc }: { member: Member; trolley: THREE.Object
         {pop && (
           <Text fontSize={0.2} color="#3bdc7a" outlineWidth={0.018} outlineColor="#111513" anchorX="center" anchorY="middle">
             {`+${pop.n}`}
+          </Text>
+        )}
+      </Billboard>
+      <Billboard ref={emoteBadge} visible={false} position={[0, 2.12, 0]}>
+        {activeEmote && (
+          <Text fontSize={0.16} color="#ffd22b" outlineWidth={0.016} outlineColor="#111513" anchorX="center" anchorY="middle" fontWeight={800}>
+            {emoteDef(activeEmote).badge}
           </Text>
         )}
       </Billboard>

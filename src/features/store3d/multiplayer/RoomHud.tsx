@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { TOUCH_PAUSE_LEFT } from "../hud/TouchControls";
 import { useStoreUi } from "../ui-store";
+import { EMOTES } from "./emotes";
+import { EmoteWheel } from "./EmoteWheel";
 import { ROOM_CAPACITY } from "./rooms";
-import { acceptVoiceNotice, declineVoiceNotice, setAllMuted, setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, useNet } from "./net";
+import { acceptVoiceNotice, declineVoiceNotice, setAllMuted, setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, triggerEmote, useNet } from "./net";
 
 function MicIcon({ off }: { off: boolean }) {
   return (
@@ -29,8 +31,19 @@ export function RoomHud() {
     startMultiplayer();
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (e.code !== "KeyV" || e.repeat || t?.closest("input, textarea")) return;
-      void toggleMic();
+      if (e.repeat || t?.closest("input, textarea")) return;
+      if (e.code === "KeyV") {
+        void toggleMic();
+        return;
+      }
+      if (useStoreUi.getState().stage !== "play" || useStoreUi.getState().inspect) return;
+      const em = EMOTES.find((x) => e.code === `Digit${x.key}` || e.code === `Numpad${x.key}`);
+      if (em) {
+        triggerEmote(em.id);
+        if (useNet.getState().myEmote === em.id) {
+          useStoreUi.getState().showToast(`${em.emoji} ${em.label}!`);
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pagehide", stopMultiplayer); // leave the room at once on tab close
@@ -149,6 +162,9 @@ export function RoomHud() {
           </div>
         </div>
       )}
+
+      {/* Single Emote button that opens a radial circle wheel */}
+      <EmoteWheel />
     </div>
   );
 }

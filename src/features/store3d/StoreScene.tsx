@@ -11,6 +11,7 @@ import { MARKETS } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { ASSETS } from "./assets/registry";
 import { reshapeSupermarket } from "./env/reshape";
+import { MainPlaza } from "./wing/MainPlaza";
 import { RentalShops } from "./wing/RentalShops";
 import type { Box, EnvLayout } from "./env/types";
 import { useInteractable } from "./interactables";
@@ -52,6 +53,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
       <Lighting env={env} lowPower={lowPower} />
       <SupermarketModel />
       <NewWing env={env} lowPower={lowPower} supporters={catalog.supporters} />
+      <MainPlaza />
       <RentalShops shops={catalog.shops} />
       {CHRISTMAS_ON && coreReady && <ChristmasDecor env={env} lowPower={lowPower} />}
       {CHRISTMAS_ON && <XmasSpeakers env={env} lowPower={lowPower} />}

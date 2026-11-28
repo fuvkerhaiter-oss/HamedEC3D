@@ -13,8 +13,8 @@ import { CHRISTMAS_ON } from "./env/christmas";
 import { XMAS_MUSIC_SRC, volumeScale } from "./xmas/hall-audio";
 
 const SRC = CHRISTMAS_ON ? XMAS_MUSIC_SRC : "/audio/store-music.mp3";
-const VOLUME_PLAYING = 0.035; // very soft background level so shoppers clearly hear each other in voice chat
-const VOLUME_DUCKED = 0.018;
+const VOLUME_PLAYING = 0.075; // comfortable background level so shoppers still hear each other in voice chat
+const VOLUME_DUCKED = 0.038;
 const FADE_IN_MS = CHRISTMAS_ON ? 3500 : 1200; // slow, so the music eases in under the store's sound
 const MUTE_KEY = "mm.musicMuted";
 const VOLUME_KEY = "mm.musicVolume";

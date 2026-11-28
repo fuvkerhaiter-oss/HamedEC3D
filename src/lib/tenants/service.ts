@@ -18,6 +18,17 @@ import type { ProductInput, ProfileInput } from "./schema";
 
 /** Products a tenant can have (one per gondola bay face in the shop, see env/shop-interior.ts). */
 export const MAX_PRODUCTS = 48;
+/** Ad banner slides a tenant can show on the 3D shop TVs. */
+export const MAX_AD_SLIDES = 8;
+
+export interface TenantAdSlideRow {
+  id: string;
+  tenant_id: string;
+  image_bucket: string;
+  image_path: string;
+  sort: number;
+  created_at: Date;
+}
 
 export class TenantError extends Error {
   override name = "TenantError";
@@ -48,6 +59,8 @@ export interface TenantRow {
   door_light_color: string;
   door_light_effect: string;
   door_light_level: number;
+  /** Typeface for the 3D shop sign text (lib/rentals/sign-fonts.ts). */
+  sign_font: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -152,7 +165,7 @@ export async function updateProfile(db: Db, tenant: TenantRow, p: ProfileInput):
   return inTx(db, async (tx) => {
     await tx`update public.tenant_accounts set brand_name = ${p.brandName}, tagline = ${p.tagline}, about = ${p.about}, accent_color = ${p.accentColor},
                website = ${p.website}, instagram = ${p.instagram}, tiktok = ${p.tiktok}, contact_email = ${p.contactEmail}, contact_phone = ${p.contactPhone},
-               default_payment_url = ${p.defaultPaymentUrl}, updated_at = now()
+               default_payment_url = ${p.defaultPaymentUrl}, sign_font = ${p.signFont}, updated_at = now()
              where id = ${tenant.id}`;
     const changed = await tx`update public.shop_leases set display_name = ${p.signName}, display_approved = false, updated_at = now()
                              where user_id = ${tenant.user_id} and status in ('active', 'pending_payment') and (ends_at is null or ends_at > now())
@@ -186,7 +199,8 @@ export const newImageKey = (tenantId: string) => `${tenantId}/${randomUUID()}.we
 export async function removeImageIfUnused(db: Db, storage: MediaStorage, bucket: string, path: string): Promise<void> {
   const [r] = await db<{ n: number }[]>`
     select (select count(*) from public.tenant_products where image_bucket = ${bucket} and image_path = ${path})::int
-         + (select count(*) from public.tenant_accounts where logo_bucket = ${bucket} and logo_path = ${path})::int as n`;
+         + (select count(*) from public.tenant_accounts where logo_bucket = ${bucket} and logo_path = ${path})::int
+         + (select count(*) from public.tenant_ad_slides where image_bucket = ${bucket} and image_path = ${path})::int as n`;
   if ((r?.n ?? 0) === 0 && storage.bucket === bucket) {
     try {
       await storage.remove([path]);
@@ -194,6 +208,48 @@ export async function removeImageIfUnused(db: Db, storage: MediaStorage, bucket:
       console.error("[tenant image] could not delete (orphan cleanup will retry)", path, e);
     }
   }
+}
+
+// ───────────────────────────── TV ad slides ─────────────────────────────
+
+export async function listAdSlides(db: Db, tenantId: string): Promise<TenantAdSlideRow[]> {
+  return db<TenantAdSlideRow[]>`select * from public.tenant_ad_slides where tenant_id = ${tenantId} order by sort, created_at`;
+}
+
+export async function addAdSlide(db: Db, tenantId: string, bucket: string, path: string): Promise<TenantAdSlideRow> {
+  return inTx(db, async (tx) => {
+    const [count] = await tx<{ n: number; max: number | null }[]>`
+      select count(*)::int as n, max(sort) as max from public.tenant_ad_slides where tenant_id = ${tenantId}`;
+    if ((count?.n ?? 0) >= MAX_AD_SLIDES) throw new TenantError(`You can have up to ${MAX_AD_SLIDES} TV ad slides. Remove one first.`);
+    const [row] = await tx<TenantAdSlideRow[]>`
+      insert into public.tenant_ad_slides (tenant_id, image_bucket, image_path, sort)
+      values (${tenantId}, ${bucket}, ${path}, ${(count?.max ?? -1) + 1})
+      returning *`;
+    return row!;
+  });
+}
+
+export async function deleteAdSlide(db: Db, tenantId: string, slideId: string): Promise<{ bucket: string; path: string } | null> {
+  if (!/^[0-9a-f-]{36}$/.test(slideId)) throw new TenantError("Slide not found.");
+  const [row] = await db<{ image_bucket: string; image_path: string }[]>`
+    delete from public.tenant_ad_slides where id = ${slideId} and tenant_id = ${tenantId} returning image_bucket, image_path`;
+  if (!row) throw new TenantError("Slide not found.");
+  return { bucket: row.image_bucket, path: row.image_path };
+}
+
+export async function moveAdSlide(db: Db, tenantId: string, slideId: string, dir: -1 | 1): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/.test(slideId)) return;
+  await inTx(db, async (tx) => {
+    const rows = await tx<{ id: string; sort: number }[]>`
+      select id, sort from public.tenant_ad_slides where tenant_id = ${tenantId} order by sort, created_at for update`;
+    const i = rows.findIndex((r) => r.id === slideId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= rows.length) return;
+    const a = rows[i]!;
+    const b = rows[j]!;
+    await tx`update public.tenant_ad_slides set sort = ${j} where id = ${a.id}`;
+    await tx`update public.tenant_ad_slides set sort = ${i} where id = ${b.id}`;
+  });
 }
 
 // ───────────────────────────── products ─────────────────────────────
@@ -339,6 +395,7 @@ export async function loadStorefronts(db: Db, now = new Date()): Promise<Record<
       logoUrl: mediaUrl(s.logo_bucket, s.logo_path),
       website: s.website,
       instagram: s.instagram,
+      signFont: s.sign_font ?? "bricolage",
       products: products
         .filter((p) => p.tenant_id === s.id)
         .slice(0, MAX_PRODUCTS)
@@ -368,6 +425,62 @@ export async function loadDoorStyles(db: Db, now = new Date()): Promise<Record<s
      order by l.shop_id, l.ends_at desc`;
   const out: Record<string, DoorStyle> = {};
   for (const r of rows) if (SHOP_UNITS.some((u) => u.id === r.shop_id)) out[r.shop_id] = doorStyleFrom(r);
+  return out;
+}
+
+/**
+ * Sign font ids by shop id for every running, not-suspended lease (open or not yet open: the sign shows the font
+ * from day one). Falls back to the default "bricolage" if the column is missing (pre-migration data).
+ */
+export async function loadSignFonts(db: Db, now = new Date()): Promise<Record<string, string>> {
+  const rows = await db<{ shop_id: string; sign_font: string }[]>`
+    select distinct on (l.shop_id) l.shop_id, coalesce(t.sign_font, 'bricolage') as sign_font
+      from public.shop_leases l join public.tenant_accounts t on t.user_id = l.user_id
+     where l.status = 'active' and l.starts_at <= ${now} and l.ends_at > ${now} and not t.suspended
+     order by l.shop_id, l.ends_at desc`;
+  const out: Record<string, string> = {};
+  for (const r of rows) if (SHOP_UNITS.some((u) => u.id === r.shop_id)) out[r.shop_id] = r.sign_font;
+  return out;
+}
+
+/**
+ * Ad slide URLs by shop id for every running, not suspended lease whose tenant uploaded TV ads.
+ */
+export async function loadAdSlides(db: Db, now = new Date()): Promise<Record<string, string[]>> {
+  const rows = await db<{ shop_id: string; image_bucket: string; image_path: string }[]>`
+    with active_shops as (
+      select distinct on (l.shop_id) l.shop_id, t.id as tenant_id
+        from public.shop_leases l join public.tenant_accounts t on t.user_id = l.user_id
+       where l.status = 'active' and l.starts_at <= ${now} and l.ends_at > ${now} and not t.suspended
+       order by l.shop_id, l.ends_at desc
+    )
+    select a.shop_id, s.image_bucket, s.image_path
+      from active_shops a join public.tenant_ad_slides s on s.tenant_id = a.tenant_id
+     order by a.shop_id, s.sort, s.created_at`;
+  const out: Record<string, string[]> = {};
+  for (const r of rows) {
+    if (!SHOP_UNITS.some((u) => u.id === r.shop_id)) continue;
+    const url = mediaUrl(r.image_bucket, r.image_path);
+    if (url) (out[r.shop_id] ??= []).push(url);
+  }
+  return out;
+}
+
+/**
+ * Logo URLs by shop id for every running, not suspended lease whose tenant uploaded a logo (open or not yet open:
+ * the 3D sign shows it from day one).
+ */
+export async function loadShopLogos(db: Db, now = new Date()): Promise<Record<string, string>> {
+  const rows = await db<{ shop_id: string; logo_bucket: string | null; logo_path: string | null }[]>`
+    select distinct on (l.shop_id) l.shop_id, t.logo_bucket, t.logo_path
+      from public.shop_leases l join public.tenant_accounts t on t.user_id = l.user_id
+     where l.status = 'active' and l.starts_at <= ${now} and l.ends_at > ${now} and not t.suspended
+     order by l.shop_id, l.ends_at desc`;
+  const out: Record<string, string> = {};
+  for (const r of rows) {
+    const url = SHOP_UNITS.some((u) => u.id === r.shop_id) ? mediaUrl(r.logo_bucket, r.logo_path) : null;
+    if (url) out[r.shop_id] = url;
+  }
   return out;
 }
 

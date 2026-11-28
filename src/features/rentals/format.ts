@@ -39,6 +39,12 @@ export interface PublicShop {
   storefront: PublicStorefront | null;
   /** The tenant's door frame colour + lighting while rented (null = the default look). */
   door: DoorStyle | null;
+  /** The tenant's logo for the 3D shop sign while rented (also before they open the shop), else null. */
+  logoUrl: string | null;
+  /** Typeface id for the 3D shop sign (lib/rentals/sign-fonts.ts); null = default house font. */
+  signFont: string | null;
+  /** Ad slide image URLs shown on the big TVs inside the 3D shop. */
+  adSlides?: string[];
 }
 
 export interface PublicTenantProduct {
@@ -64,4 +70,6 @@ export interface PublicStorefront {
   website: string | null;
   instagram: string | null;
   products: PublicTenantProduct[];
+  /** Typeface id for the 3D shop sign (lib/rentals/sign-fonts.ts). */
+  signFont: string;
 }

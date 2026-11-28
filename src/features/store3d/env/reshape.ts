@@ -6,6 +6,7 @@
  */
 import * as THREE from "three";
 import { CUT_X, fixtureRemovalFor } from "./extension";
+import { GONDOLA_SRC } from "./shop-interior";
 import { wallFaceOf, type WallFace } from "./shops";
 
 /** Plaster of the imported walls (the side-wall faces with shop doors are rebuilt by wing/RentalShops). */
@@ -18,9 +19,61 @@ export interface WallUv {
 }
 /** scene.userData key: Record<"N-inner" | "N-outer" | "S-inner" | "S-outer", WallUv>. */
 export const WALL_UV_KEY = "vswShopWallUv";
+/** scene.userData key: extracted gondola parts for rental shop interiors (saved before main-aisle gondolas are removed). */
+export const GONDOLA_PARTS_KEY = "vswGondolaParts";
 export const wallFaceKey = (f: WallFace) => `${f.side}-${f.inner ? "inner" : "outer"}`;
 
+export interface GondolaPartData {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+}
+
 const DONE = "vswExtended";
+
+function extractGondolaParts(meshes: THREE.Mesh[]): GondolaPartData[] {
+  const r = GONDOLA_SRC;
+  const c = new THREE.Vector3((r.minX + r.maxX) / 2, 0, (r.minZ + r.maxZ) / 2);
+  const out: GondolaPartData[] = [];
+  const p = new THREE.Vector3();
+  for (const m of meshes) {
+    if (Array.isArray(m.material)) continue;
+    const g = m.geometry;
+    const pos = g.getAttribute("position");
+    if (!pos) continue;
+    const idx = g.getIndex();
+    const n = (idx ? idx.count : pos.count) / 3;
+    const vi = (t: number, k: number) => (idx ? idx.getX(t * 3 + k) : t * 3 + k);
+    const names = Object.keys(g.attributes).filter((a) => a === "position" || a === "normal" || a === "uv");
+    const data: Record<string, number[]> = Object.fromEntries(names.map((a) => [a, []]));
+    for (let t = 0; t < n; t++) {
+      let cx = 0, cy = 0, cz = 0;
+      for (let k = 0; k < 3; k++) {
+        p.fromBufferAttribute(pos, vi(t, k)).applyMatrix4(m.matrixWorld);
+        cx += p.x / 3; cy += p.y / 3; cz += p.z / 3;
+      }
+      if (cx < r.minX || cx > r.maxX || cy < r.minY || cy > r.maxY || cz < r.minZ || cz > r.maxZ) continue;
+      for (let k = 0; k < 3; k++) {
+        const i = vi(t, k);
+        for (const a of names) {
+          const attr = g.getAttribute(a);
+          if (a === "position") {
+            p.fromBufferAttribute(attr, i).applyMatrix4(m.matrixWorld).sub(c);
+            data[a]!.push(p.x, p.y, p.z);
+          } else if (a === "normal") {
+            p.fromBufferAttribute(attr, i).transformDirection(m.matrixWorld);
+            data[a]!.push(p.x, p.y, p.z);
+          } else for (let q = 0; q < attr.itemSize; q++) data[a]!.push(attr.getComponent(i, q));
+        }
+      }
+    }
+    if (!data.position!.length) continue;
+    const geo = new THREE.BufferGeometry();
+    for (const a of names) geo.setAttribute(a, new THREE.Float32BufferAttribute(data[a]!, g.getAttribute(a).itemSize));
+    geo.computeBoundingSphere();
+    out.push({ geometry: geo, material: m.material });
+  }
+  return out;
+}
 
 export function reshapeSupermarket(scene: THREE.Object3D): void {
   if (scene.userData[DONE]) return;
@@ -30,6 +83,7 @@ export function reshapeSupermarket(scene: THREE.Object3D): void {
   scene.traverse((o) => {
     if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh);
   });
+  scene.userData[GONDOLA_PARTS_KEY] = extractGondolaParts(meshes);
   scene.userData[WALL_UV_KEY] = {};
   for (const m of meshes) {
     if (!Array.isArray(m.material) && CEILING_RIG_MATERIALS.includes(m.material.name)) {

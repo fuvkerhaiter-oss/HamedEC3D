@@ -12,10 +12,10 @@ import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBox, Text, useGLTF } from "@react-three/drei";
 import { ASSETS } from "../assets/registry";
-import { reshapeSupermarket, WALL_MATERIAL, WALL_UV_KEY, wallFaceKey, type WallUv } from "../env/reshape";
+import { GONDOLA_PARTS_KEY, reshapeSupermarket, WALL_MATERIAL, WALL_UV_KEY, wallFaceKey, type GondolaPartData, type WallUv } from "../env/reshape";
 import { doorHoles, intoStore, SHOP_DOOR, SHOP_ROOM, SHOP_UNITS, WALL_FACES, type ShopUnit, type WallFace } from "../env/shops";
 import { chainSegments, type ChainSpan } from "./chains";
-import { brandPanel, counterLayout, GONDOLA_SRC, gondolaCenters, podiumLayout, roomDims, shelvingRun, toWorld, unitFrame, type UnitFrame, type V3 } from "../env/shop-interior";
+import { brandPanel, counterLayout, gondolaCenters, podiumLayout, roomDims, shelvingRun, toWorld, unitFrame, type UnitFrame, type V3 } from "../env/shop-interior";
 import { Padlock } from "./NewWing";
 import { useInteractable } from "../interactables";
 import type { InteractionTarget } from "../ui-store";
@@ -23,6 +23,8 @@ import type { PublicShop, PublicStorefront } from "@/features/rentals/format";
 import { useImageTexture } from "./image-texture";
 import { TenantShelves } from "./TenantProducts";
 import { ShopDoorLights } from "./ShopDoorLights";
+import { ShopSign } from "./ShopSign";
+import { ShopTv } from "./ShopTv";
 import { DEFAULT_DOOR_STYLE } from "@/lib/rentals/door-style";
 
 const STEEL = "#23272b";
@@ -99,25 +101,27 @@ function RebuiltWalls() {
 function useShopMaterials() {
   const m = useMemo(
     () => ({
-      steel: new THREE.MeshStandardMaterial({ color: STEEL, metalness: 0.75, roughness: 0.38 }),
-      brushed: new THREE.MeshStandardMaterial({ color: "#c7ccd1", metalness: 1, roughness: 0.22 }),
-      glass: new THREE.MeshStandardMaterial({ color: "#a8c3cf", metalness: 0.3, roughness: 0.04, transparent: true, opacity: 0.18, depthWrite: false, envMapIntensity: 1.6 }),
-      roomWall: new THREE.MeshStandardMaterial({ color: "#f1eee8", roughness: 0.85, emissive: "#fff4e2", emissiveIntensity: 0.28, side: THREE.BackSide }),
-      floor: new THREE.MeshStandardMaterial({ color: "#c9a77c", roughness: 0.45, emissive: "#3a2a16", emissiveIntensity: 0.25 }),
-      ceiling: new THREE.MeshStandardMaterial({ color: "#fbfaf7", roughness: 0.9, emissive: "#ffffff", emissiveIntensity: 0.35 }),
-      led: new THREE.MeshBasicMaterial({ color: "#fff6e0", toneMapped: false }),
-      shelf: new THREE.MeshStandardMaterial({ color: "#f7f6f2", roughness: 0.5, emissive: "#ffffff", emissiveIntensity: 0.12 }),
-      feature: new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6 }),
-      threshold: new THREE.MeshStandardMaterial({ color: "#2e3134", roughness: 0.35, metalness: 0.2 }),
+      steel: new THREE.MeshStandardMaterial({ color: STEEL, metalness: 0.75, roughness: 0.35 }),
+      brushed: new THREE.MeshStandardMaterial({ color: "#d0d5da", metalness: 0.95, roughness: 0.2 }),
+      glass: new THREE.MeshStandardMaterial({ color: "#b6d2de", metalness: 0.25, roughness: 0.05, transparent: true, opacity: 0.18, depthWrite: false, envMapIntensity: 1.6, side: THREE.DoubleSide }),
+      roomWall: new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.85, emissive: "#fff6e6", emissiveIntensity: 0.3, side: THREE.BackSide }),
+      roomFrontWall: new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.85, emissive: "#fff6e6", emissiveIntensity: 0.3 }),
+      floor: new THREE.MeshStandardMaterial({ color: "#caa87e", roughness: 0.42, emissive: "#3a2a16", emissiveIntensity: 0.22 }),
+      ceiling: new THREE.MeshStandardMaterial({ color: "#fcfbf8", roughness: 0.9, emissive: "#ffffff", emissiveIntensity: 0.38 }),
+      led: new THREE.MeshBasicMaterial({ color: "#fff7e2", toneMapped: false }),
+      exitGlow: new THREE.MeshBasicMaterial({ color: "#19b86b", toneMapped: false }),
+      shelf: new THREE.MeshStandardMaterial({ color: "#f8f7f3", roughness: 0.48, emissive: "#ffffff", emissiveIntensity: 0.14 }),
+      feature: new THREE.MeshStandardMaterial({ color: "#14181b", roughness: 0.55 }),
+      threshold: new THREE.MeshStandardMaterial({ color: "#2a2d31", roughness: 0.32, metalness: 0.28 }),
       sign: new THREE.MeshStandardMaterial({ color: INK, roughness: 0.45, metalness: 0.2 }),
-      amber: new THREE.MeshStandardMaterial({ color: AMBER, roughness: 0.4, metalness: 0.3 }),
+      amber: new THREE.MeshStandardMaterial({ color: AMBER, roughness: 0.35, metalness: 0.35 }),
       plaque: new THREE.MeshStandardMaterial({ color: "#c8102e", roughness: 0.45 }),
       skin: new THREE.MeshStandardMaterial({ color: "#8f8b84", roughness: 0.95 }),
       hidden: new THREE.MeshBasicMaterial({ visible: false }),
       counterTop: new THREE.MeshStandardMaterial({ color: "#1c1f22", roughness: 0.3, metalness: 0.3 }),
       halo: new THREE.MeshBasicMaterial({ color: "#f7c416", transparent: true, opacity: 0.16, depthWrite: false, toneMapped: false }),
       skirting: new THREE.MeshStandardMaterial({ color: "#2b2f33", roughness: 0.6 }),
-      wood: new THREE.MeshStandardMaterial({ color: "#a07a52", roughness: 0.62, emissive: "#2e1d0d", emissiveIntensity: 0.3 }),
+      wood: new THREE.MeshStandardMaterial({ color: "#b0865a", roughness: 0.58, emissive: "#2e1d0d", emissiveIntensity: 0.26 }),
       border: new THREE.MeshStandardMaterial({ color: "#4a433b", roughness: 0.4, emissive: "#14100c", emissiveIntensity: 0.2 }),
     }),
     [],
@@ -154,8 +158,7 @@ function Portal({ t, mats, frame }: { t: number; mats: ShopMats; frame: THREE.Ma
       <mesh position={[0, H + 0.015, fd + 0.004]} material={mats.brushed}>
         <boxGeometry args={[W + 0.03, 0.03, 0.008]} />
       </mesh>
-      {/* slim cantilevered canopy over the entrance (LED line under its front edge: ShopDoorLights) */}
-      <RoundedBox args={[W + 0.8, 0.07, 0.5]} radius={0.02} smoothness={2} position={[0, H + fw + 0.07, 0.25]} material={frame} castShadow />
+      {/* the striped awning over the entrance is part of ShopSign */}
       {/* reveals through the wall */}
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * (W / 2 - 0.01), H / 2, -t / 2]} material={frame}>
@@ -280,23 +283,100 @@ function Storefront({ mats, open, frame }: { mats: ShopMats; open: boolean; fram
 
 /** Brand wall panel at the back of a room (local): width, bottom, top. */
 
+/** Interior front wall of a room (faces −z into the room) with the doorway hole cut out. */
+function interiorFrontWallGeometry(xl: number, xr: number, h: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(xl, 0);
+  shape.lineTo(xr, 0);
+  shape.lineTo(xr, h);
+  shape.lineTo(xl, h);
+  shape.closePath();
+  const hole = new THREE.Path();
+  hole.moveTo(-W / 2, 0.001);
+  hole.lineTo(-W / 2, H);
+  hole.lineTo(W / 2, H);
+  hole.lineTo(W / 2, 0.001);
+  hole.closePath();
+  shape.holes.push(hole);
+  const g = new THREE.ShapeGeometry(shape);
+  // Flip winding so the front face points −z (into the room) and culls when viewed from the main store.
+  if (g.index) {
+    const idx = g.index.array as unknown as number[];
+    for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2]!, idx[i + 1]!];
+    g.index.needsUpdate = true;
+  }
+  const nrm = g.getAttribute("normal");
+  for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 0, -1);
+  g.computeBoundingSphere();
+  return g;
+}
+
 /**
  * Lit shop room behind the wall (local z −t → −t − depth): the shell, floor, ceiling, the brand name on the back wall
  * and the display podiums. Everything box-shaped (shelving, lights, trims) is instanced across all rooms by
  * ShopFittings; the gondolas by ShopGondolas.
  */
-function Room({ f, label, mats, brand, store }: { f: UnitFrame; label: string; mats: ShopMats; brand: string | null; store: PublicStorefront | null }) {
-  const { cx, w, zf, zb, h } = roomDims(f);
+function Room({ f, label, mats, frame, brand, store, adSlides, accent }: { f: UnitFrame; label: string; mats: ShopMats; frame: THREE.Material; brand: string | null; store: PublicStorefront | null; adSlides: readonly string[]; accent: string }) {
+  const { xl, xr, cx, w, zf, zb, h } = roomDims(f);
   const d = zf - zb;
   const cz = (zf + zb) / 2;
   const { pw, y0, y1 } = brandPanel(w);
   const title = brand ?? "YOUR BRAND HERE";
   const pod = podiumLayout(f);
+  const frontWallGeo = useMemo(() => interiorFrontWallGeometry(xl, xr, h), [xl, xr, h]);
+  useLayoutEffect(() => () => frontWallGeo.dispose(), [frontWallGeo]);
+  const leftSkirtW = Math.max(0, -W / 2 - xl);
+  const rightSkirtW = Math.max(0, xr - W / 2);
+  const ceilTv1X = Math.max(xl + 2.5, Math.min(xr - 6.5, -2.0));
+  const ceilTv2X = ceilTv1X + 4.0;
   return (
     <group>
-      <mesh position={[cx, h / 2, cz]} material={mats.roomWall}>
+      {/* +z front face is hidden so it never covers the doorway or z-fights with RebuiltWalls */}
+      <mesh position={[cx, h / 2, cz]} material={[mats.roomWall, mats.roomWall, mats.roomWall, mats.roomWall, mats.hidden, mats.roomWall]}>
         <boxGeometry args={[w, h, d]} />
       </mesh>
+      {/* dedicated interior front wall with a clean doorway opening */}
+      <mesh position={[0, 0, zf - 0.005]} geometry={frontWallGeo} material={mats.roomFrontWall} />
+      {/* interior doorway casing + brushed metal trim + illuminated EXIT sign */}
+      <group position={[0, 0, zf - 0.01]}>
+        {[-1, 1].map((s) => (
+          <group key={s} position={[s * (W / 2 + 0.09), 0, 0]}>
+            <mesh position={[0, (H + 0.18) / 2, -0.025]} material={frame}>
+              <boxGeometry args={[0.18, H + 0.18, 0.05]} />
+            </mesh>
+            <mesh position={[-s * 0.075, H / 2, -0.052]} material={mats.brushed}>
+              <boxGeometry args={[0.025, H, 0.012]} />
+            </mesh>
+          </group>
+        ))}
+        <mesh position={[0, H + 0.09, -0.025]} material={frame}>
+          <boxGeometry args={[W + 0.36, 0.18, 0.05]} />
+        </mesh>
+        <mesh position={[0, H + 0.012, -0.052]} material={mats.brushed}>
+          <boxGeometry args={[W + 0.03, 0.025, 0.012]} />
+        </mesh>
+        {/* front-wall skirting either side of the doorway */}
+        {leftSkirtW > 0.2 && (
+          <mesh position={[xl + leftSkirtW / 2, 0.06, -0.01]} material={mats.steel}>
+            <boxGeometry args={[leftSkirtW, 0.12, 0.02]} />
+          </mesh>
+        )}
+        {rightSkirtW > 0.2 && (
+          <mesh position={[W / 2 + rightSkirtW / 2, 0.06, -0.01]} material={mats.steel}>
+            <boxGeometry args={[rightSkirtW, 0.12, 0.02]} />
+          </mesh>
+        )}
+        {/* illuminated EXIT sign above the doorway */}
+        <group position={[0, H + 0.36, -0.045]} rotation-y={Math.PI}>
+          <RoundedBox args={[0.72, 0.24, 0.05]} radius={0.02} smoothness={2} material={mats.feature} />
+          <mesh position={[0, 0, 0.026]} material={mats.exitGlow}>
+            <planeGeometry args={[0.64, 0.17]} />
+          </mesh>
+          <Text position={[0, 0.005, 0.029]} fontSize={0.11} letterSpacing={0.22} color="#ffffff" anchorX="center" anchorY="middle" fontWeight={800}>
+            EXIT
+          </Text>
+        </group>
+      </group>
       {/* solid outside skin: seen from outside the store the room reads as a neighbouring building */}
       {/* BoxGeometry faces: +x, −x, +y, −y, +z (front = the wall side: hidden, or it would cover the door), −z */}
       <mesh position={[cx, h / 2 + 0.04, cz - 0.04]} material={[mats.skin, mats.skin, mats.skin, mats.skin, mats.hidden, mats.skin]}>
@@ -328,6 +408,12 @@ function Room({ f, label, mats, brand, store }: { f: UnitFrame; label: string; m
         {store?.tagline ? store.tagline.toUpperCase() : brand ? label : `${label} · ${SHOP_ROOM.width} × ${SHOP_ROOM.depth} M · AVAILABLE FOR RENT`}
       </Text>
       {store?.logoUrl && <BrandLogo url={store.logoUrl} position={[cx, (y0 + y1) / 2 + 1.25, zb + 0.08]} />}
+      {/* two big ceiling-suspended double-sided ad TVs visible right through the entrance */}
+      <ShopTv position={[ceilTv1X, 3.96, zf - 7.4]} slides={adSlides} brand={brand} accent={accent} width={3.3} ceilingY={h} doubleSided />
+      <ShopTv position={[ceilTv2X, 3.96, zf - 7.4]} slides={adSlides} brand={brand} accent={accent} width={3.3} ceilingY={h} doubleSided />
+      {/* big widescreen ad TVs mounted above the shelving on both side walls */}
+      <ShopTv position={[xl + 0.04, 3.96, cz]} rotationY={Math.PI / 2} slides={adSlides} brand={brand} accent={accent} width={3.8} />
+      <ShopTv position={[xr - 0.04, 3.96, cz]} rotationY={-Math.PI / 2} slides={adSlides} brand={brand} accent={accent} width={3.8} />
       {/* podium trio by the window: white drums with amber caps */}
       {pod.show &&
         pod.items.map(({ x, z, r, h: ph }, i) => (
@@ -381,10 +467,12 @@ function roomFittings(f: UnitFrame): Record<FittingKind, LocalBox[]> {
   const d = zf - zb;
   const cz = (zf + zb) / 2;
 
-  // Ceiling: recessed LED panel grid, a front bulkhead (hides the ceiling edge through the transom), track lights.
+  // Ceiling: recessed LED panel grid, a slim architectural front soffit with warm cove LED strip, track lights.
   const cols = [-6, -3, 0, 3, 6].filter((o) => Math.abs(o) < w / 2 - 1.5);
   for (let z = zf - 2.4; z > zb + 1.5; z -= 2.8) for (const o of cols) add("led", cx + o, h - 0.012, z, 1.2, 0.02, 0.6);
-  add("ink", cx, h - 0.3, zf - 0.35, w, 0.6, 0.7);
+  add("ink", cx, h - 0.14, zf - 0.28, w, 0.28, 0.56);
+  add("led", cx, h - 0.285, zf - 0.54, w - 0.4, 0.014, 0.024);
+  add("amber", cx, h - 0.27, zf - 0.562, w, 0.025, 0.006);
   for (const s of [-1, 1]) {
     const x = s < 0 ? xl + 1.4 : xr - 1.4;
     add("steel", x, h - 0.03, (zf - 4 + zb + 2) / 2, 0.06, 0.04, d - 6);
@@ -484,40 +572,26 @@ function ShopFittings({ mats }: { mats: ShopMats }) {
   );
 }
 
-/** Big lit lightbox fascia above the portal + hanging plaque on the chain crossing. */
-function ForRentSigns({ label, mats, info, open }: { label: string; mats: ShopMats; info?: PublicShop; open: boolean }) {
-  const fw = W + 1.4; // sign width
-  const fh = 1.2;
-  const fy = H + 0.2 + 0.2 + fh / 2; // bottom 0.4 m above the frame head
+/**
+ * Shop front signage: the playful 3D fascia + awning (ShopSign: brand lettering, logo medallion, marquee bulbs) and,
+ * while closed, the plaque hanging from the chain crossing.
+ */
+function ForRentSigns({ label, mats, info, open, color, phase }: { label: string; mats: ShopMats; info?: PublicShop; open: boolean; color: string; phase: number }) {
+  const rented = info?.state === "rented";
   return (
     <group>
-      {/* soft amber halo on the wall behind the lightbox */}
-      <mesh position={[0, fy, 0.012]} material={mats.halo}>
-        <planeGeometry args={[fw + 0.7, fh + 0.6]} />
-      </mesh>
-      {/* stand-off brackets */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (fw / 2 - 0.35), fy, 0.06]} material={mats.steel}>
-          <boxGeometry args={[0.08, fh - 0.2, 0.12]} />
-        </mesh>
-      ))}
-      {/* lightbox: amber trim, black face */}
-      <RoundedBox args={[fw + 0.1, fh + 0.1, 0.16]} radius={0.04} smoothness={3} position={[0, fy, 0.16]} material={mats.amber} castShadow />
-      <mesh position={[0, fy, 0.245]} material={mats.sign}>
-        <planeGeometry args={[fw - 0.06, fh - 0.06]} />
-      </mesh>
-      {/* LED edge lines (top + bottom) */}
-      {[1, -1].map((s) => (
-        <mesh key={s} position={[0, fy + s * (fh / 2 - 0.09), 0.247]} material={mats.led}>
-          <planeGeometry args={[fw - 0.3, 0.025]} />
-        </mesh>
-      ))}
-      <Text position={[0, fy + 0.13, 0.25]} fontSize={Math.min(0.6, (0.6 * 12) / Math.max(12, signTitle(info).length))} maxWidth={fw - 0.3} letterSpacing={0.12} color={AMBER} anchorX="center" anchorY="middle" fontWeight={800} outlineWidth={0.006} outlineColor="#7a5a00">
-        {signTitle(info)}
-      </Text>
-      <Text position={[0, fy - 0.34, 0.25]} fontSize={0.13} letterSpacing={0.3} color="#f6f1e6" anchorX="center" anchorY="middle">
-        {open ? `${label}  ·  NOW OPEN  ·  COME IN` : info?.state === "rented" ? `${label}  ·  OPENING SOON` : `${label}  ·  OPEN YOUR SHOP HERE`}
-      </Text>
+      <ShopSign
+        H={H}
+        W={W}
+        fw={FRAME_W}
+        color={color}
+        title={signTitle(info)}
+        subtitle={open ? `${label}  ·  NOW OPEN  ·  COME IN!` : rented ? `${label}  ·  OPENING SOON` : `${label}  ·  YOUR SHOP COULD BE HERE`}
+        logoUrl={rented ? (info?.storefront?.logoUrl ?? info?.logoUrl ?? null) : null}
+        rented={rented}
+        phase={phase}
+        signFontId={info?.signFont ?? info?.storefront?.signFont ?? null}
+      />
       {/* plaque hanging from the chain crossing */}
       {!open && (
       <group position={[0, 1.18, 0.2]}>
@@ -562,8 +636,17 @@ function ShopUnitView({ unit, mats, info }: { unit: ShopUnit; mats: ShopMats; in
       <Portal t={f.t} mats={mats} frame={frame} />
       <Storefront mats={mats} open={open} frame={frame} />
       <ShopDoorLights style={door} W={W} H={H} fw={FRAME_W} />
-      <Room f={f} label={unit.label} mats={mats} brand={rented && info?.brand ? info.brand.toUpperCase() : store ? store.brand.toUpperCase() : null} store={store} />
-      <ForRentSigns label={unit.label} mats={mats} info={info} open={open} />
+      <Room
+        f={f}
+        label={unit.label}
+        mats={mats}
+        frame={frame}
+        brand={rented && info?.brand ? info.brand.toUpperCase() : store ? store.brand.toUpperCase() : null}
+        store={store}
+        adSlides={rented ? (info?.adSlides ?? []) : []}
+        accent={store?.accent ?? door.frame}
+      />
+      <ForRentSigns label={unit.label} mats={mats} info={info} open={open} color={door.frame} phase={SHOP_UNITS.indexOf(unit) * 1.37} />
       {/* padlock at the chain crossing (its face looks along −x: turn it to the store) */}
       {!open && (
         <group position={[0, 1.62, 0.17]} rotation-y={Math.PI / 2}>
@@ -596,57 +679,12 @@ function ShopUnitView({ unit, mats, info }: { unit: ShopUnit; mats: ShopMats; in
 // ───────────────────────────── gondolas (copied from the store) ─────────────────────────────
 
 /** One geometry per material: the copied run, centred on x/z (long axis along +x), standing on y = 0. */
-function useGondolaParts(): { geometry: THREE.BufferGeometry; material: THREE.Material }[] {
+function useGondolaParts(): GondolaPartData[] {
   const { scene } = useGLTF(ASSETS.supermarket.url);
-  const parts = useMemo(() => {
+  return useMemo(() => {
     reshapeSupermarket(scene);
-    scene.updateMatrixWorld(true);
-    const r = GONDOLA_SRC;
-    const c = new THREE.Vector3((r.minX + r.maxX) / 2, 0, (r.minZ + r.maxZ) / 2);
-    const out: { geometry: THREE.BufferGeometry; material: THREE.Material }[] = [];
-    const p = new THREE.Vector3();
-    scene.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh || Array.isArray(m.material)) return;
-      const g = m.geometry;
-      const pos = g.getAttribute("position");
-      if (!pos) return;
-      const idx = g.getIndex();
-      const n = (idx ? idx.count : pos.count) / 3;
-      const vi = (t: number, k: number) => (idx ? idx.getX(t * 3 + k) : t * 3 + k);
-      const names = Object.keys(g.attributes).filter((a) => a === "position" || a === "normal" || a === "uv");
-      const data: Record<string, number[]> = Object.fromEntries(names.map((a) => [a, []]));
-      for (let t = 0; t < n; t++) {
-        let cx = 0, cy = 0, cz = 0;
-        for (let k = 0; k < 3; k++) {
-          p.fromBufferAttribute(pos, vi(t, k)).applyMatrix4(m.matrixWorld);
-          cx += p.x / 3; cy += p.y / 3; cz += p.z / 3;
-        }
-        if (cx < r.minX || cx > r.maxX || cy < r.minY || cy > r.maxY || cz < r.minZ || cz > r.maxZ) continue;
-        for (let k = 0; k < 3; k++) {
-          const i = vi(t, k);
-          for (const a of names) {
-            const attr = g.getAttribute(a);
-            if (a === "position") {
-              p.fromBufferAttribute(attr, i).applyMatrix4(m.matrixWorld).sub(c);
-              data[a]!.push(p.x, p.y, p.z);
-            } else if (a === "normal") {
-              p.fromBufferAttribute(attr, i).transformDirection(m.matrixWorld);
-              data[a]!.push(p.x, p.y, p.z);
-            } else for (let q = 0; q < attr.itemSize; q++) data[a]!.push(attr.getComponent(i, q));
-          }
-        }
-      }
-      if (!data.position!.length) return;
-      const geo = new THREE.BufferGeometry();
-      for (const a of names) geo.setAttribute(a, new THREE.Float32BufferAttribute(data[a]!, g.getAttribute(a).itemSize));
-      geo.computeBoundingSphere();
-      out.push({ geometry: geo, material: m.material });
-    });
-    return out;
+    return (scene.userData[GONDOLA_PARTS_KEY] as GondolaPartData[] | undefined) ?? [];
   }, [scene]);
-  useLayoutEffect(() => () => parts.forEach((x) => x.geometry.dispose()), [parts]);
-  return parts;
 }
 
 /** Two copies of the store's gondola per shop room, running front to back, as one InstancedMesh per material. */

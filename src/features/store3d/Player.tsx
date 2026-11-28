@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useKeyboardControls } from "@react-three/drei";
-import { step, type Motion, type Rect, type ShopperShape } from "./collision";
+import { groundHeightAt, step, type Motion, type Rect, type ShopperShape } from "./collision";
 import type { ControlName } from "./controls";
 import { analogSpeed, touchInput } from "./input/touch-input";
 import type { Vec3 } from "./layout";
@@ -19,6 +19,8 @@ const TURN_RESPONSE = 7; // how quickly the trolley swings to where you look
 const BODY_RADIUS = 0.3;
 const BODY_Y = 0.85; // body centre (shopper ~1.7 m tall standing on the floor); the trolley hangs off it
 const EYE_OFFSET = 0.75; // above body centre → eyes at ~1.6 m
+const JUMP_SPEED = 5.4; // m/s — natural ~0.9 m hop onto benches and low stages
+const GRAVITY = 16.0; // m/s²
 
 const SHAPE: ShopperShape = {
   radius: BODY_RADIUS,
@@ -42,6 +44,7 @@ export function Player({ spawn, spawnYaw = 0, obstacles, trolley }: { spawn: Vec
   const body = useRef<THREE.Group>(null);
   const yaw = useRef(spawnYaw);
   const motion = useRef<Motion>({ x: spawn[0], z: spawn[2], vx: 0, vz: 0 });
+  const vertical = useRef({ y: 0, vy: 0 });
   const [, getKeys] = useKeyboardControls<ControlName>();
   const camera = useThree((s) => s.camera);
 
@@ -87,17 +90,31 @@ export function Player({ spawn, spawnYaw = 0, obstacles, trolley }: { spawn: Vec
     }
 
     const m = motion.current;
+    const v = vertical.current;
     const t = 1 - Math.exp(-ACCELERATION * dt);
     m.vx += (wish.x - m.vx) * t;
     m.vz += (wish.z - m.vz) * t;
-    step(m, fromYaw, yaw.current, dt, SHAPE, obstacles); // moves, turns and slides along what it hits
+    step(m, fromYaw, yaw.current, dt, SHAPE, obstacles, v.y); // moves, turns and slides along what it hits
+
+    // Jump & gravity (Spacebar): clear low 3D props and land on top of them or the floor.
+    const floorY = groundHeightAt(m.x, m.z, BODY_RADIUS, obstacles, v.y);
+    const grounded = v.y <= floorY + 0.02 && v.vy <= 0;
+    if (locked && !openProductId && keys.jump && grounded) {
+      v.vy = JUMP_SPEED;
+    }
+    v.vy -= GRAVITY * dt;
+    v.y += v.vy * dt;
+    if (v.y <= floorY) {
+      v.y = floorY;
+      v.vy = 0;
+    }
 
     // Signed speed along the trolley's facing, for wheel roll + rattle.
     trolleyMotion.speed = -Math.sin(yaw.current) * m.vx - Math.cos(yaw.current) * m.vz;
 
-    b.position.set(m.x, BODY_Y, m.z);
+    b.position.set(m.x, BODY_Y + v.y, m.z);
     b.rotation.set(0, yaw.current, 0);
-    camera.position.set(m.x, BODY_Y + EYE_OFFSET, m.z);
+    camera.position.set(m.x, BODY_Y + v.y + EYE_OFFSET, m.z);
   });
 
   return (

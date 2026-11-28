@@ -2,8 +2,9 @@ import { ImageUploader, OpenToggle, ProfileForm, RowAction } from "@/features/se
 import { Callout, Panel, PageTitle } from "@/features/seller/ui";
 import { getSql } from "@/lib/db/client";
 import { requireSeller } from "@/lib/tenants/access";
-import { currentLease, mediaUrl, openBlocker, tenantStats } from "@/lib/tenants/service";
+import { currentLease, listAdSlides, MAX_AD_SLIDES, mediaUrl, openBlocker, tenantStats } from "@/lib/tenants/service";
 import { DoorStyleEditor } from "@/features/rentals/DoorStyleEditor";
+import { ShopTvAdsEditor } from "@/features/rentals/ShopTvAdsEditor";
 import { doorStyleFrom } from "@/lib/rentals/door-style";
 import { removeLogoAction, saveDoorAction } from "../actions";
 
@@ -14,8 +15,15 @@ export default async function SellerShopPage() {
   if (!ctx) return null;
   const { tenant, leases } = ctx;
   const lease = currentLease(leases) ?? leases.find((l) => l.status === "active" || l.status === "pending_payment") ?? null;
-  const stats = await tenantStats(getSql(), tenant.id);
+  const sql = getSql();
+  const [stats, rawSlides] = await Promise.all([
+    tenantStats(sql, tenant.id),
+    listAdSlides(sql, tenant.id).catch(() => []),
+  ]);
   const logo = mediaUrl(tenant.logo_bucket, tenant.logo_path);
+  const adSlides = rawSlides
+    .map((s) => ({ id: s.id, url: mediaUrl(s.image_bucket, s.image_path) }))
+    .filter((s): s is { id: string; url: string } => !!s.url);
   return (
     <>
       <PageTitle title="Brand & shop" description="How your shop looks to shoppers: name, sign, colours, logo and contact details." />
@@ -36,6 +44,9 @@ export default async function SellerShopPage() {
         </Panel>
         <Panel title="Shop door & lighting" description="Make your entrance stand out: pick the door colour and how its neon lights glow in the 3D store.">
           <DoorStyleEditor action={saveDoorAction} initial={doorStyleFrom(tenant)} />
+        </Panel>
+        <Panel title="Shop TV ads" description="Upload up to 8 ad banners. They cycle automatically on the big widescreen TVs inside your 3D shop.">
+          <ShopTvAdsEditor slides={adSlides} maxSlides={MAX_AD_SLIDES} brandName={lease?.display_name ?? tenant.brand_name} />
         </Panel>
         <Panel title="Brand details">
           <ProfileForm t={tenant} signName={lease?.display_name ?? tenant.brand_name} signApproved={!!lease?.display_approved} />

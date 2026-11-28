@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bool, optStr, str } from "../admin/form";
 import { fromDecimalString } from "../money";
 import { checkPaymentLink } from "./payment-links";
+import { isSignFont, DEFAULT_SIGN_FONT } from "../rentals/sign-fonts";
 
 const blankToUndef = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : v);
 
@@ -53,6 +54,7 @@ export const ProfileInput = (ownHosts: readonly string[]) =>
     contactPhone: optStr(40),
     defaultPaymentUrl: optPaymentLink(ownHosts),
     signName: z.string().trim().min(2, "At least 2 characters").max(40),
+    signFont: z.string().trim().refine(isSignFont, "Unknown font").default(DEFAULT_SIGN_FONT),
   });
 export type ProfileInput = z.infer<ReturnType<typeof ProfileInput>>;
 
