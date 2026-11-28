@@ -41,6 +41,20 @@ html {
   background: var(--color-cream);
   color: var(--color-ink);
   text-rendering: optimizeLegibility;
+  /* Anchor jumps land below the sticky header. */
+  scroll-padding-top: 7rem;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Touch: no grey flash on tap, no double-tap-zoom delay on controls (pinch zoom stays available). */
+a, button, input, select, textarea, label, summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Phones: inputs under 16 px make iOS Safari zoom the page on focus. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); }
 }
 
 ::selection {

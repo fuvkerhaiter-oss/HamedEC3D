@@ -7,7 +7,7 @@ import feature2 from "@/assets/home/feature-2.webp";
 import feature3 from "@/assets/home/feature-3.webp";
 import doorsOpenBanner from "@/assets/home/doors-open-banner.webp";
 import storeFirstView from "@/assets/hero/store-first-view.webp";
-import { StorePortal } from "@/features/home/StorePortal";
+import { EnterStoreButton, StorePortal } from "@/features/home/StorePortal";
 import { getStorefrontSettings } from "@/lib/storefront/settings";
 import { getCatalog } from "@/lib/catalog/source";
 import { JsonLd } from "@/components/JsonLd";
@@ -16,7 +16,7 @@ import { categoryPath, isIndexable, organizationLd, siteUrl, websiteLd } from "@
 
 export const metadata: Metadata = {
   title: { absolute: "WEGO SHIIIP · Online Store & Interactive 3D Supermarket" },
-  description: "Shop real products online at WEGO SHIIIP, by list or by walking an interactive 3D supermarket in your browser. Prices in EUR and USD, delivered across the EU and the USA.",
+  description: "Everyday finds for families and their pets. Shop the WEGO SHIIIP catalog in seconds, or walk our interactive 3D store in your browser. Prices in EUR and USD.",
   alternates: { canonical: "/" },
 };
 
@@ -38,13 +38,12 @@ const STEPS: { title: string; body: string; keys: string[]; touchBody: string; t
   { title: "Add & go", body: "Add to cart from the shelf, keep exploring, check out when ready.", keys: ["C"], touchBody: "Face a product and tap the hand button to inspect it, add it, then check out from the cart.", touchKeys: ["Hand", "Cart"] },
 ];
 
-// Real catalog categories + brand lines only (don't advertise departments we don't stock).
-const RIBBON = ["Pantry", "Drinks", "Snacks", "Household", "Walk the aisles", "Happy Family, Happy Animals", "Delivered across the EU & USA"];
-
-const STATS = [
-  ["3D", "Walkable store"],
-  ["28", "Countries served"],
-  ["€ · $", "Local pricing"],
+/** Facts the code guarantees (no review counts, sales numbers or delivery promises). */
+const TRUST = [
+  { title: "Secure payment", body: "Card details go straight to Stripe, never to us." },
+  { title: "Guest checkout", body: "No account needed to order." },
+  { title: "14-day withdrawal (EU)", body: "Cancel online from your order page." },
+  { title: "Clear prices", body: "EU prices include VAT. Shipping shown before you pay." },
 ];
 
 /** Brand logo: amber halo pulsing behind it + a glow hugging the letters (globals.css .vsw-logo). */
@@ -73,62 +72,66 @@ export default async function HomePage() {
   return (
     <>
       <JsonLd data={[organizationLd(site, SOCIAL), websiteLd(site)]} />
-      <section className="vsw-hero-keep relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[88svh] lg:flex-row lg:items-center">
-        {/* The real first view of the 3D store (rendered from the scene: tools/assets/capture-store-preview.ts).
-            Click = fly into the store. Between the logo and the copy on phones, right-anchored on large screens. */}
-        <div className="vsw-hero-photo relative z-0 aspect-[4/5] w-full overflow-hidden sm:aspect-[4/3] lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[62%]">
+      {/* Hero. Phones: headline + "Shop products" first, then a compact 3D store card; the 3D scene loads only on tap
+          (StorePortal preloads it in the background on desktop only). Desktop: copy left, live store right. */}
+      <section className="vsw-hero-keep relative isolate flex flex-col overflow-hidden bg-ink text-cream lg:min-h-[78svh] lg:flex-row lg:items-center">
+        <div className="vsw-hero-photo relative z-0 order-2 aspect-[16/10] w-full overflow-hidden sm:aspect-[16/9] lg:absolute lg:inset-y-0 lg:right-0 lg:order-none lg:aspect-auto lg:w-[62%]">
           <StorePortal image={storeFirstView} catalog={{ categories, products, stockAllFaces, supporters }} />
-          {/* Phones: the logo sits on the store picture (the h1 below is screen-reader only there), fading into the copy below. */}
-          <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/3 bg-gradient-to-b from-ink/60 to-transparent lg:hidden" />
-          <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-ink to-transparent lg:hidden" />
-          <div aria-hidden className="vsw-hero-in pointer-events-none absolute inset-x-0 top-[5%] z-20 mx-auto w-[min(52%,15rem)] sm:w-[min(40%,17rem)] lg:hidden">{heroLogo}</div>
         </div>
         <div aria-hidden className="vsw-grid-bg absolute inset-0 -z-20" />
 
-        {/* Copy column: its empty space lets clicks through to the store picture behind it. */}
-        <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl flex-col items-start gap-5 px-5 pb-10 pt-4 sm:gap-7 sm:pb-14 lg:py-28 [&>*]:pointer-events-auto">
-          <h1 className="vsw-hero-in relative w-[min(100%,34rem)] max-lg:sr-only [--d:120ms]">
-            <span className="sr-only">{home.heroTitle || "WEGO SHIIIP: online store and interactive 3D supermarket"}</span>
-            <span className="block max-lg:hidden">{heroLogo}</span>
-          </h1>
-          <p className="vsw-hero-in flex items-center gap-3 font-display text-lg font-semibold tracking-tight text-cream [--d:360ms] sm:text-2xl">
-            <span aria-hidden className="h-px w-10 bg-amber" />
+        {/* Copy column: its empty space lets clicks through to the store picture behind it (desktop). */}
+        <div className="pointer-events-none relative z-10 order-1 mx-auto flex w-full max-w-6xl flex-col items-start gap-4 px-5 pb-6 pt-6 sm:gap-6 sm:pb-10 lg:order-none lg:py-24 [&>*]:pointer-events-auto">
+          <div aria-hidden className="vsw-hero-in relative w-[min(100%,26rem)] max-lg:hidden">{heroLogo}</div>
+          <p className="vsw-hero-in flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-amber [--d:120ms]">
+            <span aria-hidden className="h-px w-8 bg-amber" />
             Happy Family, Happy Animals
           </p>
-          <p className="vsw-hero-in max-w-lg text-base leading-relaxed text-cream/75 sm:text-lg drop-shadow-[0_2px_10px_rgb(0_0_0/0.5)] [--d:480ms]">
-            {home.heroSubtitle || "Step into an immersive 3D store, pick real products off the shelves and have them delivered across Europe and the USA."}
+          <h1 className="vsw-hero-in max-w-xl font-display text-[2rem] leading-[1.05] text-cream sm:text-5xl [--d:240ms]">
+            {home.heroTitle || "Everyday finds for families and their pets."}
+          </h1>
+          <p className="vsw-hero-in max-w-lg text-base leading-relaxed text-cream/75 sm:text-lg [--d:360ms]">
+            {home.heroSubtitle || "Shop the catalog in seconds, or walk our 3D store right in your browser. Same products, same prices, same cart."}
           </p>
-          <div className="vsw-hero-in flex w-full flex-wrap gap-3 [--d:600ms] sm:w-auto">
-            <Link href="/catalog" className="w-full rounded-full text-center sm:w-auto border border-cream/30 bg-ink/30 px-7 py-4 font-semibold backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-cream/60 hover:bg-cream/10">
-              Browse the catalog
+          <div className="vsw-hero-in grid w-full grid-cols-2 gap-3 [--d:480ms] sm:flex sm:w-auto">
+            <Link href={featured.length ? "#in-stock" : "/catalog"} className="btn-yellow min-h-12 whitespace-nowrap px-4 py-3.5 text-center text-[15px] sm:px-6 sm:text-base">
+              Shop products
             </Link>
+            <EnterStoreButton className="inline-flex min-h-12 items-center justify-center whitespace-nowrap rounded-full border border-cream/35 px-4 py-3.5 text-center text-[15px] font-semibold sm:px-6 sm:text-base transition hover:border-cream/70 hover:bg-cream/10">
+              Enter the 3D store
+            </EnterStoreButton>
           </div>
-          <dl className="vsw-hero-in mt-2 grid w-full grid-cols-3 gap-4 border-t border-cream/15 pt-5 [--d:720ms] sm:mt-4 sm:w-auto sm:gap-10 sm:pt-6">
-            {STATS.map(([value, label]) => (
-              <div key={label}>
-                <dt className="eyebrow text-cream/50">{label}</dt>
-                <dd className="mt-1 font-display text-xl text-cream sm:text-3xl">{value}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 
-      {/* Category ribbon */}
-      <div aria-hidden className="overflow-hidden border-y-2 border-ink bg-amber py-3 text-ink">
-        <div className="vsw-marquee">
-          {[0, 1].map((copy) => (
-            <div key={copy} className="flex shrink-0">
-              {RIBBON.map((r) => (
-                <span key={r} className="flex items-center gap-6 px-6 font-display text-lg font-semibold tracking-tight">
-                  {r}
-                  <span className="h-2 w-2 rotate-45 bg-ink" />
-                </span>
-              ))}
-            </div>
+      {/* Trust row: only facts the shop's code guarantees. */}
+      <section aria-label="Why shop with us" className="border-b border-line bg-white">
+        <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-x-4 gap-y-4 px-5 py-5 text-sm sm:py-6 lg:grid-cols-4">
+          {TRUST.map((t) => (
+            <li key={t.title} className="flex gap-2.5">
+              <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rotate-45 bg-amber" />
+              <span><b className="block font-semibold text-ink">{t.title}</b><span className="text-ink-soft">{t.body}</span></span>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
+
+      {featured.length > 0 && (
+        <section id="in-stock" aria-labelledby="in-stock-title" className="scroll-mt-20 bg-cream">
+          <div className="mx-auto max-w-6xl px-5 pt-10 sm:pt-16">
+            <div className="flex items-end justify-between gap-4">
+              <h2 id="in-stock-title" className="font-display text-2xl sm:text-4xl">In stock now</h2>
+              <Link href="/catalog" className="shrink-0 text-sm font-semibold underline-offset-4 hover:underline">See all →</Link>
+            </div>
+            <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              {featured.map((p) => {
+                const cat = categories.find((c) => c.id === p.categoryId);
+                return <li key={p.id} className="flex"><div className="flex w-full flex-col [&>article]:flex-1"><ProductCard product={p} categoryName={cat?.name} /></div></li>;
+              })}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {departments.length > 0 && (
         <section aria-labelledby="shop-departments" className="bg-cream">
@@ -136,8 +139,8 @@ export default async function HomePage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Shop by department</p>
-                <h2 id="shop-departments" className="mt-3 font-display text-3xl leading-[1.05] sm:text-5xl">Real products, two ways to shop.</h2>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-lg">Browse the list or walk the aisles of our 3D store: same products, same prices, same cart. Prices in euro (VAT included) for the EU and in US dollars for the USA.</p>
+                <h2 id="shop-departments" className="mt-3 font-display text-3xl leading-[1.05] sm:text-5xl">Two ways to shop, one cart.</h2>
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-lg">Browse the list or walk the aisles of our 3D store: same products, same prices, same cart. Prices in euro (VAT included) for the EU and in US dollars for the USA; delivery options and costs are shown at checkout for your country.</p>
               </div>
               <Link href="/catalog" className="btn-dark px-6 py-3">Shop all products</Link>
             </div>
@@ -152,17 +155,6 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
-            {featured.length > 0 && (
-              <>
-                <h3 className="mt-12 font-display text-2xl sm:mt-16">In stock now</h3>
-                <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-                  {featured.map((p) => {
-                    const cat = categories.find((c) => c.id === p.categoryId);
-                    return <li key={p.id} className="flex"><div className="flex w-full flex-col [&>article]:flex-1"><ProductCard product={p} categoryName={cat?.name} /></div></li>;
-                  })}
-                </ul>
-              </>
-            )}
           </div>
         </section>
       )}
@@ -179,7 +171,13 @@ export default async function HomePage() {
             <p className="max-w-md text-base leading-relaxed text-ink-soft sm:text-lg lg:justify-self-end">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
           </div>
           {/* 3D feature cards (artwork: src/assets/home/feature-*.webp, cut from "Modern Automation Feature Cards.webp"). */}
-          <div className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+          {/* Swipe row on phones: focusable so keyboard users can scroll it too (arrow keys). */}
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Why WEGO SHIIIP: features"
+            className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0"
+          >
             {FEATURES.map((f) => (
               <Image
                 key={f.title}

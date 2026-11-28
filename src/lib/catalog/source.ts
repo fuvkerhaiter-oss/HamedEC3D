@@ -12,6 +12,7 @@ import { mapProductRow, PRODUCT_SELECT, type ProductRow } from "./source-map";
 import { loadCatalogSql } from "./sql-source";
 import { getSql, isDbConfigured } from "../db/client";
 import type { CatalogReader, Category, Product } from "./types";
+import { withoutHiddenSamples } from "./samples";
 import { isDbUnreachable, logFallback } from "../log";
 
 export interface CatalogData {
@@ -55,7 +56,10 @@ async function loadCatalog(variantIds?: readonly string[]): Promise<CatalogData>
 
 // The published catalog is public data: one backend read per PUBLIC_DATA_TTL_S (or per admin edit), shared by
 // every visitor, instead of one per page view / metadata call / sitemap hit.
-const loadCatalogCached = cachedPublic("catalog-v1", CATALOG_TAG, () => loadCatalog());
+const loadCatalogCached = cachedPublic("catalog-v1", CATALOG_TAG, async () => {
+  const data = await loadCatalog();
+  return { ...data, products: withoutHiddenSamples(data.products) };
+});
 
 /** Public storefront catalog (display only). Deduplicated per request (React cache) and cached across requests. */
 export const getCatalog = cache(async (): Promise<CatalogData> => {
@@ -82,7 +86,7 @@ export const getCatalog = cache(async (): Promise<CatalogData> => {
  */
 export async function getCatalogReader(variantIds?: readonly string[]): Promise<CatalogReader> {
   try {
-    return createCatalogReader((await loadCatalog(variantIds)).products);
+    return createCatalogReader(withoutHiddenSamples((await loadCatalog(variantIds)).products));
   } catch (err) {
     if (!isDbConfigured() || process.env.NODE_ENV === "production") throw err;
     logFallback("catalog", err);

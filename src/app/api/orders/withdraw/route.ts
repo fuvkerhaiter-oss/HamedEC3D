@@ -5,7 +5,7 @@ import { getSql, isDbConfigured } from "@/lib/db/client";
 import { flushEmailOutbox } from "@/lib/email/outbox";
 import { logError } from "@/lib/log";
 import { submitWithdrawal, WithdrawalError } from "@/lib/orders/withdrawal";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ const Body = z.object({
 
 /** "Confirm withdrawal" (EU online withdrawal function). The signed order token proves access to the order. */
 export async function POST(req: Request) {
-  if (rateLimited(`withdraw:${clientIp(req)}`, 5, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
+  if (await rateLimitedShared(`withdraw:${clientIp(req)}`, 5, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Please enter your name, a valid email and choose at least one item." }, { status: 400 });
   const b = parsed.data;

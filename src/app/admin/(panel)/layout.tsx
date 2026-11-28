@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 async function loadShell() {
-  const session = await requirePage();
+  const session = await requirePage(undefined, { allowWithoutMfa: true }); // each page enforces the two-factor policy itself (the set-up page must stay reachable)
   const unread = session.permissions.has("notifications.view") ? await unreadCount(getSql(), session.user.id) : 0;
   return { session, unread };
 }

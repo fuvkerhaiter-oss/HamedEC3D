@@ -4,6 +4,7 @@ import Image from "next/image";
 import { canOptimize } from "@/lib/catalog/image";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/features/cart/cart-store";
+import { track } from "@/features/analytics/track";
 import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
 import { priceIn, stockStatus, type Product } from "@/lib/catalog/types";
 import { MARKETS } from "@/lib/markets";
@@ -43,6 +44,10 @@ export function ProductPanel({
 
   // Keyboard/screen-reader users land inside the dialog (on the main action, or the close button when it
   // is disabled) and Tab stays inside it.
+  useEffect(() => {
+    track("store3d_product", { product: product.slug });
+  }, [product.slug]);
+
   useEffect(() => {
     (primary.current?.disabled ? dialog.current?.querySelector<HTMLElement>("button") : primary.current)?.focus({ preventScroll: true });
   }, []);

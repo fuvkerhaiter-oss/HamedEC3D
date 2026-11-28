@@ -1,56 +1,16 @@
 "use client";
 
 /**
- * Prizes shown under the lucky wheel (wheel-local coordinates: +z = in front of the wheel face): a PS5 (retail box +
- * console) on the left plinth and a GTA VI game case on a small stand on the right plinth. Real models
- * (ASSETS.ps5 / ASSETS.gta6Case, sources in /source); the PS5 is at real size, the game case is shown enlarged
- * (DISPLAY_CASE ×) so it reads from the aisle. Decoration only: nothing here is a product listing.
+ * Decoration under the lucky wheel (wheel-local coordinates: +z = in front of the wheel face): two plinths with
+ * plain, unbranded gift boxes built from primitives (original geometry, no third-party models or trademarks).
+ * The wheel gives no prize (see lucky-wheel.ts), so nothing here names or depicts a real product.
+ * Earlier versions showed branded console/game models; they were removed for IP reasons (see ASSET_INVENTORY.md).
  */
-import { useMemo } from "react";
 import * as THREE from "three";
-import { useGLTF, Text, RoundedBox } from "@react-three/drei";
-import { ASSETS } from "../assets/registry";
+import { Text, RoundedBox } from "@react-three/drei";
 
-useGLTF.preload(ASSETS.ps5.url);
-useGLTF.preload(ASSETS.gta6Case.url);
-
-const PLINTH_H = 0.3; // tall enough that the prizes show above the "coming soon" sign
-const DISPLAY_CASE = 1.8;
+const PLINTH_H = 0.3; // tall enough that the boxes show above the "coming soon" sign
 const LABEL = "#f3e3b8";
-
-/** A cloned part of a loaded model, shadows on. */
-function usePart(url: string, name?: string): THREE.Object3D {
-  const { scene } = useGLTF(url);
-  return useMemo(() => {
-    const src = name ? scene.getObjectByName(name) : scene;
-    if (!src) throw new Error(`${url}: no node "${name}"`);
-    const o = src.clone(true);
-    o.position.set(0, 0, 0);
-    o.traverse((c) => {
-      const m = c as THREE.Mesh;
-      if (m.isMesh) m.castShadow = true;
-    });
-    return o;
-  }, [scene, url, name]);
-}
-
-/** The game case centred on its own bounding box (the export's origin is off to the side). */
-function useCenteredCase(): { object: THREE.Object3D; size: THREE.Vector3 } {
-  const { scene } = useGLTF(ASSETS.gta6Case.url);
-  return useMemo(() => {
-    const inner = scene.clone(true);
-    inner.traverse((c) => {
-      const m = c as THREE.Mesh;
-      if (m.isMesh) m.castShadow = true;
-    });
-    const box = new THREE.Box3().setFromObject(inner);
-    const c = box.getCenter(new THREE.Vector3());
-    inner.position.sub(c);
-    const g = new THREE.Group();
-    g.add(inner);
-    return { object: g, size: box.getSize(new THREE.Vector3()) };
-  }, [scene]);
-}
 
 function Plinth({ w, d, gold }: { w: number; d: number; gold: THREE.Material }) {
   return (
@@ -77,42 +37,41 @@ function PlinthLabel({ text, z }: { text: string; z: number }) {
   );
 }
 
-export function WheelPrizes({ gold }: { gold: THREE.Material }) {
-  const box = usePart(ASSETS.ps5.url, "box");
-  const consoleBody = usePart(ASSETS.ps5.url, "console");
-  const gta = useCenteredCase();
-  const s = ASSETS.ps5.scale;
-  const cs = ASSETS.gta6Case.scale * DISPLAY_CASE;
-  const caseH = gta.size.z * cs; // lying flat: its height is along z
-  const caseT = gta.size.y * cs;
+/** A wrapped box with a ribbon cross on top, standing on y = 0. */
+function GiftBox({ size, color, ribbon, position, rotationY = 0 }: { size: [number, number, number]; color: string; ribbon: THREE.Material; position: [number, number, number]; rotationY?: number }) {
+  const [w, h, d] = size;
+  return (
+    <group position={position} rotation-y={rotationY}>
+      <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.55} />
+      </mesh>
+      <mesh position={[0, h / 2, 0]} material={ribbon}>
+        <boxGeometry args={[w * 0.16, h + 0.004, d + 0.004]} />
+      </mesh>
+      <mesh position={[0, h / 2, 0]} material={ribbon}>
+        <boxGeometry args={[w + 0.004, h + 0.004, d * 0.16]} />
+      </mesh>
+      <mesh position={[0, h + 0.03, 0]} rotation-z={Math.PI / 4} material={ribbon} castShadow>
+        <torusGeometry args={[0.035, 0.012, 8, 16]} />
+      </mesh>
+    </group>
+  );
+}
 
+export function WheelPrizes({ gold }: { gold: THREE.Material }) {
   return (
     <group>
-      {/* PS5: box + console on the left */}
       <group position={[-0.92, 0, 0.6]} rotation-y={0.22}>
         <Plinth w={0.86} d={0.5} gold={gold} />
-        <PlinthLabel text="PLAYSTATION 5" z={0.25} />
-        {/* the FBX has the box turned 45°: −π/4 brings its printed front (PS5 logo) to +z */}
-        <primitive object={box} position={[-0.17, PLINTH_H, -0.02]} rotation-y={-Math.PI / 4} scale={s} />
-        <primitive object={consoleBody} position={[0.25, PLINTH_H, 0.04]} rotation-y={-0.4} scale={s} />
+        <PlinthLabel text="COMING SOON" z={0.25} />
+        <GiftBox size={[0.34, 0.26, 0.3]} color="#1f6f4a" ribbon={gold} position={[-0.17, PLINTH_H, -0.02]} rotationY={-0.3} />
+        <GiftBox size={[0.22, 0.18, 0.22]} color="#c8102e" ribbon={gold} position={[0.25, PLINTH_H, 0.04]} rotationY={0.4} />
       </group>
-
-      {/* GTA VI: the case standing on a gold easel on the right */}
       <group position={[0.92, 0, 0.6]} rotation-y={-0.22}>
         <Plinth w={0.5} d={0.4} gold={gold} />
-        <PlinthLabel text="GTA VI" z={0.2} />
-        <group position={[0, PLINTH_H + 0.012, 0]} rotation-x={-0.16}>
-          {/* stood upright (cover faces +z), bottom edge on the easel lip */}
-          <group position={[0, caseH / 2 + 0.01, 0]} rotation-x={Math.PI / 2} scale={cs}>
-            <primitive object={gta.object} />
-          </group>
-          <mesh position={[0, 0.012, caseT / 2 + 0.012]} material={gold} castShadow>
-            <boxGeometry args={[0.2, 0.024, 0.018]} />
-          </mesh>
-        </group>
-        <mesh position={[0, PLINTH_H + 0.12, -0.07]} rotation-x={0.35} material={gold} castShadow>
-          <boxGeometry args={[0.02, 0.26, 0.012]} />
-        </mesh>
+        <PlinthLabel text="COMING SOON" z={0.2} />
+        <GiftBox size={[0.26, 0.22, 0.24]} color="#f2b705" ribbon={gold} position={[0, PLINTH_H, 0]} rotationY={0.15} />
       </group>
     </group>
   );

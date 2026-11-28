@@ -2,12 +2,14 @@
  * Shop rental plans and the launch promotion. Pure data + math (no DB), shared by the rental page, the 3D store's
  * "Rent this shop" panel, the checkout API (which re-computes every amount on the server) and tests.
  *
- * Honest promotion rules (EU Omnibus / US FTC "former price" guidance):
- * - The struck-through price is the plan's REGULAR price: the price that applies when the launch offer ends
- *   (LAUNCH_PROMO.endsAt). After that date quotePlan() charges the regular price automatically, so the reference
- *   price is a real price, not an invented one. Don't extend the offer indefinitely: move the date on purpose.
- * - The percentage shown is rounded DOWN, so it never overstates the saving.
- * - A tenant keeps the price they paid for the whole term they bought.
+ * Presentation rules (EU Omnibus Directive art. 6a / Italian Consumer Code art. 17-bis, US FTC 16 CFR 233):
+ * - The plans have never been sold at the "regular" price, so the UI must NOT show it as a struck-through former
+ *   price or a "−x%" discount. It is shown only as the announced standard price for bookings paid after
+ *   LAUNCH_PROMO.endsAt (an introductory price, not a price reduction). quotePlan() switches to it automatically.
+ * - discountPercent stays available for internal use (admin, tests), rounded DOWN; do not render it to customers
+ *   until the standard price has actually been charged for at least 30 days.
+ * - savingVsMonthly compares two prices that are both on sale now, so it may be shown.
+ * - A tenant keeps the price they paid for the whole term they bought. Have a lawyer confirm this wording.
  */
 import type { CurrencyCode } from "../money";
 

@@ -3,14 +3,14 @@ import { OrderError, priceOrder } from "@/lib/admin/services/orders";
 import { QuoteBody } from "@/lib/checkout/schema";
 import { checkoutUnavailableReason } from "@/lib/checkout/service";
 import { getSql } from "@/lib/db/client";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
 /** Checkout preview for a destination: shipping options + final server totals (tax, discount, shipping). */
 export async function POST(req: Request) {
-  if (rateLimited(`quote:${clientIp(req)}`, 60, 60_000)) return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+  if (await rateLimitedShared(`quote:${clientIp(req)}`, 60, 60_000)) return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   const unavailable = checkoutUnavailableReason();
   if (unavailable) return NextResponse.json({ error: unavailable, unavailable: true }, { status: 503 });
   const parsed = QuoteBody.safeParse(await req.json().catch(() => null));

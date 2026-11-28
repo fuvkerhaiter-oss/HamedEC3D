@@ -6,11 +6,19 @@ import { useRouter } from "next/navigation";
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { startStoreMusic } from "@/features/store3d/music";
 import { startMatchmakingEarly } from "@/features/store3d/portal";
+import { multiplayerEnabled } from "@/features/store3d/multiplayer/rooms";
 import { canRunStore } from "@/features/store3d/StoreClient";
 import type { StoreCatalog } from "@/features/store3d/StoreScene";
 import { useStoreUi } from "@/features/store3d/ui-store";
 import { playWhoosh } from "@/lib/fx/whoosh";
 import enterSign from "@/assets/hero/enter-store-sign.webp";
+
+/** Desktop-class device on a decent connection, no reduced-motion preference. */
+function shouldPreloadStore(): boolean {
+  const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (c?.saveData || /(^|-)2g|3g/.test(c?.effectiveType ?? "")) return false;
+  return window.matchMedia("(pointer: fine) and (min-width: 1024px)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 const StoreExperience = dynamic(() => import("@/features/store3d/StoreExperience"), { ssr: false });
 const ENTER_EVENT = "mm:enter-store";
@@ -65,11 +73,11 @@ export function StorePortal({ image, catalog }: { image: StaticImageData; catalo
   const preview = !load || stage === "preview";
   const pending = clickedEarly && !ready;
 
-  // Background preload once the page is idle (skipped on data-saver / slow connections: loads on click instead).
+  // Background preload once the page is idle, ONLY on large screens with a mouse (desktop). Phones, tablets,
+  // data-saver, slow connections and reduced-motion users load the 3D store when they tap it: the homepage
+  // must not download ~5 MB of models for visitors who came to browse products.
   useEffect(() => {
-    if (!canRunStore()) return;
-    const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-    if (c?.saveData || /(^|-)2g|3g/.test(c?.effectiveType ?? "")) return;
+    if (!canRunStore() || !shouldPreloadStore()) return;
     const start = () => setLoad(true);
     if ("requestIdleCallback" in window) {
       const id = window.requestIdleCallback(start, { timeout: 2500 });
@@ -161,9 +169,10 @@ export function StorePortal({ image, catalog }: { image: StaticImageData; catalo
         <button
           type="button"
           onClick={enter}
-          aria-label="Enter the 3D store"
           className="vsw-portal group absolute inset-0 z-10 block cursor-pointer text-left outline-none"
         >
+          {/* Accessible name = this + the visible caption below (no aria-label, which would hide the caption). */}
+          <span className="sr-only">Enter the 3D store: </span>
           <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_48%,transparent_35%,rgb(17_21_19/0.5)_100%)]" />
           <span className="absolute left-1/2 top-[60%] flex -translate-x-1/2 sm:top-[48%] -translate-y-1/2 flex-col items-center gap-2 lg:left-[62%]">
             <Image
@@ -182,7 +191,7 @@ export function StorePortal({ image, catalog }: { image: StaticImageData; catalo
           </span>
           <span className="absolute bottom-[14%] left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink/60 px-3.5 py-1.5 text-xs text-cream/90 ring-1 ring-cream/15 backdrop-blur lg:bottom-8 lg:left-[62%]">
             <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            {ready && load ? "Live 3D · " : ""}you join a room with up to 10 shoppers
+            {ready && load ? "Live 3D · " : ""}{multiplayerEnabled() ? "you join a room with up to 10 shoppers" : "walk the aisles in your browser"}
           </span>
         </button>
       )}

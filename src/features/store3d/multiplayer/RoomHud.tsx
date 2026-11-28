@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TOUCH_PAUSE_LEFT } from "../hud/TouchControls";
 import { useStoreUi } from "../ui-store";
 import { ROOM_CAPACITY } from "./rooms";
-import { setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, useNet } from "./net";
+import { acceptVoiceNotice, declineVoiceNotice, setAllMuted, setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, useNet } from "./net";
 
 function MicIcon({ off }: { off: boolean }) {
   return (
@@ -18,7 +18,7 @@ function MicIcon({ off }: { off: boolean }) {
 
 /** Room badge (top-left): who's here, mic toggle (V), my display name. Also owns the connection lifecycle. */
 export function RoomHud() {
-  const { status, message, room, me, members, micOn, micError, local, muted } = useNet();
+  const { status, message, room, me, members, micOn, micError, local, muted, voiceConsentNeeded } = useNet();
   const locked = useStoreUi((s) => s.locked);
   const inspect = useStoreUi((s) => s.inspect);
   const touchMode = useStoreUi((s) => s.touchMode);
@@ -81,6 +81,22 @@ export function RoomHud() {
         )}
       </div>
 
+      {voiceConsentNeeded && (
+        <div role="dialog" aria-modal="false" aria-labelledby="voice-notice-title" className="rounded-2xl bg-cream p-4 text-xs text-ink shadow-xl ring-1 ring-ink/10">
+          <p id="voice-notice-title" className="font-display text-sm font-bold">Before you talk</p>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>Other shoppers in this room (strangers) will hear you. Nothing is recorded by us.</li>
+            <li>Voice connects you directly to them, so they can see your internet (IP) address.</li>
+            <li>Don&apos;t share personal details. Voice is for adults (16+); children should shop with a parent.</li>
+            <li>You can mute anyone, mute everyone, or leave the room at any time.</li>
+          </ul>
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={() => void acceptVoiceNotice()} className="rounded-full bg-ink px-3 py-1.5 font-semibold text-cream">I understand, turn on my mic</button>
+            <button type="button" onClick={declineVoiceNotice} className="rounded-full px-3 py-1.5 font-semibold ring-1 ring-ink/20">Not now</button>
+          </div>
+        </div>
+      )}
+
       {micError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">{micError}</p>}
 
       {!locked && status === "online" && (
@@ -122,6 +138,15 @@ export function RoomHud() {
           ) : (
             <p className="mt-2 text-cream/60">You&apos;re first here. Others joining now land in your room.</p>
           )}
+          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-cream/15 pt-2">
+            {members.length > 0 && (
+              <button type="button" onClick={() => setAllMuted(muted.length < members.length)} className="rounded-full px-2 py-0.5 text-[11px] font-medium text-cream/80 ring-1 ring-cream/30 hover:bg-cream/10">
+                {muted.length < members.length ? "Mute everyone" : "Unmute everyone"}
+              </button>
+            )}
+            <button type="button" onClick={stopMultiplayer} className="rounded-full px-2 py-0.5 text-[11px] font-medium text-cream/80 ring-1 ring-cream/30 hover:bg-cream/10">Leave room (shop alone)</button>
+            <a href="/contact" target="_blank" rel="noopener" className="rounded-full px-2 py-0.5 text-[11px] font-medium text-cream/80 ring-1 ring-cream/30 hover:bg-cream/10">Report a problem</a>
+          </div>
         </div>
       )}
     </div>

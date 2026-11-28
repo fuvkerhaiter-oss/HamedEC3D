@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser, createClient } from "@/lib/supabase/server";
 import { getSql, isDbConfigured, inTx } from "@/lib/db/client";
-import { rateLimited } from "@/lib/rate-limit";
+import { rateLimitedShared } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function POST() {
   }
 
   const userId = user.id;
-  if (rateLimited(`account-delete:${userId}`, 3, 60 * 60_000)) return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+  if (await rateLimitedShared(`account-delete:${userId}`, 3, 60 * 60_000)) return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
 
   if (isDbConfigured()) {
     const sql = getSql();

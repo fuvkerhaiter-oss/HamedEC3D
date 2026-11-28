@@ -107,7 +107,7 @@ export function PriceRangeForm({ query }: { query: CatalogQuery }) {
             />
           </div>
         ))}
-        <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-cream transition hover:bg-brand" aria-label="Apply price range">
+        <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-cream transition hover:bg-brand" aria-label="Go: apply price range">
           Go
         </button>
       </div>

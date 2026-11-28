@@ -5,6 +5,7 @@ import { useCart } from "@/features/cart/cart-store";
 import { CartDrawer } from "@/features/cart/CartDrawer";
 import { AuthModal } from "@/features/auth/AuthModal";
 import { VisitBeacon } from "@/features/visitors/VisitBeacon";
+import { Pageviews } from "@/features/analytics/Pageviews";
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <CartDrawer />
       <AuthModal />
       <VisitBeacon />
+      <Pageviews />
     </>
   );
 }

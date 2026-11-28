@@ -149,3 +149,20 @@ export function fmtDuration(seconds: number): string {
   if (m < 60) return `${m} min ${s % 60 ? `${s % 60} s` : ""}`.trim();
   return `${Math.floor(m / 60)} h ${m % 60} min`;
 }
+
+/**
+ * Data minimisation for the visitor log: IPv4 keeps the first 3 octets (203.0.113.0), IPv6 the first 3 groups
+ * (2001:db8:85a3::). Enough for "same network" grouping and abuse review, not enough to single out a household.
+ * Visits are still matched by visitorKey (a one-way hash of the full IP + browser). VISITOR_LOG_FULL_IP=true keeps
+ * full addresses (only with a documented legal basis; update the privacy policy first).
+ */
+export function anonymizeIp(ip: string, env: Partial<NodeJS.ProcessEnv> = process.env): string {
+  if (env.VISITOR_LOG_FULL_IP === "true") return ip;
+  const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0`;
+  if (ip.includes(":")) {
+    const groups = ip.split("::")[0]!.split(":").filter(Boolean).slice(0, 3);
+    return `${groups.join(":")}::`;
+  }
+  return "unknown";
+}

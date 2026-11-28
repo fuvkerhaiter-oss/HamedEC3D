@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { localChannel } from "./local-channel";
+import { multiplayerEnabled, VOICE_CONSENT_KEY } from "./rooms";
 import { BASKET_MAX, cleanBasket, cleanColor, cleanName, cleanPose, MAX_ROOMS, packBasket, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type MemberMeta, type Pose } from "./rooms";
 
 export type NetStatus = "off" | "connecting" | "online" | "unavailable";
@@ -41,6 +42,8 @@ interface NetState {
   micError: string | null;
   /** Ids of shoppers I muted. */
   muted: string[];
+  /** The shopper asked to talk but has not accepted the voice notice yet (RoomHud shows it). */
+  voiceConsentNeeded: boolean;
 }
 
 const ID = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -57,6 +60,7 @@ export const useNet = create<NetState>()(() => ({
   micOn: false,
   micError: null,
   muted: [],
+  voiceConsentNeeded: false,
 }));
 
 /** Latest pose per remote shopper (mutable, read every frame by the avatars; never triggers renders). */
@@ -90,6 +94,7 @@ type Signal = { to: string; from: string; kind: "offer" | "answer" | "ice"; data
 
 export function startMultiplayer(): void {
   if (running) return;
+  if (!multiplayerEnabled()) return; // stays "off": solo shopping, no peer connections (see rooms.ts)
   running = true;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -421,6 +426,10 @@ export async function toggleMic(): Promise<void> {
     for (const p of peers.values()) await p.tx?.sender.replaceTrack(null).catch(() => {});
     useNet.setState({ micOn: false });
   } else {
+    if (stored(VOICE_CONSENT_KEY) !== "yes") {
+      useNet.setState({ voiceConsentNeeded: true });
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       useNet.setState({ micError: "This browser can't use a microphone here (HTTPS is required)." });
       return;
@@ -437,4 +446,20 @@ export async function toggleMic(): Promise<void> {
     }
   }
   channel?.track(myMeta()).catch(() => {});
+}
+
+/** The shopper accepted the voice notice: remember it and open the microphone. */
+export async function acceptVoiceNotice(): Promise<void> {
+  store(VOICE_CONSENT_KEY, "yes");
+  useNet.setState({ voiceConsentNeeded: false });
+  await toggleMic();
+}
+
+export function declineVoiceNotice(): void {
+  useNet.setState({ voiceConsentNeeded: false });
+}
+
+/** Silence everyone in the room for me (local only), or undo it. */
+export function setAllMuted(muted: boolean): void {
+  for (const m of useNet.getState().members) setPeerMuted(m.id, muted);
 }

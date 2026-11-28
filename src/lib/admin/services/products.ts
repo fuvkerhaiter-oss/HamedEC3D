@@ -241,17 +241,28 @@ export async function removeVariant(db: Db, actor: Actor, productId: string, var
   });
 }
 
-/** Problems that block publishing (shown in the UI). */
-export async function publishProblems(db: Db, productId: string): Promise<string[]> {
-  const [p] = await db<{ name: string; category_id: string | null; active: number; priced: number }[]>`
-    select p.name, p.category_id,
+/** Shortest description accepted for a published product (a supplier title alone is not a description). */
+export const MIN_PUBLISH_DESCRIPTION = 40;
+
+/**
+ * Problems that block publishing (shown in the UI). Shoppers must never see an unfinished listing: it needs a
+ * category, a photo, a real description and a price for every active variant. Sample (is_mock) products can't be
+ * published in production at all (they would be hidden anyway, so publishing them is always a mistake there).
+ */
+export async function publishProblems(db: Db, productId: string, env: Partial<NodeJS.ProcessEnv> = process.env): Promise<string[]> {
+  const [p] = await db<{ name: string; description: string; is_mock: boolean; category_id: string | null; active: number; priced: number; images: number }[]>`
+    select p.name, p.description, p.is_mock, p.category_id,
       (select count(*)::int from public.product_variants v where v.product_id = p.id and v.is_active) as active,
       (select count(*)::int from public.product_variants v where v.product_id = p.id and v.is_active
-         and exists (select 1 from public.variant_prices vp where vp.variant_id = v.id)) as priced
+         and exists (select 1 from public.variant_prices vp where vp.variant_id = v.id)) as priced,
+      (select count(*)::int from public.product_images im where im.product_id = p.id) as images
     from public.products p where p.id = ${productId}`;
   if (!p) return ["Product not found"];
   const out: string[] = [];
+  if (p.is_mock && env.NODE_ENV === "production") out.push("Sample products can't be published on the live store");
   if (!p.category_id) out.push("Choose a category");
+  if ((p.description ?? "").trim().length < MIN_PUBLISH_DESCRIPTION) out.push(`Write a description (at least ${MIN_PUBLISH_DESCRIPTION} characters)`);
+  if (p.images === 0) out.push("Add at least one photo");
   if (p.active === 0) out.push("Add at least one active variant");
   else if (p.priced < p.active) out.push("Every active variant needs a price in at least one currency");
   return out;
@@ -357,6 +368,8 @@ export interface ImportReport {
   updated: number;
   errors: { row: number; message: string }[];
   dryRun: boolean;
+  /** Rows asked for "published" that were kept as drafts because they fail the publish checks (e.g. no photo yet). */
+  keptDraft: { slug: string; problems: string[] }[];
 }
 
 /**
@@ -366,7 +379,7 @@ export interface ImportReport {
  */
 export async function importProductsCsv(db: Db, actor: Actor, text: string, dryRun: boolean): Promise<ImportReport> {
   const rows = csvObjects(text);
-  const report: ImportReport = { created: 0, updated: 0, errors: [], dryRun };
+  const report: ImportReport = { created: 0, updated: 0, errors: [], dryRun, keptDraft: [] };
   if (rows.length === 0) {
     report.errors.push({ row: 0, message: "No data rows" });
     return report;
@@ -451,7 +464,14 @@ export async function importProductsCsv(db: Db, actor: Actor, text: string, dryR
       }
     }
     for (const [id, status] of touched) {
-      if (status === "published" && (await publishProblems(tx, id)).length) continue;
+      if (status === "published") {
+        const problems = await publishProblems(tx, id);
+        if (problems.length) {
+          const [row] = await tx<{ slug: string }[]>`select slug from public.products where id = ${id}`;
+          report.keptDraft.push({ slug: row?.slug ?? id, problems });
+          continue;
+        }
+      }
       await tx`update public.products set status = ${status}, published_at = case when ${status} = 'published' then coalesce(published_at, now()) else published_at end where id = ${id}`;
     }
     await logActivity(tx, actor, { action: "product.import", entity: "product", summary: `CSV import: ${report.created} created, ${report.updated} updated rows` });

@@ -15,6 +15,7 @@ import { StripeApiError } from "../../payments/stripe";
 import type { PaymentProvider, ProviderRefundStatus } from "../../payments/types";
 import { queueOrderEmail, queueOrderStatusEmail } from "../../email/outbox";
 import { quoteShipping } from "../../shipping/quote";
+import { sampleProductsAllowed } from "../../catalog/samples";
 import { logActivity, type Actor } from "../audit";
 import { loadCouponForCode } from "./coupons";
 import { notify } from "./notifications";
@@ -76,7 +77,9 @@ export async function dbCatalogReader(db: Db, variantIds: string[]): Promise<Cat
   const index = new Map<string, { product: ReturnType<typeof mapProductRow>; variant: ReturnType<typeof mapProductRow>["variants"][number] }>();
   const weights = new Map<string, number>();
   for (const r of rows) {
-    const product = mapProductRow(r.row, "");
+    const mapped = mapProductRow(r.row, "");
+    // Sample products are never for sale where they are hidden (production): pricing reports them as unavailable.
+    const product = mapped.isMock && !sampleProductsAllowed() ? { ...mapped, status: "archived" as const } : mapped;
     for (const v of product.variants) index.set(v.id, { product, variant: v });
     for (const [vid, w] of Object.entries(r.weights ?? {})) weights.set(vid, w ?? 0);
   }

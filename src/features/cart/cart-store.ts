@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import type { CartLineInput } from "@/lib/cart/pricing";
 import { MAX_LINE_QUANTITY } from "@/lib/cart/pricing";
 import type { MarketId } from "@/lib/markets";
+import { track } from "@/features/analytics/track";
 
 /**
  * Client cart mirror: only variant ids + quantities (never prices).
@@ -30,14 +31,16 @@ export const useCart = create<CartState>()(
       lines: [],
       market: "EU",
       open: false,
-      add: (variantId, quantity = 1) =>
+      add: (variantId, quantity = 1) => {
+        track("add_to_cart");
         set((s) => {
           const existing = s.lines.find((l) => l.variantId === variantId);
           const lines = existing
             ? s.lines.map((l) => (l.variantId === variantId ? { ...l, quantity: clampQty(l.quantity + quantity) } : l))
             : [...s.lines, { variantId, quantity: clampQty(quantity) }];
           return { lines };
-        }),
+        });
+      },
       setQuantity: (variantId, quantity) =>
         set((s) => ({ lines: s.lines.map((l) => (l.variantId === variantId ? { ...l, quantity: clampQty(quantity) } : l)) })),
       remove: (variantId) => set((s) => ({ lines: s.lines.filter((l) => l.variantId !== variantId) })),

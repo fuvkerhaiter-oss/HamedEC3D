@@ -89,3 +89,17 @@ export function cleanBasket(raw: unknown): string[] {
   }
   return out;
 }
+
+/**
+ * Shared rooms connect shoppers peer-to-peer (WebRTC), which shows each participant's IP address to the others, and
+ * there is no server-side moderation yet. So they are OFF in production unless the owner turns them on on purpose
+ * (NEXT_PUBLIC_MULTIPLAYER=on, after updating the privacy policy and setting up a TURN relay). On in development.
+ */
+export function multiplayerEnabled(flag: string | undefined = process.env.NEXT_PUBLIC_MULTIPLAYER, nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
+  if (flag === "on") return true;
+  if (flag === "off") return false;
+  return nodeEnv !== "production";
+}
+
+/** localStorage key: the shopper read and accepted the voice notice (bump the version when the notice changes). */
+export const VOICE_CONSENT_KEY = "mm.voiceConsent.v1";

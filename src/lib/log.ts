@@ -2,14 +2,13 @@
  * Server error logging without customer data. Database errors can carry the query PARAMETERS (emails,
  * addresses) — never log the raw error object; log name, code and a truncated message only.
  */
-export function safeError(e: unknown): { name: string; code?: string; message: string } {
-  const err = e as { name?: string; code?: string; message?: string };
-  const message = String(err?.message ?? e).replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email]").slice(0, 300);
-  return { name: err?.name ?? "Error", ...(err?.code ? { code: String(err.code) } : {}), message };
-}
+export { safeError } from "./log-safe";
+import { safeError } from "./log-safe";
+import { notifyOps } from "./monitoring";
 
 export function logError(label: string, e: unknown): void {
   console.error(`[${label}]`, JSON.stringify(safeError(e)));
+  notifyOps(label, e);
 }
 
 const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "CONNECT_TIMEOUT", "DB_TIMEOUT", "CONNECTION_DESTROYED", "CONNECTION_CLOSED"]);

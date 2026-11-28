@@ -9,9 +9,15 @@ import { getPaymentProvider, paymentProviderStatuses } from "../payments/registr
 import type { OrderBreakdown, PaymentProvider } from "../payments/types";
 import { publicStorageUrl } from "../catalog/source-map";
 import { orderUrl } from "./order-link";
+import { getSetting } from "../admin/services/settings";
+import { legalReadiness, type SellerIdentity } from "../legal/readiness";
 
-/** Stripe Checkout sessions live 24 h; unpaid orders are released an hour after that. */
-export const PENDING_ORDER_TTL_HOURS = 25;
+/**
+ * Unpaid checkouts hold stock briefly: the payment page expires after CHECKOUT_SESSION_SECONDS (Stripe minimum
+ * 30 min) and the order is released 30 min after that, so no payment can complete on a released order.
+ */
+export const CHECKOUT_SESSION_SECONDS = 60 * 60;
+export const PENDING_ORDER_TTL_MINUTES = 90;
 
 /** The provider checkout uses: PAYMENT_PROVIDER=dev-simulator (local only) or Stripe. Null = not configured. */
 export function checkoutProvider(env: NodeJS.ProcessEnv = process.env): PaymentProvider | null {
@@ -36,12 +42,29 @@ export async function missingLegalPages(db: Db): Promise<string[]> {
   return REQUIRED_LEGAL_PAGES.filter((s) => !have.has(s));
 }
 
-/** Production refuses orders until the legal pages are published (development only warns). */
+/** Everything that keeps the shop from selling legally: unpublished/unfinished legal pages, missing seller identity. */
+export async function legalProblems(db: Db): Promise<string[]> {
+  const pages = await db<{ slug: string; published_body: string }[]>`
+    select slug, published_body from public.cms_pages
+     where status = 'published' and published_body is not null and slug = any(${[...REQUIRED_LEGAL_PAGES]})`;
+  const seller = (await getSetting(db, "store.seller")) as SellerIdentity | null;
+  return legalReadiness(pages.map((p) => ({ slug: p.slug, body: p.published_body })), seller, REQUIRED_LEGAL_PAGES);
+}
+
+/**
+ * Production refuses orders until the legal pages are published AND filled in and the seller identity is complete
+ * (development only warns). Fails closed in production: if the check itself errors, no order is taken.
+ */
 export async function legalBlocker(db: Db, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
-  const missing = await missingLegalPages(db).catch(() => [] as string[]);
-  if (!missing.length) return null;
-  const msg = `The store's ${missing.join(", ")} page${missing.length > 1 ? "s are" : " is"} not published yet.`;
-  return env.NODE_ENV === "production" ? msg : null;
+  const prod = env.NODE_ENV === "production";
+  let problems: string[];
+  try {
+    problems = await legalProblems(db);
+  } catch {
+    return prod ? "The store's legal information could not be checked." : null;
+  }
+  if (!problems.length) return null;
+  return prod ? `The store's legal information is incomplete (${problems.slice(0, 3).join("; ")}).` : null;
 }
 
 export async function startCheckout(
@@ -67,6 +90,7 @@ export async function startCheckout(
     cancelUrl: `${siteUrl}/checkout?cancelled=1`,
     idempotencyKey: `checkout:${orderId}`, // a retry for the same order reuses the same provider session
     label: `WEGO SHIIIP order #${orderNumber}`,
+    expiresInSeconds: CHECKOUT_SESSION_SECONDS,
     breakdown: await orderBreakdown(db, orderId, o),
   });
   const updated = await db`update public.payments set provider_session_id = ${session.providerSessionId}, updated_at = now()
@@ -113,9 +137,9 @@ export async function orderBreakdown(db: Db, orderId: string, o: OrderRow): Prom
 }
 
 /** Releases reserved stock of checkouts that were never paid (state machine: system → cancelled). */
-export async function expireStalePendingOrders(db: Db, ttlHours = PENDING_ORDER_TTL_HOURS): Promise<number> {
+export async function expireStalePendingOrders(db: Db, ttlMinutes = PENDING_ORDER_TTL_MINUTES): Promise<number> {
   const stale = await db<{ id: string }[]>`
-    select id from public.orders where status = 'pending_payment' and created_at < now() - make_interval(hours => ${ttlHours}) limit 50`;
+    select id from public.orders where status = 'pending_payment' and created_at < now() - make_interval(mins => ${ttlMinutes}) limit 50`;
   let n = 0;
   for (const { id } of stale) {
     try {

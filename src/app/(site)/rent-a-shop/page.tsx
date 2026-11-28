@@ -2,16 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RentShop } from "@/features/rentals/RentShop";
-import { fmtDay, fmtPrice } from "@/features/rentals/format";
+import { fmtDay } from "@/features/rentals/format";
 import { checkoutUnavailableReason } from "@/lib/checkout/service";
-import { discountPercent, LAUNCH_PROMO, promoActive, quoteAll, RENTAL_PLANS } from "@/lib/rentals/pricing";
+import { LAUNCH_PROMO, promoActive, quoteAll } from "@/lib/rentals/pricing";
+import { MarketPrice } from "@/features/rentals/MarketPrice";
+import { SHOP_ROOM } from "@/features/store3d/env/shops";
 import { loadPublicShops } from "@/lib/rentals/public";
 import { countryOptions } from "@/lib/storefront/supporters";
 
 export const dynamic = "force-dynamic"; // live availability
 export const metadata: Metadata = {
   title: "Rent a shop in the 3D store",
-  description: "Open your brand's own shop inside the WEGO SHIIIP 3D supermarket. Glass-front shop units in the main hall, from $20 a month during the launch offer.",
+  description: "Open your brand's own shop inside the WEGO SHIIIP 3D supermarket. Glass-front shop units in the main hall, at an introductory monthly price.",
   alternates: { canonical: "/rent-a-shop" },
 };
 
@@ -53,7 +55,6 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
   const now = new Date();
   const quotes = { USD: quoteAll("USD", now), EUR: quoteAll("EUR", now) };
   const promo = promoActive(now);
-  const best = Math.max(...RENTAL_PLANS.map((p) => discountPercent(p.regular.USD, p.promo.USD)));
   const free = shops.filter((s) => s.state === "available").length;
 
   return (
@@ -65,7 +66,7 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
           <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Rent a shop", path: "/rent-a-shop" }]} className="mb-10 text-white/70 [&_*]:!text-white/75" />
           {promo && (
             <p className="inline-flex items-center gap-2 rounded-full bg-amber px-4 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-ink shadow">
-              <span aria-hidden>🔥</span> {LAUNCH_PROMO.name}: up to −{best}% · until {fmtDay(LAUNCH_PROMO.endsAt)}
+              Introductory prices for bookings paid by {fmtDay(LAUNCH_PROMO.endsAt)}
             </p>
           )}
           <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[0.95] sm:text-7xl">
@@ -76,7 +77,7 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <a href="#plans" className="btn-yellow px-7 py-4 text-base">
-              From {fmtPrice(quotes.USD[0]!.amount, "USD")} / month
+              From <MarketPrice amounts={{ EUR: quotes.EUR[0]!.amount, USD: quotes.USD[0]!.amount }} /> / month
             </a>
             <Link href="/store" className="rounded-full px-6 py-4 text-base font-semibold text-white ring-1 ring-white/40 transition hover:bg-white hover:text-ink">
               Walk past the shops in 3D →
@@ -85,9 +86,9 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
           <dl className="mt-14 grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4">
             {[
               { k: `${free} of ${shops.length}`, v: "shops available" },
-              { k: "9 × 14 m", v: "shop rooms" },
+              { k: `${SHOP_ROOM.width} × ${SHOP_ROOM.depth} m`, v: "virtual shop rooms" },
               { k: "24/7", v: "open in the browser" },
-              { k: "EU + US", v: "shoppers" },
+              { k: "€ or $", v: "pay in euros or dollars" },
             ].map((s) => (
               <div key={s.v} className="border-l-2 border-amber pl-4">
                 <dt className="font-display text-3xl font-extrabold">{s.k}</dt>
@@ -149,7 +150,7 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
               {promo && (
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber" />
-                  {LAUNCH_PROMO.name}: the reduced prices apply to bookings paid by {fmtDay(LAUNCH_PROMO.endsAt)}. After that date the regular prices (shown struck through) apply.
+                  Introductory prices apply to bookings paid by {fmtDay(LAUNCH_PROMO.endsAt)}. Bookings paid after that date are charged the standard price shown under each plan. You keep the price you paid for the whole term you booked.
                 </li>
               )}
             </ul>

@@ -44,6 +44,19 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv): ConfigIssue[] {
   if (!v("NEXT_PUBLIC_SUPABASE_URL") || !v("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")) warn("NEXT_PUBLIC_SUPABASE_URL", "Supabase URL/publishable key missing (customer authentication, product images storage, 3D rooms)");
   if (!v("SUPABASE_SECRET_KEY")) warn("SUPABASE_SECRET_KEY", "missing — product image uploads disabled");
 
+  // Hardening (2026-11-28).
+  if (v("ADMIN_MFA_KEY").length < 32) warn("ADMIN_MFA_KEY", "missing/short — admins cannot turn on two-factor sign-in (32+ random characters)");
+  const reqMfa = v("ADMIN_REQUIRE_MFA").toLowerCase();
+  if (reqMfa && !["all", "super_admin"].includes(reqMfa)) err("ADMIN_REQUIRE_MFA", "must be 'super_admin' or 'all' (or unset)");
+  if (reqMfa && v("ADMIN_MFA_KEY").length < 32) err("ADMIN_REQUIRE_MFA", "requires ADMIN_MFA_KEY, otherwise admins could never enrol");
+  if (!reqMfa) warn("ADMIN_REQUIRE_MFA", "not set — two-factor is optional for admins (recommended: super_admin once enrolled)");
+  if (!v("OPS_ALERT_WEBHOOK_URL")) warn("OPS_ALERT_WEBHOOK_URL", "missing — server errors (checkout, webhooks, cron) only reach the Vercel logs");
+  else if (!v("OPS_ALERT_WEBHOOK_URL").startsWith("https://")) err("OPS_ALERT_WEBHOOK_URL", "must be an https:// webhook URL");
+  if (v("SHOW_SAMPLE_PRODUCTS") === "true") err("SHOW_SAMPLE_PRODUCTS", "sample products would be shown and sold as real products");
+  if (v("NEXT_PUBLIC_MULTIPLAYER") === "on" && !v("NEXT_PUBLIC_TURN_URL")) warn("NEXT_PUBLIC_MULTIPLAYER", "on without a TURN relay: voice fails behind strict NATs and peers see each other's IP");
+  if (v("VISITOR_LOG_FULL_IP") === "true") warn("VISITOR_LOG_FULL_IP", "full IP addresses are stored: needs a documented legal basis and privacy-policy wording");
+  if (!v("NEXT_PUBLIC_PLAUSIBLE_DOMAIN")) warn("NEXT_PUBLIC_PLAUSIBLE_DOMAIN", "missing — no conversion analytics (funnel events are dropped)");
+
   // Secrets must never be exposed through NEXT_PUBLIC_* variables.
   for (const [k, val] of Object.entries(env)) {
     if (!k.startsWith("NEXT_PUBLIC_") || !val) continue;

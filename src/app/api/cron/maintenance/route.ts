@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { purgeRateLimitBuckets } from "@/lib/rate-limit";
 import { expireStalePendingOrders } from "@/lib/checkout/service";
 import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { isCronAuthorized } from "@/lib/cron-auth";
@@ -44,11 +45,12 @@ export async function GET(req: Request) {
   const sync = await step("supplier-sync", () => syncSupplierOrders(db, { limit: 50 }));
   const rentalReminders = await step("rental-reminders", () => queueRentalReminders(db)); // rentals ending within 7 days
   const visitsPurged = await step("visit-retention", () => purgeOldVisits(db)); // visitor log retention (privacy policy)
+  const rateBuckets = await step("rate-limit-purge", () => purgeRateLimitBuckets(db));
   const emails = await step("email-outbox", () => flushEmailOutbox(db, 100));
   const financials = await step("payment-financials", () => syncMissingPaymentFinancials(db, (id) => getPaymentProvider(id))); // Stripe fees
 
   return NextResponse.json(
-    { expired, rentalReminders, visitsPurged, emails, financials, jobs: jobs?.processed ?? null, sync, failed },
+    { expired, rentalReminders, visitsPurged, rateBuckets, emails, financials, jobs: jobs?.processed ?? null, sync, failed },
     { status: failed.length ? 500 : 200 },
   );
 }

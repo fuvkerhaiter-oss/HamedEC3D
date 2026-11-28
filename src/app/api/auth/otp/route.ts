@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 import { createClient, createAdminClient, isSupabaseServerConfigured } from "@/lib/supabase/server";
 import { getEmailProvider } from "@/lib/email/provider";
 import { authOtpEmail } from "@/lib/email/templates";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
   // If token is present, this is a verification request
   if (json && "token" in json) {
-    if (rateLimited(`otp-verify:${ip}`, 10, 60_000)) {
+    if (await rateLimitedShared(`otp-verify:${ip}`, 10, 60_000)) {
       return NextResponse.json(
         { error: "Too many attempts. Please wait a minute.", retryAfterSeconds: 60 },
         { status: 429, headers: { "Retry-After": "60" } },
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
   }
 
   // Otherwise, this is a send OTP request
-  if (rateLimited(`otp-send:${ip}`, 5, 60_000)) {
+  if (await rateLimitedShared(`otp-send:${ip}`, 5, 60_000)) {
     return NextResponse.json(
       { error: "Too many code requests. Please wait a minute.", retryAfterSeconds: 60 },
       { status: 429, headers: { "Retry-After": "60" } },
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
   }
 
-  if (rateLimited(`otp-email:${parsed.data.email}`, 3, 60_000)) {
+  if (await rateLimitedShared(`otp-email:${parsed.data.email}`, 3, 60_000)) {
     return NextResponse.json(
       { error: "Too many attempts for this email. Please wait a minute.", retryAfterSeconds: 60 },
       { status: 429, headers: { "Retry-After": "60" } },

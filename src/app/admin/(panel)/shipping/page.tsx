@@ -4,7 +4,8 @@ import { requirePage } from "@/lib/admin/guard";
 import { loadShippingZones } from "@/lib/admin/services/shipping";
 import { getSql } from "@/lib/db/client";
 import { toDecimalString } from "@/lib/money";
-import type { ShippingMethodConfig } from "@/lib/shipping/quote";
+import { shippingCoverage, type ShippingMethodConfig } from "@/lib/shipping/quote";
+import { HOME_COUNTRY, marketCountries } from "@/lib/markets";
 import { deleteShippingAction, saveMethodAction, saveZoneAction } from "../ops-actions";
 
 export const metadata = { title: "Shipping & Delivery" };
@@ -49,9 +50,24 @@ function MethodForm({ zoneId, m }: { zoneId: string; m?: ShippingMethodConfig })
 export default async function ShippingPage() {
   await requirePage("shipping.manage");
   const zones = await loadShippingZones(getSql(), { includeInactive: true });
+  const coverage = shippingCoverage(zones, marketCountries());
+  const ok = coverage.filter((c) => c.shippable);
+  const missing = coverage.filter((c) => !c.shippable);
+  const homeMissing = missing.find((c) => c.country === HOME_COUNTRY);
+  const problems = [...new Set(missing.map((c) => c.problem))];
   return (
     <>
       <PageHeader title="Shipping prices" description="Where you deliver and what delivery costs. Make an area (countries) → add a delivery option → set its price." />
+      <div className="mb-4">
+        <Notice tone={ok.length === 0 || homeMissing ? "warn" : "info"} title={`Checkout can ship to ${ok.length} of ${coverage.length} market countries`}>
+          {ok.length > 0 && <p>Offered at checkout: <span className="font-mono text-xs">{ok.map((c) => c.country).join(" ")}</span></p>}
+          {missing.length > 0 && (
+            <p className="mt-1">Not offered (customers cannot pick these): <span className="font-mono text-xs">{missing.map((c) => c.country).join(" ")}</span>
+              {problems.length > 0 && <> — {problems.slice(0, 3).join("; ")}.</>}</p>
+          )}
+          <p className="mt-1 text-xs">EU countries need methods priced in EUR, the US in USD. Only enter prices you have confirmed with your carrier or supplier.</p>
+        </Notice>
+      </div>
       {zones.length === 0 && <div className="mb-4"><Notice tone="warn" title="No shipping configured">Orders can&apos;t be placed until at least one zone and method exist for the destination.</Notice></div>}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
@@ -100,7 +116,11 @@ export default async function ShippingPage() {
         <Card title="New zone">
           <ActionForm action={saveZoneAction} submitLabel="Add zone" resetOnSuccess>
             <Field label="Name"><input name="name" required placeholder="EU" className="admin-input" /></Field>
-            <Field label="Countries" hint="ISO codes separated by spaces or commas, e.g. IT FR DE ES"><input name="countries" required className="admin-input font-mono" /></Field>
+            <Field label="Countries" hint="ISO codes separated by spaces or commas, e.g. IT FR DE ES. Codes this store sells to are listed below."><input name="countries" required className="admin-input font-mono" /></Field>
+            <p className="-mt-1 select-all break-words font-mono text-[11px] leading-relaxed text-ink-soft" title="Copy the codes you need">
+              {coverage.map((c) => c.country).join(" ")}
+            </p>
+            <p className="text-xs text-ink-soft">The first zone (lowest sort order) that lists a country is the one used for it.</p>
             <Field label="Sort order"><input name="sortOrder" inputMode="numeric" defaultValue={0} className="admin-input" /></Field>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isActive" defaultChecked className="h-4 w-4" /> Active</label>
           </ActionForm>

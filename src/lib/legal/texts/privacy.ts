@@ -75,7 +75,7 @@ Why: to deliver the website, detect and fix errors, and defend against attacks.
 Legal basis: legitimate interest (art. 6(1)(f)).
 
 Visitor log
-Data: IP address, approximate location derived from it by our hosting provider (country, region, city), device type, browser and operating system, screen size, language, time zone, the time you arrived, the pages you opened on our site and the website that sent you here. We do not use cookies for this and we do not share it with analytics or advertising companies. Only our owners (super administrators) can see it.
+Data: a shortened IP address (the last part is removed, e.g. 203.0.113.0), a one-way code made from your full IP address and browser that lets us count returning visits without keeping the address, approximate location derived by our hosting provider (country, region, city), device type, browser and operating system, screen size, language, time zone, the time you arrived, the pages you opened on our site and the website that sent you here. We do not use cookies for this and we do not share it with analytics or advertising companies. Only our owners (super administrators) can see it.
 Why: to understand how many people visit, from which countries and devices, to improve the site and to detect abuse.
 Legal basis: legitimate interest (art. 6(1)(f)). You can object at any time by writing to [PRIVACY EMAIL].
 

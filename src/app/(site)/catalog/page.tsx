@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { TrackView } from "@/features/analytics/TrackView";
+import { searchResultsBucket } from "@/lib/analytics/events";
 import Link from "next/link";
 import { ActiveFilterChips, CatalogSearchBar, countActiveFilters, FilterPanel } from "@/components/catalog/CatalogFilters";
 import { FilterDrawer, MarketParamSync, SortSelect } from "@/components/catalog/CatalogControls";
@@ -39,6 +41,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
   return (
     <div className="pb-20">
       <MarketParamSync query={query} />
+      <TrackView event={activeCategory ? "category_view" : "catalog_view"} props={{ category: activeCategory?.slug }} />
+      {/* Search: only how many results came back (never the search text, which may contain personal data). */}
+      {query.q && <TrackView event="search" props={{ results: searchResultsBucket(products.length) }} />}
 
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">
@@ -67,9 +72,14 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
           {/* Crawlable department links (the filter panel uses query-string URLs that are not indexed). */}
           {catalog.categories.length > 0 && (
             <nav aria-label="Departments" className="mt-3">
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
+              <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 text-[13px] font-semibold [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
                 {catalog.categories.filter((c) => catalog.products.some((p) => p.categoryId === c.id)).map((c) => (
-                  <li key={c.id}><Link href={`/category/${c.slug}`} className="text-white/80 hover:text-white hover:underline">{c.name}</Link></li>
+                  <li key={c.id} className="shrink-0">
+                    <Link href={`/category/${c.slug}`} aria-current={activeCategory?.id === c.id ? "page" : undefined}
+                      className={`inline-flex min-h-9 items-center rounded-full px-3.5 ring-1 transition ${activeCategory?.id === c.id ? "bg-amber text-ink ring-amber" : "text-white/90 ring-white/30 hover:bg-white/10"}`}>
+                      {c.name}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </nav>

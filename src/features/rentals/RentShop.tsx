@@ -51,20 +51,12 @@ export function PlanCards({
                 <p className={`text-xs font-bold uppercase tracking-[0.16em] ${featured ? "text-amber" : "text-brand"}`}>{t.name}</p>
                 <p className={`mt-1 text-sm ${featured ? "text-white/70" : "text-ink-soft"}`}>{t.tagline}</p>
               </div>
-              {q.promo && q.discountPercent > 0 && (
-                <span className="shrink-0 rounded-xl bg-red-600 px-2.5 py-1 font-display text-lg font-extrabold leading-none text-white shadow-sm">
-                  −{q.discountPercent}%
-                </span>
+              {q.promo && (
+                <span className="shrink-0 rounded-xl bg-amber px-2.5 py-1 text-[11px] font-extrabold uppercase leading-none tracking-wider text-ink">Intro price</span>
               )}
             </div>
 
             <div className="mt-6">
-              {q.promo && (
-                <p className={`text-base ${featured ? "text-white/55" : "text-ink-soft"}`}>
-                  <span className="sr-only">Regular price </span>
-                  <s className="decoration-red-500 decoration-2">{fmtPrice(q.regularAmount, q.currency)}</s>
-                </p>
-              )}
               <p className="flex items-end gap-1.5">
                 <span className="font-display text-5xl font-extrabold leading-none tracking-tight">{fmtPrice(q.amount, q.currency)}</span>
                 <span className={`pb-1 text-sm ${featured ? "text-white/70" : "text-ink-soft"}`}>/ {q.months === 1 ? "month" : q.months === 12 ? "year" : `${q.months} months`}</span>
@@ -79,6 +71,11 @@ export function PlanCards({
                   <>Paid once for the month, no automatic renewal</>
                 )}
               </p>
+              {q.promo && q.promoEndsAt && (
+                <p className={`mt-1 text-xs ${featured ? "text-white/60" : "text-ink-soft"}`}>
+                  Standard price for bookings paid after {fmtDay(q.promoEndsAt)}: {fmtPrice(q.regularAmount, q.currency)}
+                </p>
+              )}
             </div>
 
             <ul className={`mt-6 space-y-2 text-sm ${featured ? "text-white/90" : "text-ink"}`}>
@@ -231,7 +228,7 @@ export function RentShop({
         </div>
         <p className="mt-5 text-center text-xs text-ink-soft">
           Prices in {currency === "EUR" ? "euros" : "US dollars"} · switch region at the top of the page.
-          {q.promoEndsAt && <> Launch prices apply to bookings paid by {fmtDay(q.promoEndsAt)}; after that the regular prices shown struck through apply.</>}
+          {q.promoEndsAt && <> Introductory prices apply to bookings paid by {fmtDay(q.promoEndsAt)}; after that each plan costs its standard price.</>}
         </p>
       </section>
 
@@ -324,16 +321,10 @@ export function RentShop({
                     </dd>
                   </div>
                   <div className="flex justify-between gap-3"><dt className="text-white/65">Starts</dt><dd className="font-semibold">As soon as you pay</dd></div>
-                  {q.promo && (
+                  {q.promo && q.promoEndsAt && (
                     <div className="flex justify-between gap-3">
-                      <dt className="text-white/65">Regular price</dt>
-                      <dd><s className="decoration-red-400 decoration-2">{fmtPrice(q.regularAmount, currency)}</s></dd>
-                    </div>
-                  )}
-                  {q.promo && (
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-amber">Launch offer −{q.discountPercent}%</dt>
-                      <dd className="font-semibold text-amber">−{fmtPrice(q.regularAmount - q.amount, currency)}</dd>
+                      <dt className="text-white/65">Price</dt>
+                      <dd className="text-right font-semibold text-amber">Introductory, for bookings paid by {fmtDay(q.promoEndsAt)}</dd>
                     </div>
                   )}
                 </dl>

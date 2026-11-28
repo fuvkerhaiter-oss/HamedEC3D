@@ -21,7 +21,8 @@ test("christmas music: one speaker per store corner, high up under the ceiling",
   // Four distinct corners: two x values × two z values.
   assert.equal(new Set(pos.map((p) => p[0])).size, 2);
   assert.equal(new Set(pos.map((p) => p[2])).size, 2);
-  assert.match(XMAS_MUSIC_SRC, /^\/audio\/xmas\/.+\.mp3$/);
+  // The unlicensed Christmas recording was withdrawn: without NEXT_PUBLIC_XMAS_MUSIC_SRC the regular store track plays.
+  assert.equal(XMAS_MUSIC_SRC, "/audio/store-music.mp3");
 });
 
 test("christmas music: level stays even when walking around the store", () => {

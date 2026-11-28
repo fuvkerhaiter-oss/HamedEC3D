@@ -16,6 +16,8 @@ import { deleteShippingEntity, saveMethod, saveZone } from "@/lib/admin/services
 import { deleteMapping, saveMapping, saveSupplier } from "@/lib/admin/services/suppliers";
 import { AuthError } from "@/lib/admin/auth";
 import { fromDecimalString } from "@/lib/money";
+import { marketCountries } from "@/lib/markets";
+import { parseRateTiers, parseZoneCountries, type ShippingRateTier } from "@/lib/shipping/quote";
 import { MAX_SUPPORTERS, normalizeSupporters, SUPPORTERS_KEY } from "@/lib/storefront/supporters";
 
 async function friendly<T>(fn: () => Promise<T>): Promise<T> {
@@ -62,7 +64,11 @@ export const saveZoneAction = adminAction(
   "shipping.manage",
   z.object({ id: optUuid, name: reqStr(120), countries: reqStr(600), isActive: bool, sortOrder: int(0, 1000) }),
   async (i, { sql, actor }) => {
-    await friendly(() => saveZone(sql, actor, { ...i, id: i.id ?? undefined, countries: i.countries.split(/[\s,;]+/) }));
+    const { countries, unknown } = parseZoneCountries(i.countries, marketCountries().map((c) => c.country));
+    if (unknown.length) {
+      throw new UserError(`Not a country this store sells to: ${unknown.join(", ")}. Use 2-letter ISO codes of the EU-27 or US (Greece is GR, not EL; the UK is not an EU market).`);
+    }
+    await friendly(() => saveZone(sql, actor, { ...i, id: i.id ?? undefined, countries }));
     revalidatePath("/admin/shipping");
     return { ok: true, message: "Zone saved." };
   },
@@ -76,15 +82,12 @@ export const saveMethodAction = adminAction(
   }),
   async (i, { sql, actor }) => {
     // Tiers: one per line "min-max: price" (max may be empty = and above). Weight in grams; order value in decimal money.
-    const rates = i.tiers.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((line) => {
-      const m = /^([\d.]+)\s*-\s*([\d.]*)\s*:\s*([\d.]+)$/.exec(line);
-      if (!m) throw new UserError(`Tier “${line}” must look like “0-2000: 6.90”`);
-      const toMinor = (v: string) => fromDecimalString(v, i.currency).amount; // exact, no float math
-      if (i.rateType === "weight" && [m[1], m[2]].some((x) => x && !/^d+$/.test(x))) throw new UserError(`Weights are whole grams in “${line}”`);
-      const bound = (v: string) => (i.rateType === "weight" ? Number(v) : toMinor(v));
-      if (![m[1], m[3]].every((x) => /^\d+(\.\d{1,2})?$/.test(x!))) throw new UserError(`Invalid number in “${line}”`);
-      return { minValue: bound(m[1]!), maxValue: m[2] ? bound(m[2]) : null, amount: toMinor(m[3]!) };
-    });
+    let rates: ShippingRateTier[];
+    try {
+      rates = i.rateType === "fixed" ? [] : parseRateTiers(i.tiers, i.rateType, i.currency);
+    } catch (e) {
+      throw new UserError((e as Error).message);
+    }
     await friendly(() => saveMethod(sql, actor, { ...i, id: i.id ?? undefined, rates }));
     revalidatePath("/admin/shipping");
     return { ok: true, message: "Method saved." };

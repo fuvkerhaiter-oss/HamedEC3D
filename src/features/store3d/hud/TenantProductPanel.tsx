@@ -58,7 +58,7 @@ export function TenantProductPanel({ shopId, productId, shops, onClose }: { shop
           <div className="mt-auto pt-6">
             {p.buyHost ? (
               <>
-                <a href={`/api/shop-products/${p.id}/buy`} target="_blank" rel="noopener" className="btn-yellow w-full py-3.5" onClick={() => onClose(false)}>
+                <a href={`/leaving/${p.id}`} target="_blank" rel="noopener" className="btn-yellow w-full py-3.5" onClick={() => onClose(false)}>
                   Buy on {p.buyHost} ↗
                 </a>
                 <p className="mt-2 text-center text-xs text-ink-soft">

@@ -57,6 +57,10 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
                 <span className="font-medium">Password</span>
                 <input name="password" type="password" autoComplete="current-password" required className="admin-input mt-1" />
               </label>
+              <label className="block text-sm">
+                <span className="font-medium">Authentication code</span> <span className="text-ink-soft">(if two-factor is on)</span>
+                <input name="otp" inputMode="numeric" autoComplete="one-time-code" maxLength={20} placeholder="123 456" className="admin-input mt-1 font-mono tracking-widest" />
+              </label>
             </ActionForm>
           )}
         </div>

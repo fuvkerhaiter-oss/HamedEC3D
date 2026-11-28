@@ -25,7 +25,7 @@ export default defineConfig({
       name: "desktop",
       use: {
         ...devices["Desktop Chrome"],
-        channel: process.env.E2E_CHANNEL ?? "msedge",
+        channel: process.env.E2E_CHANNEL === undefined ? "msedge" : process.env.E2E_CHANNEL || undefined,
         launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
       },
     },

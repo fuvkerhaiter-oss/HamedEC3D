@@ -41,6 +41,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/settings", label: "Shop settings", hint: "Shop name, taxes, invoice details", icon: "settings", permission: "settings.manage", group: "Setup" },
   { href: "/admin/supporters", label: "Supporters wall", hint: "Names on the 3D “supported us from the beginning” board", icon: "star", permission: "admins.manage", group: "Setup" },
   { href: "/admin/admins", label: "Team & logins", hint: "Who can sign in to this admin", icon: "team", permission: "admins.manage", group: "Setup" },
+  { href: "/admin/security", label: "Security", hint: "Two-factor sign-in for your admin account", icon: "settings", permission: "dashboard.view", group: "Setup" },
   { href: "/admin/activity", label: "Change history", hint: "Who changed what, and who visited the website", icon: "history", permission: "activity.view", group: "Setup" },
 ];
 

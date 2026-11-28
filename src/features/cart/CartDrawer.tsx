@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { track } from "@/features/analytics/track";
 import Image from "next/image";
 import { canOptimize } from "@/lib/catalog/image";
 import { formatMoney } from "@/lib/money";
@@ -11,7 +12,7 @@ import { usePricedCart } from "./usePricedCart";
 import { useAuthStore } from "@/features/auth/auth-store";
 
 const STEP_BTN =
-  "flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold transition hover:bg-white active:scale-75 disabled:opacity-30 disabled:hover:bg-transparent";
+  "flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold transition hover:bg-white active:scale-75 disabled:opacity-30 disabled:hover:bg-transparent";
 
 /** A little personality that grows with the trolley. */
 function mood(count: number): string {
@@ -36,6 +37,9 @@ export function CartDrawer() {
   const { status, cart } = usePricedCart(open && lines.length > 0);
   const fmt = (m: Parameters<typeof formatMoney>[0]) => formatMoney(m, market.locale);
 
+  useEffect(() => {
+    if (open) track("cart_view");
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -138,7 +142,7 @@ export function CartDrawer() {
                         disabled={l.quantity >= MAX_LINE_QUANTITY} onClick={() => setQuantity(l.variantId, l.quantity + 1)}>+</button>
                     </div>
                     <button
-                      className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-red-50 hover:text-red-700"
+                      className="min-h-10 rounded-full px-3 py-2 text-xs font-semibold text-ink-soft transition hover:bg-red-50 hover:text-red-700"
                       onClick={() => remove(l.variantId)}
                       aria-label={`Remove ${l.productName}`}
                     >

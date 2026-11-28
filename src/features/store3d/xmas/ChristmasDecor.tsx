@@ -12,7 +12,6 @@ import { Text, useGLTF } from "@react-three/drei";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { EnvLayout } from "../env/types";
 import {
-  CHRISTMAS_ON,
   XMAS_BANNER,
   XMAS_END_CAPS,
   XMAS_LIGHT_SPANS,
@@ -391,4 +390,4 @@ function Snowfall({ env, count }: { env: EnvLayout; count: number }) {
   return <points ref={ref} geometry={geometry} material={material} frustumCulled={false} />;
 }
 
-if (CHRISTMAS_ON) for (const u of Object.values(URL)) useGLTF.preload(u);
+// No module-level preload: StoreScene mounts the decoration after the core store is ready (progressive loading).

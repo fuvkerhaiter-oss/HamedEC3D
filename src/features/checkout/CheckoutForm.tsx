@@ -9,6 +9,7 @@ import { US_STATES } from "@/lib/shipping/address";
 import type { ShippingOption } from "@/lib/shipping/quote";
 import { useCart } from "@/features/cart/cart-store";
 import { useAuthStore } from "@/features/auth/auth-store";
+import { track } from "@/features/analytics/track";
 
 const FIELD = "mt-1 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-amber/40";
 const LABEL = "block text-sm font-medium";
@@ -17,9 +18,10 @@ const noopSubscribe = () => () => {};
 
 interface Quote { cart: PricedCart; options: ShippingOption[]; selectedMethodId: string }
 
-function countryNames(): { code: string; name: string }[] {
+function countryNames(only: readonly string[] | null): { code: string; name: string }[] {
   const dn = typeof Intl.DisplayNames === "function" ? new Intl.DisplayNames(["en"], { type: "region" }) : null;
-  return [...EU_COUNTRIES, "US"].map((code) => ({ code, name: dn?.of(code) ?? code })).sort((a, b) => a.name.localeCompare(b.name));
+  const all = [...EU_COUNTRIES, "US"];
+  return (only ? all.filter((c) => only.includes(c)) : all).map((code) => ({ code, name: dn?.of(code) ?? code })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** One idempotency key per cart content: resubmitting (double click, back from the payment page) reuses the same order. */
@@ -35,13 +37,16 @@ function checkoutKey(cartKey: string): string {
   }
 }
 
-export function CheckoutForm({ unavailable, cancelled }: { unavailable: string | null; cancelled: boolean }) {
+/** `shippable`: destinations the server can quote (null = unknown, offer every market country). */
+export function CheckoutForm({ unavailable, cancelled, shippable = null }: { unavailable: string | null; cancelled: boolean; shippable?: string[] | null }) {
   const user = useAuthStore((s) => s.user);
   const lines = useCart((s) => s.lines);
   const cartMarket = useCart((s) => s.market);
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false); // cart lives in localStorage
-  const countries = useMemo(() => countryNames(), []);
-  const [country, setCountry] = useState(cartMarket === "US" ? "US" : "IT");
+  const countries = useMemo(() => countryNames(shippable), [shippable]);
+  const billingCountries = useMemo(() => countryNames(null), []);
+  const preferred = cartMarket === "US" ? "US" : "IT";
+  const [country, setCountry] = useState(() => (!shippable || shippable.includes(preferred) ? preferred : (countries[0]?.code ?? preferred)));
   const [region, setRegion] = useState("");
   const [coupon, setCoupon] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | undefined>();
@@ -60,6 +65,11 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
   const market: MarketId = country === "US" ? "US" : "EU";
   const locale = MARKETS[market].locale;
   const fmt = (m: Money) => formatMoney(m, locale);
+
+  const hasLines = hydrated && lines.length > 0;
+  useEffect(() => {
+    if (hasLines) track("checkout_start");
+  }, [hasLines]);
 
   // Keep the header currency switch in line with the destination.
   useEffect(() => {
@@ -130,6 +140,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
       });
       const json = await r.json();
       if (!r.ok || !json.redirectUrl) throw new Error(json.error ?? "Something went wrong. You have not been charged.");
+      track("payment_start");
       window.location.assign(json.redirectUrl);
     } catch (err) {
       setSubmitError((err as Error).message);
@@ -154,7 +165,12 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
 
   return (
     <form onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-[1fr_400px]">
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
+        {/* Phones: the summary sits below the long form, so show the running total up front with a jump link. */}
+        <a href="#order-summary" className="flex items-center justify-between rounded-2xl bg-ink px-4 py-3 text-cream shadow-card lg:hidden">
+          <span className="text-sm">{lines.length} item{lines.length === 1 ? "" : "s"} · <span className="underline underline-offset-2">View summary</span></span>
+          <span className="font-display text-lg tabular-nums">{quote ? fmt(quote.cart.total) : loadingQuote ? "…" : ""}</span>
+        </a>
         {cancelled && (
           <p role="status" className="rounded-2xl bg-amber/20 px-4 py-3 text-sm">Payment was cancelled. You have not been charged; your cart is still here.</p>
         )}
@@ -162,14 +178,14 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">Checkout is temporarily unavailable. {unavailable}</p>
         )}
 
-        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section className="rounded-3xl bg-white/70 p-5 shadow-card sm:p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl">Contact</h2>
             {!user && (
               <button
                 type="button"
                 onClick={() => useAuthStore.getState().openAuth("welcome")}
-                className="text-xs font-semibold text-ink underline decoration-amber decoration-2 underline-offset-2 hover:text-amber"
+                className="-my-2 py-2 text-xs font-semibold text-ink underline decoration-amber decoration-2 underline-offset-2 hover:text-amber"
               >
                 Sign in to use saved details
               </button>
@@ -182,7 +198,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           </label>
         </section>
 
-        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section className="rounded-3xl bg-white/70 p-5 shadow-card sm:p-6">
           <h2 className="font-display text-xl">Delivery address</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="sm:col-span-2">
@@ -190,6 +206,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
               <select value={country} onChange={(e) => { setCountry(e.target.value); setRegion(""); }} autoComplete="country" className={FIELD}>
                 {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
+              {shippable && <span className="mt-1 block text-xs text-ink-soft">Only countries we currently deliver to are listed.</span>}
             </label>
             <label className="sm:col-span-2"><span className={LABEL}>Full name</span><input name="fullName" required minLength={2} autoComplete="name" className={FIELD} /></label>
             <label className="sm:col-span-2"><span className={LABEL}>Address</span><input name="line1" required minLength={3} autoComplete="address-line1" className={FIELD} /></label>
@@ -209,7 +226,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section className="rounded-3xl bg-white/70 p-5 shadow-card sm:p-6">
           <h2 className="font-display text-xl">Billing address</h2>
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={billingSame} onChange={(e) => setBillingSame(e.target.checked)} className="h-4 w-4" />
@@ -220,7 +237,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
               <label className="sm:col-span-2">
                 <span className={LABEL}>Country</span>
                 <select value={billCountry} onChange={(e) => { setBillCountry(e.target.value); setBillRegion(""); }} autoComplete="billing country" className={FIELD}>
-                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  {billingCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
               </label>
               <label className="sm:col-span-2"><span className={LABEL}>Full name</span><input name="b_fullName" required minLength={2} autoComplete="billing name" className={FIELD} /></label>
@@ -241,14 +258,14 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           )}
         </section>
 
-        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section className="rounded-3xl bg-white/70 p-5 shadow-card sm:p-6">
           <h2 className="font-display text-xl">Shipping method</h2>
           {quote?.options.length ? (
             <div className="mt-4 space-y-2" role="radiogroup">
               {quote.options.map((o) => (
                 <label key={o.methodId} className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border px-4 py-3 transition ${methodId === o.methodId ? "border-ink bg-sand/40" : "border-line"}`}>
                   <span className="flex items-center gap-3">
-                    <input type="radio" name="shipping" checked={methodId === o.methodId} onChange={() => setMethodId(o.methodId)} />
+                    <input type="radio" name="shipping" checked={methodId === o.methodId} onChange={() => { setMethodId(o.methodId); track("shipping_select"); }} />
                     <span>
                       <span className="font-medium">{o.name}</span>
                       {o.minDays != null && o.maxDays != null && <span className="block text-xs text-ink-soft">Estimated {o.minDays}–{o.maxDays} business days after dispatch (estimate, not guaranteed)</span>}
@@ -263,7 +280,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
           )}
         </section>
 
-        <section className="rounded-3xl bg-white/70 p-6 shadow-card">
+        <section className="rounded-3xl bg-white/70 p-5 shadow-card sm:p-6">
           <label className="block">
             <span className={LABEL}>Note for your order <span className="font-normal text-ink-soft">(optional)</span></span>
             <textarea name="note" maxLength={1000} rows={2} className={FIELD} />
@@ -271,7 +288,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
         </section>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-3xl bg-white/80 p-6 shadow-card lg:sticky lg:top-24">
+      <aside id="order-summary" className="h-fit scroll-mt-28 space-y-4 rounded-3xl bg-white/80 p-5 shadow-card sm:p-6 lg:sticky lg:top-24">
         <h2 className="font-display text-xl">Order summary</h2>
         {quote ? (
           <ul className="divide-y divide-line text-sm">
@@ -305,8 +322,8 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
 
         {quoteError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{quoteError}</p>}
 
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="terms" required className="mt-1" />
+        <label className="flex items-start gap-3 text-sm leading-relaxed">
+          <input type="checkbox" name="terms" required className="mt-0.5 h-5 w-5 shrink-0 accent-ink" />
           <span>
             I accept the <Link href="/pages/terms" target="_blank" className="underline">Terms of Sale</Link> and have read the{" "}
             <Link href="/pages/privacy" target="_blank" className="underline">Privacy Policy</Link> and{" "}
@@ -319,7 +336,7 @@ export function CheckoutForm({ unavailable, cancelled }: { unavailable: string |
         <button
           type="submit"
           disabled={!quote || !!quoteError || loadingQuote || submitting || !!unavailable}
-          className="w-full rounded-full bg-ink py-4 font-semibold text-cream transition hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-14 w-full rounded-full bg-ink py-4 text-base font-semibold text-cream transition hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitting ? "Opening secure payment…" : quote ? `Pay ${fmt(quote.cart.total)}` : "Pay"}
         </button>

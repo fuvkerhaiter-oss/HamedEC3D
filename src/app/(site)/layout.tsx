@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { MobileNav } from "@/components/MobileNav";
 import Link from "next/link";
 import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
 import { CartButton } from "@/components/CartButton";
@@ -54,6 +55,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             <CartButton />
           </div>
         </nav>
+        <MobileNav items={NAV} />
       </header>
       <main className="flex-1">{children}</main>
       <footer className="bg-brand-deep text-white">

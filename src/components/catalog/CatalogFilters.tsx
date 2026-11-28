@@ -92,7 +92,7 @@ export function FilterPanel({ query, result, activeCount }: { query: CatalogQuer
       )}
       <Section title="Category">
         <ul className="space-y-0.5 text-sm">
-          {[{ slug: null as string | null, name: "All categories", count: catTotal, id: "all" }, ...result.categories].map((c) => {
+          {[{ slug: null as string | null, name: "All categories", count: catTotal, id: "all" }, ...result.categories.filter((c) => c.count > 0 || c.slug === query.category)].map((c) => {
             const on = (query.category ?? null) === c.slug;
             return (
               <li key={c.id}>

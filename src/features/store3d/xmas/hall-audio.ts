@@ -2,13 +2,15 @@
  * Christmas background music through four ceiling "speakers" in the store's corners (xmas/XmasSpeakers renders them,
  * music.ts owns playback, fades, mute and volume). Pure data + math (no three.js / Web Audio), shared with unit tests.
  *
- * LICENCE: the track is a commercial recording. Playing it on the public store needs a public performance /
- * streaming licence (owner decision, see PROJECT_STATUS.md). To swap it, replace the file or change this one constant.
+ * LICENCE: the owner's commercial Christmas recording was withdrawn from the public site (moved to licensing-hold/,
+ * not served) until a public performance / streaming licence exists. Until then the regular store track plays at
+ * Christmas too. To use a LICENSED Christmas track: put it in public/audio/xmas/, set NEXT_PUBLIC_XMAS_MUSIC_SRC to its
+ * path and record the licence in ASSET_INVENTORY.md.
  */
 import type { Box } from "../env/types";
 
 /** The Christmas track (mono 96 kbps MP3, ~2.9 MB). Fetched only when the shopper enters the store. */
-export const XMAS_MUSIC_SRC = "/audio/xmas/christmas-instrumental.mp3";
+export const XMAS_MUSIC_SRC = process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC?.startsWith("/audio/") ? process.env.NEXT_PUBLIC_XMAS_MUSIC_SRC : "/audio/store-music.mp3";
 
 /**
  * Speaker sound: a gentle inverse distance curve so the level stays almost even anywhere in the hall, with only a

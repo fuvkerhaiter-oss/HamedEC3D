@@ -128,6 +128,9 @@ export const importCsvAction = adminAction(
       return { ok: false, error: `Nothing was imported. ${report.errors.slice(0, 8).map((e) => (e.row ? `Row ${e.row}: ${e.message}` : e.message)).join(" · ")}${report.errors.length > 8 ? ` (+${report.errors.length - 8} more)` : ""}` };
     }
     if (!i.dryRun) refreshStorefront();
-    return { ok: true, message: `${i.dryRun ? "Dry run OK — would create" : "Imported:"} ${report.created} new, ${report.updated} updated row(s).` };
+    const drafts = report.keptDraft.length
+      ? ` ${report.keptDraft.length} product(s) kept as draft until they pass the publish checks: ${report.keptDraft.slice(0, 5).map((d) => `${d.slug} (${d.problems.join(", ")})`).join(" · ")}${report.keptDraft.length > 5 ? " …" : ""}.`
+      : "";
+    return { ok: true, message: `${i.dryRun ? "Dry run OK — would create" : "Imported:"} ${report.created} new, ${report.updated} updated row(s).${drafts}` };
   },
 );

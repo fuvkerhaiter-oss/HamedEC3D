@@ -93,16 +93,31 @@ Modular low-poly kit with one 256 px atlas texture. Its flat, stylized look does
 - **Benchmark aisle:** between runs L1 and L2 (faces `L1N`, `L2S`), straight ahead from the spawn point.
 - **Rollout:** set `STORE_CONFIG.stockAllFaces = true` in `env/supermarket.ts` after the benchmark is approved in the browser. End caps, wall racks and freezers need face definitions added in `build_env.py`.
 
-## License / attribution — ACTION NEEDED
+## Licence register — ACTION NEEDED (updated 2026-11-28)
 
-The Sketchfab license and author for each file must be recorded here before production. Most free Sketchfab models are CC-BY and require visible attribution. Confirm on each model's Sketchfab page:
+Rule: **an asset may be served on the public site only when its row says "confirmed"**. Unknown = owner must check the
+source page / receipt and fill Author + Licence + Proof. Never write a licence you have not seen. CC-BY assets need a
+visible credit (add it to the site footer or an /about credits section once the author is known).
 
-| File | Author | License | Attribution required |
-|---|---|---|---|
-| super_market_for_free.glb | ? | ? | ? |
-| cart_basket.glb | ? | ? | ? |
-| LPG_Lite.glb | ? | ? | ? |
-| mini_market.glb | ? | ? | ? |
+| Served file | Source | Author | Licence | Proof | Status |
+|---|---|---|---|---|---|
+| `public/models/env/supermarket.opt.glb` | Sketchfab "super_market_for_free" | ? | ? | — | **UNKNOWN — core environment, confirm first** |
+| `public/models/props/trolley.opt.glb` | Sketchfab "cart_basket" | ? | ? | — | UNKNOWN |
+| (LPG_Lite.glb, mini_market.glb — not served) | Sketchfab | ? | ? | — | not in use |
+| `public/models/props/chain.opt.glb` | Meshy AI export by the owner | owner | Meshy plan terms (commercial use depends on the plan) | — | owner to confirm plan |
+| `public/models/xmas/*.opt.glb` | Sketchfab (tree, sleigh, Santa, snowman, wreath, lights, decoration set) | ? | ? | — | UNKNOWN — seasonal, can be switched off with `NEXT_PUBLIC_CHRISTMAS=off` |
+| `public/audio/store-music.mp3` | "Funny Song / Comedic Background Music / Silly Chicken" (file at repo root) | ? | ? | — | UNKNOWN — confirm it is royalty-free for commercial use |
+| Fonts (Bricolage Grotesque, Plus Jakarta Sans, JetBrains Mono via next/font) | Google Fonts | various | SIL OFL 1.1 | fonts.google.com | confirmed (OFL) |
+
+### Withdrawn (2026-11-28, IP risk) — kept on disk in `licensing-hold/` (gitignored, never served)
+| File | Why |
+|---|---|
+| `ps5.opt.glb` + `source/PS5_Box.fbx`, `box.jpeg` | Sony PlayStation trademark / trade dress shown as a "prize" under the lucky wheel. Replaced by original unbranded gift boxes (`wing/WheelPrizes.tsx`). |
+| `gta6-case.opt.glb` + `source/Grand Theft Auto 6.*`, `HLGy5QhXcAAe75S.jp(e)g` | Rockstar/Take-Two trademark and copyrighted cover art. |
+| `public/audio/xmas/christmas-instrumental.mp3` | Commercial recording ("All I Want for Christmas Is You" instrumental): no public performance licence. The store track plays at Christmas instead; a licensed track can be set with `NEXT_PUBLIC_XMAS_MUSIC_SRC`. |
+
+Note: these files are still in **git history**. If the repository is ever made public or shared, purge them with
+`git filter-repo` (owner decision; rewrites history).
 
 ## Rebuild
 
@@ -116,4 +131,4 @@ python tools/assets/build_trolley.py "3D models/cart_basket.glb" public/models/p
 | File | Source | Size | Notes |
 |---|---|---|---|
 | `public/audio/store-music.mp3` | existing | 2.4 MB | Store music outside the Christmas season. |
-| `public/audio/xmas/christmas-instrumental.mp3` | owner's file "All I Want for Christmas Is You (Official HQ Instrumental)" | 2.9 MB (from 3.9 MB) | ffmpeg: silence trimmed, loudnorm I=-18 TP=-2, mono 44.1 kHz, 96 kbps MP3, metadata/cover removed. **Commercial recording: needs a public performance licence before production use.** Swap via `XMAS_MUSIC_SRC` (xmas/hall-audio.ts). |
+| ~~`public/audio/xmas/christmas-instrumental.mp3`~~ | withdrawn 2026-11-28 | — | Moved to `licensing-hold/` (no licence). |

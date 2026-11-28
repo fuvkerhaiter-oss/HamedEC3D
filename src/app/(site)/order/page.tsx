@@ -5,8 +5,9 @@ import { verifyOrderToken } from "@/lib/checkout/order-link";
 import { getCustomerOrder, STATUS_LABEL } from "@/lib/checkout/order-view";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { MARKETS } from "@/lib/markets";
-import { formatMoney } from "@/lib/money";
+import { CURRENCY_EXPONENT, formatMoney } from "@/lib/money";
 import { OrderAutoRefresh } from "@/features/checkout/OrderAutoRefresh";
+import { TrackPurchase } from "@/features/analytics/TrackView";
 import { getEmailProvider } from "@/lib/email/provider";
 import { loadWithdrawalContext } from "@/lib/orders/withdrawal";
 
@@ -29,6 +30,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10">
       <OrderAutoRefresh active={waiting && paid === "1"} clearCart={success || (waiting && paid === "1")} />
+      {success && paid === "1" && <TrackPurchase orderRef={String(o.orderNumber)} amount={o.total.amount / 10 ** CURRENCY_EXPONENT[o.total.currency]} currency={o.total.currency} />}
       <p className="eyebrow text-ink-soft">Order #{o.orderNumber}</p>
       <h1 className="mt-1 font-display text-4xl">
         {success ? "Thank you for your order!" : waiting ? (paid === "1" ? "Confirming your payment…" : "Waiting for payment") : STATUS_LABEL[o.status]}

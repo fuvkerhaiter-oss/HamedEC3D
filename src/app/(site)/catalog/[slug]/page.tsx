@@ -53,7 +53,7 @@ function Specifications({ product }: { product: Product }) {
   return (
     <section aria-labelledby="specs" className="mt-14">
       <h2 id="specs" className="font-display text-2xl">Product details</h2>
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
+      <div tabIndex={0} role="region" aria-label="Product details table" className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white focus-visible:outline-2 focus-visible:outline-brand">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead className="bg-sand/60 text-xs uppercase tracking-wide text-ink-soft">
             <tr>

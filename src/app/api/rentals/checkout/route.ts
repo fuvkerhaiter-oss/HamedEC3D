@@ -4,7 +4,7 @@ import { siteUrl, verifyLeaseToken } from "@/lib/checkout/order-link";
 import { checkoutProvider, checkoutUnavailableReason } from "@/lib/checkout/service";
 import { getSql } from "@/lib/db/client";
 import { logError } from "@/lib/log";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 import { RentalBookingBody, RentalRenewBody } from "@/lib/rentals/schema";
 import { RentalError, startRentalCheckout } from "@/lib/rentals/service";
 import { getAuthUser } from "@/lib/supabase/server";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * brand's details; the price is computed on the server and the shop is held while the tenant pays.
  */
 export async function POST(req: Request) {
-  if (rateLimited(`rental:${clientIp(req)}`, 6, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
+  if (await rateLimitedShared(`rental:${clientIp(req)}`, 6, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
   const unavailable = checkoutUnavailableReason();
   const provider = checkoutProvider();
   if (unavailable || !provider) return NextResponse.json({ error: `Shop rentals can't be paid online yet. ${unavailable ?? ""}`.trim() }, { status: 503 });

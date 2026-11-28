@@ -6,7 +6,7 @@ import { MARKETS } from "@/lib/markets";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { loadCouponForCode } from "@/lib/admin/services/coupons";
 import { logError } from "@/lib/log";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimited, rateLimitedShared } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     let coupon: { code: string; applied: boolean; message: string } | undefined;
     if (parsed.data.couponCode) {
       // Discount codes can be guessed: few tries per minute per visitor.
-      if (rateLimited(`coupon:${ip}`, 10, 60_000)) return NextResponse.json({ error: "Too many code attempts. Please wait a minute." }, { status: 429 });
+      if (await rateLimitedShared(`coupon:${ip}`, 10, 60_000)) return NextResponse.json({ error: "Too many code attempts. Please wait a minute." }, { status: 429 });
       if (!isDbConfigured()) {
         coupon = { code: parsed.data.couponCode, applied: false, message: "Discount codes are not available yet." };
       } else {

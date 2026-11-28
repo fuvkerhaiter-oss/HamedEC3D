@@ -12,6 +12,12 @@ import type { Actor } from "./audit";
 import { getSessionAdmin, type AdminSession } from "./auth";
 import { ForbiddenError, type Permission } from "./permissions";
 import { logError } from "../log";
+import { mfaRequiredFor } from "./totp";
+
+/** Deployment requires two-factor for this admin (ADMIN_REQUIRE_MFA) but they have not enrolled yet. */
+export function needsMfaEnrollment(s: AdminSession): boolean {
+  return mfaRequiredFor(s.user.role) && !s.user.mfaEnabled;
+}
 
 export const ADMIN_COOKIE = process.env.NODE_ENV === "production" ? "__Host-mm_admin" : "mm_admin";
 
@@ -32,10 +38,12 @@ export async function actorOf(s: AdminSession): Promise<Actor> {
 }
 
 /** For admin pages: redirect to login when signed out, to /admin/forbidden when the permission is missing. */
-export async function requirePage(permission?: Permission): Promise<AdminSession> {
+export async function requirePage(permission?: Permission, opts: { allowWithoutMfa?: boolean } = {}): Promise<AdminSession> {
   if (!isDbConfigured()) redirect("/admin/login");
   const s = await getAdminSession();
   if (!s) redirect("/admin/login");
+  // Never a lockout: an admin who must enrol is sent to the set-up page, which stays reachable.
+  if (!opts.allowWithoutMfa && needsMfaEnrollment(s)) redirect("/admin/security?required=1");
   if (permission && !s.permissions.has(permission)) redirect(`/admin/forbidden?p=${encodeURIComponent(permission)}`);
   return s;
 }
@@ -46,6 +54,7 @@ export async function requireApi(permission: Permission): Promise<{ session: Adm
   const s = await getAdminSession();
   if (!s) return new Response("Unauthorized", { status: 401 });
   if (!s.permissions.has(permission)) return new Response("Forbidden", { status: 403 });
+  if (needsMfaEnrollment(s)) return new Response("Two-factor sign-in must be set up first (/admin/security)", { status: 403 });
   return { session: s, sql: getSql() };
 }
 
@@ -74,6 +83,7 @@ export function adminAction<S extends z.ZodType, T>(
   permission: Permission,
   schema: S,
   handler: (input: z.infer<S>, ctx: { session: AdminSession; sql: Sql; actor: Actor }) => Promise<ActionResult<T> | void>,
+  opts: { allowWithoutMfa?: boolean } = {},
 ) {
   return async (_prev: ActionResult<T> | null, formData: FormData): Promise<ActionResult<T>> => {
     try {
@@ -81,6 +91,7 @@ export function adminAction<S extends z.ZodType, T>(
       const session = await getAdminSession();
       if (!session) return { ok: false, error: "Your session has expired. Please sign in again." };
       if (!session.permissions.has(permission)) throw new ForbiddenError(permission);
+      if (!opts.allowWithoutMfa && needsMfaEnrollment(session)) return { ok: false, error: "Set up two-factor sign-in first (Admin → Security)." };
       const parsed = schema.safeParse(formDataToObject(formData));
       if (!parsed.success) {
         const fieldErrors: Record<string, string> = {};

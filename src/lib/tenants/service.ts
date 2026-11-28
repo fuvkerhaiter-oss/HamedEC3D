@@ -13,7 +13,7 @@ import type { CurrencyCode } from "../money";
 import { doorStyleFrom, type DoorStyle } from "../rentals/door-style";
 import type { LeaseRow } from "../rentals/service";
 import type { PublicStorefront } from "@/features/rentals/format";
-import { linkHost } from "./payment-links";
+import { checkPaymentLink, linkHost } from "./payment-links";
 import type { ProductInput, ProfileInput } from "./schema";
 
 /** Products a tenant can have (one per gondola bay face in the shop, see env/shop-interior.ts). */
@@ -466,4 +466,18 @@ export async function monthlyFeeFor(db: Db, userId: string | null | undefined): 
   if (!userId) return 0;
   const [r] = await db<{ monthly_fee: number }[]>`select monthly_fee from public.tenant_accounts where user_id = ${userId}`;
   return r?.monthly_fee ?? 0;
+}
+
+/** What the "you are leaving" page shows (no click counted). The link is re-validated against today's rules. */
+export async function leaveInfo(db: Db, productId: string, now = new Date()): Promise<{ title: string; brand: string; host: string; recognised: string | null } | null> {
+  if (!/^[0-9a-f-]{36}$/.test(productId)) return null;
+  const [row] = await db<{ url: string | null; title: string; brand: string }[]>`
+    select coalesce(p.payment_url, t.default_payment_url) as url, p.title, t.brand_name as brand
+      from public.tenant_products p join public.tenant_accounts t on t.id = p.tenant_id
+     where p.id = ${productId} and p.status = 'published' and not p.hidden_by_admin and t.storefront_open and not t.suspended
+       and exists (select 1 from public.shop_leases l where l.user_id = t.user_id and l.status = 'active' and l.starts_at <= ${now} and l.ends_at > ${now})`;
+  if (!row?.url) return null;
+  const check = checkPaymentLink(row.url);
+  if (!check.ok) return null;
+  return { title: row.title, brand: row.brand, host: check.host.replace(/^www\./, ""), recognised: check.provider?.name ?? null };
 }

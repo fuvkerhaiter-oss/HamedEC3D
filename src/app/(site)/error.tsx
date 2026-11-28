@@ -6,6 +6,7 @@ import Link from "next/link";
 export default function SiteError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className="mx-auto flex min-h-[60dvh] max-w-xl flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <title>Something went wrong · WEGO SHIIIP</title>
       <p className="eyebrow text-brand">Something went wrong</p>
       <h1 className="font-display text-4xl leading-tight">This page didn&apos;t load</h1>
       <p className="text-ink-soft">Your cart is safe. Please try again in a moment.</p>

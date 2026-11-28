@@ -17,8 +17,9 @@ function trackErrors(page: Page) {
 test("home page links to the store and the catalog", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("WEGO SHIIIP");
-  // Hero CTA and the closing CTA band both enter the store.
+  // The headline says what the store sells; shopping the catalog comes first, the 3D store is optional.
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("pets");
+  await expect(page.getByRole("main").getByRole("link", { name: "Shop products" }).first()).toHaveAttribute("href", /^(#in-stock|\/catalog)$/);
   const enter = page.getByRole("main").getByRole("link", { name: "Enter the store" });
   await expect(enter.first()).toBeVisible();
   for (const link of await enter.all()) await expect(link).toHaveAttribute("href", "/store");
@@ -33,11 +34,11 @@ test("catalog: add to cart is priced by the server (client sends ids + quantitie
   await expect(addButtons.first()).toBeVisible();
 
   await addButtons.first().click();
-  await expect(page.getByRole("button", { name: /Open cart, 1 item/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Cart 1 item/ }).first()).toBeVisible();
 
   const priceRequest = page.waitForRequest((r) => r.url().endsWith("/api/cart/price") && r.method() === "POST");
   const priceResponse = page.waitForResponse((r) => r.url().endsWith("/api/cart/price"));
-  await page.getByRole("button", { name: /Open cart/ }).first().click();
+  await page.getByRole("button", { name: /^Cart \d+ item/ }).first().click();
 
   const body = (await priceRequest).postDataJSON() as { market: string; lines: Record<string, unknown>[] };
   expect(["EU", "US"]).toContain(body.market);

@@ -5,7 +5,7 @@ import { CheckoutBody } from "@/lib/checkout/schema";
 import { checkoutProvider, checkoutUnavailableReason, expireStalePendingOrders, legalBlocker, startCheckout } from "@/lib/checkout/service";
 import { CATALOG_TAG, expirePublicData } from "@/lib/cache/public-data";
 import { getSql } from "@/lib/db/client";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
 import { getAuthUser } from "@/lib/supabase/server";
 
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * shipping method; every amount is recomputed and stock is reserved on the server.
  */
 export async function POST(req: Request) {
-  if (rateLimited(`checkout:${clientIp(req)}`, 10, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
+  if (await rateLimitedShared(`checkout:${clientIp(req)}`, 10, 60_000)) return NextResponse.json({ error: "Too many attempts. Please wait a minute." }, { status: 429 });
   const unavailable = checkoutUnavailableReason();
   const provider = checkoutProvider();
   if (unavailable || !provider) return NextResponse.json({ error: unavailable ?? "Payments are not configured." }, { status: 503 });

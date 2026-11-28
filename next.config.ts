@@ -41,6 +41,13 @@ const nextConfig: NextConfig = {
       { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },
+  // Privacy-friendly analytics (features/analytics/track.ts): events go to our own /stats path and are forwarded to
+  // Plausible, so no third-party script or cookie is used and the CSP stays 'self'. Only when configured.
+  async rewrites() {
+    if (!process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN) return [];
+    const host = (process.env.PLAUSIBLE_HOST ?? "https://plausible.io").replace(/\/+$/, "");
+    return [{ source: "/stats/api/event", destination: `${host}/api/event` }];
+  },
   images: {
     // Only this project's PUBLIC product buckets can be resized (a wildcard would let anyone use our optimizer
     // as a free proxy for any Supabase project). Private buckets are never routed through the optimizer.

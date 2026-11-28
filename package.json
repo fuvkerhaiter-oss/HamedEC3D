@@ -11,11 +11,12 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
     "test:e2e": "playwright test",
-    "test:integration": "tsx --test \"tests/integration/**/*.test.ts\"",
+    "test:integration": "tsx --test --test-concurrency=1 \"tests/integration/**/*.test.ts\"",
     "test:db": "tsx tools/db/run-sql-tests.ts",
     "db:local": "tsx tools/db/local-db.ts",
     "admin:create": "tsx tools/admin/create-admin.ts",
     "admin:sql": "tsx tools/admin/admin-sql.ts",
+    "admin:reset-mfa": "tsx tools/admin/reset-mfa.ts",
     "db:seed-test-orders": "tsx tools/db/seed-test-orders.ts",
     "db:migrate": "tsx tools/db/migrate.ts",
     "content:legal": "tsx --env-file-if-exists=.env.local tools/content/seed-legal-pages.ts",
@@ -37,6 +38,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.1",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^26.6.6",

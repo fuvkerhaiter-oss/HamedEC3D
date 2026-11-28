@@ -3,7 +3,7 @@
  * Rate types: fixed, weight tiers (grams), order-value tiers (minor units). Optional free-shipping threshold.
  * Tiers are half-open [minValue, maxValue); maxValue null = no upper bound.
  */
-import { money, type CurrencyCode, type Money } from "../money";
+import { fromDecimalString, money, type CurrencyCode, type Money } from "../money";
 
 export type RateType = "fixed" | "weight" | "order_value";
 
@@ -114,4 +114,67 @@ export function tierProblem(tiers: readonly ShippingRateTier[]): string | null {
     if (next && (t.maxValue === null || t.maxValue > next.minValue)) return "Tiers overlap";
   }
   return null;
+}
+
+export interface CountryCoverage {
+  country: string;
+  currency: CurrencyCode;
+  /** True when an active zone covers the country AND has at least one active method priced in its currency. */
+  shippable: boolean;
+  /** Why not (admin-facing), or null when shippable. */
+  problem: string | null;
+}
+
+/**
+ * Which sales-market countries can actually be quoted. Used to offer only real destinations at checkout and to show
+ * the admin exactly what is missing (no zone, or a zone whose methods are priced in the wrong currency).
+ * A method with tiers may still refuse a specific cart (weight/value outside every tier); that is reported per quote.
+ */
+export function shippingCoverage(
+  zones: readonly ShippingZoneConfig[],
+  countries: readonly { country: string; currency: CurrencyCode }[],
+): CountryCoverage[] {
+  return countries.map(({ country, currency }) => {
+    const zone = findZone(zones, country);
+    if (!zone) return { country, currency, shippable: false, problem: "no active shipping zone includes this country" };
+    const active = zone.methods.filter((m) => m.isActive);
+    if (!active.length) return { country, currency, shippable: false, problem: `zone "${zone.name}" has no active method` };
+    const priced = active.filter((m) => m.currency === currency && (m.rateType === "fixed" ? m.fixedAmount !== null : m.rates.length > 0));
+    if (!priced.length) {
+      const other = [...new Set(active.map((m) => m.currency))].join("/");
+      return { country, currency, shippable: false, problem: `zone "${zone.name}" has methods in ${other} only; customers here pay in ${currency}` };
+    }
+    return { country, currency, shippable: true, problem: null };
+  });
+}
+
+/**
+ * Parses the admin's tier text ("min-max: price", one per line; empty max = "and above").
+ * Weight bounds are whole grams; order-value bounds and prices are decimal money in the method's currency,
+ * converted exactly (no float math). Throws an Error with an admin-readable message on the first bad line.
+ */
+export function parseRateTiers(text: string, rateType: RateType, currency: CurrencyCode): ShippingRateTier[] {
+  const toMinor = (v: string): number => fromDecimalString(v, currency).amount;
+  return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((line) => {
+    const m = /^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)?\s*:\s*(\d+(?:\.\d+)?)$/.exec(line);
+    if (!m) throw new Error(`Tier “${line}” must look like “0-2000: 6.90”`);
+    const [, min, max, price] = m;
+    if (rateType === "weight" && [min, max].some((x) => x !== undefined && !/^\d+$/.test(x))) throw new Error(`Weights are whole grams in “${line}”`);
+    const money2 = /^\d+(\.\d{1,2})?$/;
+    if (![price, ...(rateType === "order_value" ? [min, max] : [])].every((x) => x === undefined || money2.test(x))) {
+      throw new Error(`Use at most 2 decimals in “${line}”`);
+    }
+    const bound = (v: string) => (rateType === "weight" ? Number(v) : toMinor(v));
+    return { minValue: bound(min!), maxValue: max !== undefined ? bound(max) : null, amount: toMinor(price!) };
+  });
+}
+
+/**
+ * Normalises a zone's country list (ISO 3166-1 alpha-2, spaces/commas/semicolons) and rejects codes this store
+ * does not sell to, so a typo ("UK", "GR" vs "EL") can't silently leave a country unshippable.
+ */
+export function parseZoneCountries(text: string, allowed: readonly string[]): { countries: string[]; unknown: string[] } {
+  const codes = [...new Set(text.split(/[\s,;]+/).map((c) => c.trim().toUpperCase()).filter(Boolean))];
+  const ok = new Set(allowed);
+  return { countries: codes.filter((c) => ok.has(c)), unknown: codes.filter((c) => !ok.has(c)) };
 }

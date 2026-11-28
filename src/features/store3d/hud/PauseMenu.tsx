@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { unlockVoiceAudio } from "../multiplayer/net";
+import { markEntered3d, track } from "@/features/analytics/track";
 import { isMusicMuted, startStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
 import { getSensitivity, resetTouchInput, SENSITIVITY_LEVELS, setSensitivity, type SensitivityId } from "../input/touch-input";
 import { useStoreUi } from "../ui-store";
@@ -108,6 +109,10 @@ export function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter:
           .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape"))
           .catch(() => {});
       }
+    }
+    if (!resumed) {
+      markEntered3d();
+      track("store3d_enter");
     }
     onEnter();
   };

@@ -23,12 +23,22 @@ after(() => t.close());
 test("a product created in the admin appears in the storefront catalog only once published", async () => {
   const cat = await saveCategory(t.sql, admin, { name: "Pet Food", description: "", parentId: null, isActive: true });
   const id = await saveProduct(t.sql, admin, { name: "Kibble Deluxe", description: "Test product", categoryId: null, brand: null, tags: ["dog"], seoTitle: null, seoDescription: null, isFeatured: false });
-  assert.deepEqual(await publishProblems(t.sql, id), ["Choose a category", "Add at least one active variant"]);
-  await saveProduct(t.sql, admin, { id, name: "Kibble Deluxe", description: "Test product", categoryId: cat, brand: "Acme", tags: ["dog"], seoTitle: null, seoDescription: null, isFeatured: false });
+  assert.deepEqual(await publishProblems(t.sql, id), [
+    "Choose a category", "Write a description (at least 40 characters)", "Add at least one photo", "Add at least one active variant",
+  ]);
+  const sampleCat = await saveCategory(t.sql, admin, { name: "Samples", description: "", parentId: null, isActive: true });
+  const sample = await saveProduct(t.sql, admin, { name: "Sample Thing", description: "x".repeat(60), categoryId: sampleCat, brand: null, tags: [], seoTitle: null, seoDescription: null, isFeatured: false });
+  await t.sql`update public.products set is_mock = true where id = ${sample}`;
+  assert.ok((await publishProblems(t.sql, sample, { NODE_ENV: "production" })).includes("Sample products can't be published on the live store"));
+  assert.ok(!(await publishProblems(t.sql, sample, { NODE_ENV: "development" })).some((x) => x.startsWith("Sample")));
+  await saveProduct(t.sql, admin, { id, name: "Kibble Deluxe", description: "Grain-free dry food for adult dogs, 2 kg resealable bag.", categoryId: cat, brand: "Acme", tags: ["dog"], seoTitle: null, seoDescription: null, isFeatured: false });
   await saveVariant(t.sql, admin, {
     productId: id, sku: "KIB-2KG", name: "2 kg", attributes: { size: "2 kg" }, isActive: true, sortOrder: 1, weightGrams: 2000, barcode: null,
     priceEur: 1999, compareEur: null, priceUsd: 2199, compareUsd: null, lowStockThreshold: 3, initialStock: 10, supplier: null,
   });
+  assert.deepEqual(await publishProblems(t.sql, id), ["Add at least one photo"]);
+  await t.sql`insert into public.product_images (product_id, storage_path, is_primary) values (${id}, ${id + "/a.webp"}, true)`;
+  assert.deepEqual(await publishProblems(t.sql, id), []);
   const before = await loadCatalogSql(t.sql, "");
   assert.ok(!before.products.some((p) => p.slug === "kibble-deluxe"), "drafts are not in the catalog");
   const res = await setProductStatus(t.sql, admin, [id], "published");
@@ -97,8 +107,12 @@ test("CSV import validates everything first and writes nothing on error", async 
   assert.equal((await t.sql`select 1 from public.products where slug = 'new-a'`).length, 0, "dry run writes nothing");
   const real = await importProductsCsv(t.sql, admin, good, false);
   assert.equal(real.created, 1);
+  // A CSV has no photo or description: asked for "published", kept as draft and reported (never silently).
+  assert.equal(real.keptDraft.length, 1);
+  assert.equal(real.keptDraft[0]!.slug, "new-a");
+  assert.ok(real.keptDraft[0]!.problems.includes("Add at least one photo"));
   const [p] = await t.sql`select status from public.products where slug = 'new-a'`;
-  assert.equal(p!.status, "published");
+  assert.equal(p!.status, "draft");
   const csv = await exportProductsCsv(t.sql);
-  assert.match(csv, /new-a,New A,pantry,published,,,,NEW-A-1,1 pc,3\.50,3\.99,5/);
+  assert.match(csv, /new-a,New A,pantry,draft,,,,NEW-A-1,1 pc,3\.50,3\.99,5/);
 });

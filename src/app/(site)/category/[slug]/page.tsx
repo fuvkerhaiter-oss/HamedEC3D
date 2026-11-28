@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TrackView } from "@/features/analytics/TrackView";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -51,6 +52,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   return (
     <div className="pb-20">
+      <TrackView event="category_view" props={{ category: category.slug }} />
       {indexable.length > 0 && <JsonLd data={itemListLd(siteUrl(), category.name, indexable)} />}
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-10">

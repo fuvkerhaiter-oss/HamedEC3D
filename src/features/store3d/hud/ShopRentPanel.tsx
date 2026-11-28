@@ -94,16 +94,12 @@ export function ShopRentPanel({ shopId, shops, onClose }: { shopId: string; shop
               <ul className="mt-5 grid grid-cols-3 gap-2">
                 {quotes.map((q) => (
                   <li key={q.plan} className={`relative rounded-2xl p-3 text-center ${q.plan === "yearly" ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>
-                    {q.promo && q.discountPercent > 0 && (
-                      <span className="absolute -right-1.5 -top-2 rounded-lg bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">−{q.discountPercent}%</span>
-                    )}
                     <p className={`text-[11px] font-bold uppercase tracking-wider ${q.plan === "yearly" ? "text-amber" : "text-brand"}`}>{q.months === 1 ? "Month" : q.months === 12 ? "Year" : `${q.months} months`}</p>
-                    {q.promo && <p className={`mt-1 text-xs ${q.plan === "yearly" ? "text-white/55" : "text-ink-soft"}`}><s>{fmtPrice(q.regularAmount, currency)}</s></p>}
                     <p className="font-display text-2xl font-extrabold leading-tight">{fmtPrice(q.amount, currency)}</p>
                   </li>
                 ))}
               </ul>
-              {quotes[0]?.promoEndsAt && <p className="mt-3 text-center text-xs text-ink-soft">Launch offer until {fmtDay(quotes[0].promoEndsAt)}</p>}
+              {quotes[0]?.promoEndsAt && <p className="mt-3 text-center text-xs text-ink-soft">Introductory prices for bookings paid by {fmtDay(quotes[0].promoEndsAt)}</p>}
             </>
           )}
 

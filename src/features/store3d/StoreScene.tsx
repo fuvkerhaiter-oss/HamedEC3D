@@ -43,6 +43,9 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
     return (p: Product) => layout.colors[p.id] ?? cat.get(p.categoryId) ?? categoryColor(undefined);
   }, [catalog.categories, layout.colors]);
   const productById = useMemo(() => new Map(catalog.products.map((p) => [p.id, p])), [catalog.products]);
+  // Progressive loading: seasonal decoration (~3 MB of models) starts downloading only once the core store is on
+  // screen, so it never competes with the building, shelves and trolley for bandwidth.
+  const coreReady = useStoreUi((s) => s.ready);
 
   return (
     <>
@@ -50,7 +53,7 @@ export function StoreScene({ env, layout, catalog, lowPower = false }: { env: En
       <SupermarketModel />
       <NewWing env={env} lowPower={lowPower} supporters={catalog.supporters} />
       <RentalShops shops={catalog.shops} />
-      {CHRISTMAS_ON && <ChristmasDecor env={env} lowPower={lowPower} />}
+      {CHRISTMAS_ON && coreReady && <ChristmasDecor env={env} lowPower={lowPower} />}
       {CHRISTMAS_ON && <XmasSpeakers env={env} lowPower={lowPower} />}
       <ShelfBlockers env={env} />
       {catalog.products.map((p) => {

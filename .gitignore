@@ -17,3 +17,6 @@ supabase/.temp/
 3D models/
 christmas/
 skills_install/
+
+# Assets withdrawn from the public site until a licence is confirmed (kept on disk, never served or committed)
+licensing-hold/

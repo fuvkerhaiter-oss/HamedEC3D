@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 const ENDPOINT = "/api/visit";
-const PING_MS = 60_000;
+const PING_MS = 120_000; // "online now" = seen in the last 5 min: two pings cover it at half the DB writes of 1/min
 
 function send(payload: Record<string, unknown>) {
   const body = JSON.stringify(payload);

@@ -3,7 +3,7 @@ import { ADMIN_COOKIE } from "@/lib/admin/guard";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { logError } from "@/lib/log";
 import { clientIp, rateLimited } from "@/lib/rate-limit";
-import { cleanPath, geoFromHeaders, isTrackedPath, parseUserAgent, referrerHost, visitorKey } from "@/lib/visitors/parse";
+import { anonymizeIp, cleanPath, geoFromHeaders, isTrackedPath, parseUserAgent, referrerHost, visitorKey } from "@/lib/visitors/parse";
 import { recordHeartbeat, recordPageView } from "@/lib/visitors/service";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const done = () => new Response(null, { status: 204, headers: { "Cache-Control":
 const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 
 /**
- * Visitor log beacon (features/visitors/VisitBeacon.tsx): one call per page view, plus a "ping" every minute
+ * Visitor log beacon (features/visitors/VisitBeacon.tsx): one call per page view, plus a "ping" every 2 minutes
  * while the tab is visible. IP, device and country are read here on the server, never trusted from the body.
  * Always answers 204 so the endpoint reveals nothing. Staff (admin cookie) are not counted.
  */
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     const geo = geoFromHeaders(req.headers);
     const screen = str(body.screen, 20);
     await recordPageView(db, {
-      ip,
+      ip: anonymizeIp(ip),
       visitorKey: key,
       path,
       ...geo,

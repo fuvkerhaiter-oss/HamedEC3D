@@ -4,7 +4,7 @@ import { notify } from "@/lib/admin/services/notifications";
 import { getSql, isDbConfigured } from "@/lib/db/client";
 import { getEmailProvider } from "@/lib/email/provider";
 import { customerMessageEmail } from "@/lib/email/templates";
-import { clientIp, rateLimited } from "@/lib/rate-limit";
+import { clientIp, rateLimitedShared } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ const Body = z.object({
  * customer as reply-to (when an email provider is configured).
  */
 export async function POST(req: Request) {
-  if (rateLimited(`contact:${clientIp(req)}`, 3, 10 * 60_000)) return NextResponse.json({ error: "Too many messages. Please try again later." }, { status: 429 });
+  if (await rateLimitedShared(`contact:${clientIp(req)}`, 3, 10 * 60_000)) return NextResponse.json({ error: "Too many messages. Please try again later." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     const f = parsed.error.issues[0]?.path[0];

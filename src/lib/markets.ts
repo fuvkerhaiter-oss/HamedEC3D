@@ -36,3 +36,8 @@ export function marketForCountry(countryCode: string): Market | null {
   if (cc === "US") return MARKETS.US;
   return null;
 }
+
+/** Every country a market sells to, with its checkout currency. */
+export function marketCountries(): { country: string; currency: CurrencyCode }[] {
+  return [...[...EU_COUNTRIES].map((country) => ({ country, currency: MARKETS.EU.currency })), { country: "US", currency: MARKETS.US.currency }];
+}

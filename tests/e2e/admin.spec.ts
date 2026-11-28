@@ -66,8 +66,16 @@ test("super admin creates and publishes a product; it appears in the storefront 
   await page.goto("/admin/products/new");
   await page.getByLabel("Name", { exact: true }).fill("E2E Dog Biscuits");
   await page.getByLabel("Category").selectOption({ label: "Snacks" });
+  await page.getByLabel("Description", { exact: true }).fill("Crunchy oven-baked biscuits for adult dogs, made for the E2E test run.");
   await page.getByRole("button", { name: "Create product" }).click();
   await expect(page).toHaveURL(/\/admin\/products\/[0-9a-f-]{36}$/);
+
+  // Publishing needs a photo (publish checks): upload one on the product page.
+  const sharp = (await import("sharp")).default;
+  const photo = await sharp({ create: { width: 640, height: 480, channels: 3, background: "#c08040" } }).png().toBuffer();
+  await page.locator('input[type="file"][multiple]').setInputFiles([{ name: "dog.png", mimeType: "image/png", buffer: photo }]);
+  await page.getByRole("button", { name: "Upload 1 image" }).click();
+  await expect(page.getByRole("heading", { name: "Images (1)" })).toBeVisible({ timeout: 30_000 });
 
   const variant = page.locator("form").filter({ has: page.getByRole("button", { name: "Add variant" }) });
   await variant.getByLabel("SKU", { exact: true }).fill("E2E-DOG-1");
