@@ -26,9 +26,10 @@ test("visitor log keeps only a shortened IP", () => {
   assert.equal(anonymizeIp("203.0.113.57", { VISITOR_LOG_FULL_IP: "true" }), "203.0.113.57");
 });
 
-test("multiplayer is off in production unless switched on", () => {
-  assert.equal(multiplayerEnabled(undefined, "production"), false);
+test("multiplayer is on unless explicitly switched off", () => {
+  assert.equal(multiplayerEnabled(undefined, "production"), true);
   assert.equal(multiplayerEnabled("on", "production"), true);
+  assert.equal(multiplayerEnabled("off", "production"), false);
   assert.equal(multiplayerEnabled(undefined, "development"), true);
   assert.equal(multiplayerEnabled("off", "development"), false);
 });

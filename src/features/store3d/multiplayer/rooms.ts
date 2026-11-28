@@ -95,10 +95,8 @@ export function cleanBasket(raw: unknown): string[] {
  * there is no server-side moderation yet. So they are OFF in production unless the owner turns them on on purpose
  * (NEXT_PUBLIC_MULTIPLAYER=on, after updating the privacy policy and setting up a TURN relay). On in development.
  */
-export function multiplayerEnabled(flag: string | undefined = process.env.NEXT_PUBLIC_MULTIPLAYER, nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
-  if (flag === "on") return true;
-  if (flag === "off") return false;
-  return nodeEnv !== "production";
+export function multiplayerEnabled(flag: string | undefined = process.env.NEXT_PUBLIC_MULTIPLAYER, _nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
+  return flag !== "off";
 }
 
 /** localStorage key: the shopper read and accepted the voice notice (bump the version when the notice changes). */

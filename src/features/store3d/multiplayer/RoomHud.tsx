@@ -64,7 +64,8 @@ export function RoomHud() {
     if (joined) useStoreUi.getState().showToast(`👋 ${joined.name} walked into the store`);
   }, [members, status]);
 
-  if (inspect || status === "off") return null;
+  if (inspect) return null;
+  if (status === "off") return <EmoteWheel />;
   const count = members.length + 1;
 
   return (
