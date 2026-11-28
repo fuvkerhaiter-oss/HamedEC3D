@@ -111,6 +111,14 @@ export function AccountNavButton({ dark = false }: { dark?: boolean }) {
             >
               <span>🔒</span> Security & Privacy
             </Link>
+            {/* Shop renters manage their 3D shop (brand, products, opening) in the seller dashboard. */}
+            <Link
+              href="/seller"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
+            >
+              <span>🏪</span> My rented shop
+            </Link>
           </div>
 
           <div className="pt-1 border-t border-line">
