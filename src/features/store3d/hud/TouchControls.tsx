@@ -5,6 +5,7 @@ import { cartCount, useCart } from "@/features/cart/cart-store";
 import { interactWithTarget, openCartFromStore } from "../actions";
 import { joystickVector, resetTouchInput, SPRINT_FROM, touchInput } from "../input/touch-input";
 import { useStoreUi } from "../ui-store";
+import { useClawGame } from "../wing/claw-machine";
 
 /** Knob travel radius (px). The base is drawn a bit larger than this. */
 const TRAVEL = 52;
@@ -257,8 +258,9 @@ function RoundButton({
 
 function ActionButtons() {
   const target = useStoreUi((s) => s.target);
+  const clawPhase = useClawGame((s) => s.phase);
   const count = useCart((s) => cartCount(s.lines));
-  const interactCaption = target ? (target.kind === "product" || target.kind === "tenantProduct" ? "Inspect" : target.kind === "wheel" ? "Spin" : target.kind === "shop" ? (target.rented ? "Info" : "Rent") : "Checkout") : "Interact";
+  const interactCaption = target ? (target.kind === "product" || target.kind === "tenantProduct" ? "Inspect" : target.kind === "claw" ? (clawPhase === "idle" ? "Play" : clawPhase === "aimX" || clawPhase === "aimZ" ? "Stop" : "Wait") : target.kind === "wheel" ? "Spin" : target.kind === "shop" ? (target.rented ? "Info" : "Rent") : "Checkout") : "Interact";
 
   return (
     <div

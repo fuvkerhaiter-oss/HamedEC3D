@@ -9,6 +9,7 @@ import { getMusicVolume, isMusicMuted, setMusicDucked, setMusicVolume, stopStore
 import type { StoreCatalog } from "../StoreScene";
 import { addToTrolley } from "../trolley/addToTrolley";
 import { useStoreUi } from "../ui-store";
+import { clawPhaseLabel, useClawGame } from "../wing/claw-machine";
 import { ProductPanel } from "./ProductPanel";
 import { ShopRentPanel } from "./ShopRentPanel";
 import { TenantProductPanel } from "./TenantProductPanel";
@@ -22,6 +23,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
   const locked = useStoreUi((s) => s.locked);
   const ready = useStoreUi((s) => s.ready);
   const target = useStoreUi((s) => s.target);
+  const clawPhase = useClawGame((s) => s.phase);
   const openProductId = useStoreUi((s) => s.openProductId);
   const requestLock = useStoreUi((s) => s.requestLock);
   const touchMode = useStoreUi((s) => s.touchMode);
@@ -94,7 +96,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
             ) : (
               <kbd className="rounded-md bg-cream px-2 py-0.5 font-mono text-sm text-ink">E</kbd>
             )}
-            <span className="truncate text-sm sm:text-base">{target.kind === "wheel" ? "Spin the lucky wheel" : target.kind === "tenantProduct" ? `See ${target.label}` : target.kind === "shop" ? (target.rented ? `${target.label} · rented` : `Rent ${target.label}`) : "Review cart & checkout"}</span>
+            <span className="truncate text-sm sm:text-base">{target.kind === "claw" ? clawPhaseLabel[clawPhase] : target.kind === "wheel" ? "Spin the lucky wheel" : target.kind === "tenantProduct" ? `See ${target.label}` : target.kind === "shop" ? (target.rented ? `${target.label} · rented` : `Rent ${target.label}`) : "Review cart & checkout"}</span>
           </div>
         </div>
       )}

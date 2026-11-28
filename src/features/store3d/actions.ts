@@ -2,6 +2,7 @@
 
 import { useCart } from "@/features/cart/cart-store";
 import { useStoreUi } from "./ui-store";
+import { pressClaw } from "./wing/claw-machine";
 import { requestSpin } from "./wing/lucky-wheel";
 
 /**
@@ -15,6 +16,10 @@ export function interactWithTarget(): boolean {
   if (!ui.locked || !ui.target) return false;
   if (ui.target.kind === "wheel") {
     requestSpin(); // stays in play: the shopper watches the wheel
+    return true;
+  }
+  if (ui.target.kind === "claw") {
+    pressClaw(); // stays in play: the shopper steers the claw with repeated presses
     return true;
   }
   if (ui.target.kind === "shop") ui.openShop(ui.target.shopId);

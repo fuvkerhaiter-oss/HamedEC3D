@@ -6,6 +6,7 @@ export type InteractionTarget =
   | { key: string; kind: "product"; productId: string; label: string }
   | { key: "checkout"; kind: "checkout"; label: string }
   | { key: "lucky-wheel"; kind: "wheel"; label: string }
+  | { key: "prize-claw"; kind: "claw"; label: string }
   | { key: string; kind: "shop"; shopId: string; label: string; rented: boolean }
   /** A shop renter's product on their shelves (wing/TenantProducts). */
   | { key: string; kind: "tenantProduct"; productId: string; shopId: string; label: string };
