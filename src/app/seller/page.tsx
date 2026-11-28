@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { fmtDay } from "@/features/rentals/format";
 import { OpenToggle } from "@/features/seller/forms";
@@ -48,7 +49,7 @@ export default async function SellerOverview() {
         actions={
           <>
             <Link href="/seller/products/new" className="btn-primary px-5 py-2.5">+ Add product</Link>
-            <a href="/store" target="_blank" rel="noopener" className="btn-ghost px-5 py-2.5">Open the 3D store ↗</a>
+            <a href="/store" target="_blank" rel="noopener" className="btn-ghost px-5 py-2.5">Open the 3D store<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" /></a>
           </>
         }
       />

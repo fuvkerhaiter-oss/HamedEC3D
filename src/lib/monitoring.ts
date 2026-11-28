@@ -34,7 +34,7 @@ export function notifyOps(label: string, e: unknown, env: Partial<NodeJS.Process
   const url = alertWebhookUrl(env);
   if (!url || !shouldAlert(label)) return;
   const err = safeError(e);
-  const text = `⚠️ WEGO SHIIIP: ${label} — ${err.name}${err.code ? ` ${err.code}` : ""}: ${err.message}`.slice(0, 900);
+  const text = `[ALERT] WEGO SHIIIP: ${label} — ${err.name}${err.code ? ` ${err.code}` : ""}: ${err.message}`.slice(0, 900);
   const sent = fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

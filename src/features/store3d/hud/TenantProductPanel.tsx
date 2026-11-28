@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useEffect } from "react";
 import { fmtPrice, type PublicShop } from "@/features/rentals/format";
 
@@ -59,7 +60,7 @@ export function TenantProductPanel({ shopId, productId, shops, onClose }: { shop
             {p.buyHost ? (
               <>
                 <a href={`/leaving/${p.id}`} target="_blank" rel="noopener" className="btn-yellow w-full py-3.5" onClick={() => onClose(false)}>
-                  Buy on {p.buyHost} ↗
+                  Buy on {p.buyHost}<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
                 </a>
                 <p className="mt-2 text-center text-xs text-ink-soft">
                   Sold by {store.brand}. You pay {store.brand} directly on their page; they ship and handle your order.

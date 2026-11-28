@@ -1,5 +1,6 @@
 "use client";
 
+import { UserRound, LayoutDashboard, Package, MapPin, ShieldCheck, Store, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./useAuth";
@@ -46,8 +47,8 @@ export function AccountNavButton({ dark = false }: { dark?: boolean }) {
         }`}
         aria-label="Sign in or join WEGO SHIIIP"
       >
-        <span aria-hidden="true">👤</span>
-        <span className="hidden sm:inline">Sign In</span>
+        <UserRound aria-hidden className="h-4 w-4" strokeWidth={2} />
+        <span className="hidden whitespace-nowrap sm:inline">Sign in</span>
       </button>
     );
   }
@@ -88,28 +89,28 @@ export function AccountNavButton({ dark = false }: { dark?: boolean }) {
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
             >
-              <span>👤</span> Overview
+              <LayoutDashboard aria-hidden className="h-4 w-4" strokeWidth={2} /> Overview
             </Link>
             <Link
               href="/account/orders"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
             >
-              <span>📦</span> Orders
+              <Package aria-hidden className="h-4 w-4" strokeWidth={2} /> Orders
             </Link>
             <Link
               href="/account/addresses"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
             >
-              <span>🏡</span> Saved Addresses
+              <MapPin aria-hidden className="h-4 w-4" strokeWidth={2} /> Saved Addresses
             </Link>
             <Link
               href="/account/security"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
             >
-              <span>🔒</span> Security & Privacy
+              <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} /> Security & Privacy
             </Link>
             {/* Shop renters manage their 3D shop (brand, products, opening) in the seller dashboard. */}
             <Link
@@ -117,7 +118,7 @@ export function AccountNavButton({ dark = false }: { dark?: boolean }) {
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink hover:bg-sand transition"
             >
-              <span>🏪</span> My rented shop
+              <Store aria-hidden className="h-4 w-4" strokeWidth={2} /> My rented shop
             </Link>
           </div>
 
@@ -127,7 +128,7 @@ export function AccountNavButton({ dark = false }: { dark?: boolean }) {
                 type="submit"
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
               >
-                <span>🚪</span> Sign Out
+                <LogOut aria-hidden className="h-4 w-4" strokeWidth={2} /> Sign Out
               </button>
             </form>
           </div>

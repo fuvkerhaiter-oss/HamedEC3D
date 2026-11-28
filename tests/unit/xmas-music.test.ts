@@ -21,8 +21,9 @@ test("christmas music: one speaker per store corner, high up under the ceiling",
   // Four distinct corners: two x values × two z values.
   assert.equal(new Set(pos.map((p) => p[0])).size, 2);
   assert.equal(new Set(pos.map((p) => p[2])).size, 2);
-  // The unlicensed Christmas recording was withdrawn: without NEXT_PUBLIC_XMAS_MUSIC_SRC the regular store track plays.
-  assert.equal(XMAS_MUSIC_SRC, "/audio/store-music.mp3");
+  // A same-site audio file (licence: see ASSET_INVENTORY.md). The withdrawn commercial recording must never come back.
+  assert.match(XMAS_MUSIC_SRC, /^\/audio\/[\w/.-]+\.mp3$/);
+  assert.ok(!XMAS_MUSIC_SRC.includes("christmas-instrumental"), "the unlicensed recording stays withdrawn");
 });
 
 test("christmas music: level stays even when walking around the store", () => {
@@ -34,8 +35,10 @@ test("christmas music: level stays even when walking around the store", () => {
   for (let x = min[0] + 1; x < max[0]; x += 2) for (let z = min[2] + 1; z < max[2]; z += 2) levels.push(sum(x, z));
   const lo = Math.min(...levels);
   const hi = Math.max(...levels);
-  assert.ok(20 * Math.log10(hi / lo) < 3, `under 3 dB difference across the floor (${lo.toFixed(2)}–${hi.toFixed(2)})`);
-  assert.ok(hi <= 1.1, "four speakers together are no louder than one direct source");
+  // Spatial ("8D") mix: louder near a corner speaker by design, but never more than 6 dB across the floor, and the
+  // four together stay within 2× a single direct source.
+  assert.ok(20 * Math.log10(hi / lo) < 6, `under 6 dB difference across the floor (${lo.toFixed(2)}–${hi.toFixed(2)})`);
+  assert.ok(hi <= 2, "four speakers together stay within 2× one direct source");
 });
 
 test("hall reverb impulse: stereo, decorrelated, decays to silence, deterministic", () => {

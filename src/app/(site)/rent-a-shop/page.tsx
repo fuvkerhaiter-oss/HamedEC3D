@@ -1,3 +1,5 @@
+import { Store, Signpost, Globe, Wrench } from "lucide-react";
+import { IconTile } from "@/components/IconTile";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -25,10 +27,10 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: "🏬", title: "A real shop unit", body: "A glass-fronted room 9 m wide and 14 m deep, with lighting, shelving and a feature wall." },
-  { icon: "🪧", title: "Your brand on the sign", body: "Your brand name on the illuminated sign above the door, seen by every shopper who walks past." },
-  { icon: "🌍", title: "EU + US shoppers", body: "The 3D store runs in the browser on computers and phones, for shoppers in Europe and the United States." },
-  { icon: "🛠️", title: "We set it up", body: "Send us your logo and products; our team dresses your shop. Nothing to install." },
+  { icon: Store, title: "A real shop unit", body: "A glass-fronted room 9 m wide and 14 m deep, with lighting, shelving and a feature wall." },
+  { icon: Signpost, title: "Your brand on the sign", body: "Your brand name on the illuminated sign above the door, seen by every shopper who walks past." },
+  { icon: Globe, title: "EU + US shoppers", body: "The 3D store runs in the browser on computers and phones, for shoppers in Europe and the United States." },
+  { icon: Wrench, title: "We set it up", body: "Send us your logo and products; our team dresses your shop. Nothing to install." },
 ];
 
 const TERMS = [
@@ -115,7 +117,7 @@ export default async function RentAShopPage({ searchParams }: { searchParams: Pr
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-3xl bg-white p-6 ring-1 ring-line">
-                <span aria-hidden className="text-3xl">{f.icon}</span>
+                <IconTile icon={f.icon} />
                 <h3 className="mt-4 font-display text-xl">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.body}</p>
               </div>

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rectsFromBoxes, resolve } from "../../src/features/store3d/collision";
-import { GATE_X } from "../../src/features/store3d/env/extension";
+import { GATE_X, PLAZA_PROPS } from "../../src/features/store3d/env/extension";
 import { STORE_CONFIG, STORE_ENV } from "../../src/features/store3d/env/supermarket";
 import {
   BOT_COUNT, BOT_SHAPE, PERSONAS, botLabel, botPose, botsEnabled, buildBotWorld, buildNavGrid, createBots, findPath, isFree, lineFree, newPose, stepBots,
@@ -29,14 +29,16 @@ test("exactly 5 bots, all labelled as bots with distinct names", () => {
   assert.equal(new Set(labels).size, 5);
 });
 
-test("walkable grid: aisles are free, shelves/behind the chains are not", () => {
+test("walkable grid: the plaza is free around its attractions; attractions/behind the chains are not", () => {
   const g = WORLD.grid;
   assert.ok(isFree(g, SEED[0], SEED[1]), "spawn is walkable");
   assert.ok(isFree(g, -3, -1.3), "middle of the benchmark aisle");
-  assert.ok(!isFree(g, -3, -3.2), "inside gondola L1");
+  // The centre gondolas were replaced by the plaza (env/extension.ts PLAZA_PROPS): its islands are obstacles.
+  assert.ok(!isFree(g, PLAZA_PROPS.claw.x, PLAZA_PROPS.claw.z), "inside the claw machine");
+  assert.ok(!isFree(g, PLAZA_PROPS.center.x, PLAZA_PROPS.center.z), "inside the centre island");
   assert.ok(!isFree(g, GATE_X + 3, 0), "inside the chained wing (unreachable)");
   assert.ok(!isFree(g, GATE_X - 1, 0), "under the updates board");
-  assert.ok(WORLD.shelfSpots.length > 10, `shelf spots ${WORLD.shelfSpots.length}`);
+  assert.ok(WORLD.shelfSpots.length >= 6, `look spots ${WORLD.shelfSpots.length}`);
   assert.ok(WORLD.danceSpots.length >= 3, `dance spots ${WORLD.danceSpots.length}`);
   for (const s of [...WORLD.shelfSpots, ...WORLD.danceSpots]) assert.ok(isFree(g, s.x, s.z));
 });

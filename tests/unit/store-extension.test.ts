@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rectsFromBoxes, step, type Motion, type ShopperShape } from "../../src/features/store3d/collision";
-import { FIXTURE_REMOVALS, GATE_X, NEW_END_X, OLD_END_X, extendLayout, fixtureRemovalFor } from "../../src/features/store3d/env/extension";
+import { FIXTURE_REMOVALS, GATE_X, NEW_END_X, OLD_END_X, extendLayout, fixtureRemovalFor, plazaColliders } from "../../src/features/store3d/env/extension";
 import { STORE_ENV, SUPERMARKET } from "../../src/features/store3d/env/supermarket";
 import type { Box } from "../../src/features/store3d/env/types";
 import { chainLength, chainPoint, chainSegments } from "../../src/features/store3d/wing/chains";
@@ -35,7 +35,8 @@ test("the old far wall is gone and the room now ends at the new far wall", () =>
 });
 
 test("removed fixtures (chest freezers, refrigerated cabinets) leave the layout; floor/walls/ceiling stay", () => {
-  assert.equal(STORE_ENV.fixtures.length, SUPERMARKET.fixtures.length - FIXTURE_REMOVALS.length);
+  // Removed fixtures go; the plaza islands that replace the centre gondolas are added.
+  assert.equal(STORE_ENV.fixtures.length, SUPERMARKET.fixtures.length - FIXTURE_REMOVALS.length + plazaColliders().length);
   for (const f of FIXTURE_REMOVALS) {
     assert.ok(SUPERMARKET.fixtures.some((b) => b.min[0] === f.collider.min[0] && b.min[2] === f.collider.min[2]), `${f.id} existed`);
     assert.ok(!STORE_ENV.fixtures.some((b) => b.min[0] === f.collider.min[0] && b.min[2] === f.collider.min[2]), `${f.id} removed`);
@@ -44,7 +45,8 @@ test("removed fixtures (chest freezers, refrigerated cabinets) leave the layout;
   assert.equal(fixtureRemovalFor(13.5, 1, 6)?.id, "fridges-short");
   assert.equal(fixtureRemovalFor(13.5, 4, 0), null, "nothing above the fridges (wall/ceiling) goes");
   assert.equal(fixtureRemovalFor(13.5, -0.02, 0), null, "floor stays");
-  assert.equal(fixtureRemovalFor(5, 1, 0), null);
+  assert.equal(fixtureRemovalFor(5, 1, 0)?.id, "gondola-r2", "centre gondolas are removed for the plaza");
+  assert.equal(fixtureRemovalFor(5, 1, 2.4), null, "aisle floor between the old gondolas stays");
 });
 
 test("a shopper walks from the old store into the new hall and is stopped by the chains", () => {

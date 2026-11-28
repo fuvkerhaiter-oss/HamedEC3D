@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { DefaultLinkForm } from "@/features/seller/forms";
 import { Callout, PageTitle, Panel, Pill } from "@/features/seller/ui";
@@ -58,7 +59,7 @@ export default async function SellerPaymentsPage() {
                   </div>
                   <p className="mt-1 text-sm text-ink-soft">{p.howTo}</p>
                   <a href={p.createUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold underline">
-                    Open {p.name.split(" ")[0]} ↗
+                    Open {p.name.split(" ")[0]}<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
                   </a>
                 </li>
               ))}

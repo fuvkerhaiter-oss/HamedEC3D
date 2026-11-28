@@ -1,5 +1,6 @@
 "use client";
 
+import { Hand } from "lucide-react";
 import Image from "next/image";
 import { canOptimize } from "@/lib/catalog/image";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -185,7 +186,7 @@ function PeekCallout({ product, catalog, leaving }: { product: Product; catalog:
                 </div>
                 <p className="vsw-peek-desc" style={{ "--i": 4 } as CSSProperties}>{product.description}</p>
                 <p className="vsw-peek-hint" style={{ "--i": 5 } as CSSProperties}>
-                  {touchMode ? <span className="vsw-peek-key">Tap ✋</span> : <kbd className="vsw-peek-key">E</kbd>}
+                  {touchMode ? <span className="vsw-peek-key inline-flex items-center gap-1">Tap <Hand aria-hidden className="h-3.5 w-3.5" strokeWidth={2} /></span> : <kbd className="vsw-peek-key">E</kbd>}
                   Details &amp; add to trolley
                 </p>
               </div>

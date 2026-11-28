@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Bot, CircleHelp, Monitor, Smartphone, Tablet, type LucideIcon } from "lucide-react";
 import { ActivityTabs } from "@/features/admin/ActivityTabs";
 import { AutoRefresh } from "@/features/admin/AutoRefresh";
 import { Badge, BarChart, Card, CsvLink, EmptyState, HBars, Notice, PageHeader, Pagination, Stat, Table, fmtDate } from "@/features/admin/ui";
@@ -6,7 +7,7 @@ import { resolveRange } from "@/lib/admin/date-range";
 import { requirePage } from "@/lib/admin/guard";
 import { getSql } from "@/lib/db/client";
 import { countryName } from "@/lib/storefront/supporters";
-import { flagEmoji, fmtDuration, isPrivateIp } from "@/lib/visitors/parse";
+import { fmtDuration, isPrivateIp } from "@/lib/visitors/parse";
 import { liveVisits, listVisits, pagesForVisits, visitCountries, visitReport, VISIT_RETENTION_DAYS, type VisitFilter, type VisitRow } from "@/lib/visitors/service";
 
 export const metadata = { title: "Website visitors" };
@@ -14,12 +15,16 @@ export const dynamic = "force-dynamic";
 
 const PERIODS = { today: "Today", "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days" } as const;
 const DEVICES = { desktop: "Computer", mobile: "Phone", tablet: "Tablet", bot: "Bot / crawler", unknown: "Unknown" } as const;
-const DEVICE_ICON: Record<string, string> = { desktop: "🖥️", mobile: "📱", tablet: "📲", bot: "🤖", unknown: "❔" };
+const DEVICE_ICON: Record<string, LucideIcon> = { desktop: Monitor, mobile: Smartphone, tablet: Tablet, bot: Bot, unknown: CircleHelp };
+function DeviceIcon({ device }: { device: string }) {
+  const Icon = DEVICE_ICON[device] ?? CircleHelp;
+  return <Icon aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-ink-soft" />;
+}
 const PAGE_SIZE = 50;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const nf = new Intl.NumberFormat("en-GB");
-const place = (code: string | null, ip?: string) => (code ? `${flagEmoji(code)} ${countryName(code)}` : ip && isPrivateIp(ip) ? "🏠 Local network" : "🌐 Unknown");
+const place = (code: string | null, ip?: string) => (code ? `${countryName(code)} (${code})` : ip && isPrivateIp(ip) ? "Local network" : "Unknown");
 
 function change(now: number, before: number): string | undefined {
   if (!before) return now ? "new this period" : undefined;
@@ -126,7 +131,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
               <tr key={v.id}>
                 <td className="font-mono text-xs">{v.ip}</td>
                 <td className="text-sm">{place(v.country, v.ip)}{v.city && <span className="block text-xs text-ink-soft">{v.city}</span>}</td>
-                <td className="text-xs">{DEVICE_ICON[v.device]} {[v.browser, v.os].filter(Boolean).join(" · ") || DEVICES[v.device]}</td>
+                <td className="text-xs"><DeviceIcon device={v.device} />{[v.browser, v.os].filter(Boolean).join(" · ") || DEVICES[v.device]}</td>
                 <td className="font-mono text-xs">{v.last_path}</td>
                 <td className="whitespace-nowrap text-xs text-ink-soft">{ago(v.started_at)}</td>
               </tr>
@@ -138,7 +143,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <Breakdown title="Countries" rows={report.countries.map((c) => ({ label: place(c.code), value: c.value, href: c.code ? `?${new URLSearchParams({ range: range.preset, country: c.code })}` : undefined }))} total={s.visits} />
         <Breakdown title="Cities" rows={report.cities} total={s.visits} empty="City needs the hosting platform's location data (Vercel adds it automatically)." />
-        <Breakdown title="Devices" rows={report.devices.map((d) => ({ label: `${DEVICE_ICON[d.label] ?? ""} ${DEVICES[d.label as keyof typeof DEVICES] ?? d.label}`, value: d.value, href: `?${new URLSearchParams({ range: range.preset, device: d.label })}` }))} total={s.visits} />
+        <Breakdown title="Devices" rows={report.devices.map((d) => ({ label: DEVICES[d.label as keyof typeof DEVICES] ?? d.label, value: d.value, href: `?${new URLSearchParams({ range: range.preset, device: d.label })}` }))} total={s.visits} />
         <Breakdown title="Browsers" rows={report.browsers} total={s.visits} />
         <Breakdown title="Operating systems" rows={report.os} total={s.visits} />
         <Breakdown title="Where they came from" rows={report.referrers.map((r) => ({ ...r, label: r.label === "—" ? "Direct / typed the address" : r.label }))} total={s.visits} />
@@ -208,7 +213,7 @@ function VisitTr({ v, pages, rangePreset }: { v: VisitRow; pages: { path: string
         {v.language && <span className="block text-[11px] text-ink-soft">Language {v.language}</span>}
       </td>
       <td className="min-w-[11rem] text-xs">
-        <span className="whitespace-nowrap font-medium">{DEVICE_ICON[v.device]} {DEVICES[v.device]}</span>
+        <span className="whitespace-nowrap font-medium"><DeviceIcon device={v.device} />{DEVICES[v.device]}</span>
         <span className="block text-ink-soft">{[v.browser, v.os].filter(Boolean).join(" · ") || "—"}</span>
         {v.screen && <span className="block text-[11px] text-ink-soft">Screen {v.screen}</span>}
         {v.user_agent && (

@@ -21,7 +21,7 @@ export default async function AccountAddressesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="eyebrow text-ink-soft">Your account</p>
-          <h1 className="mt-1 font-display text-4xl font-extrabold text-ink">Saved Addresses</h1>
+          <h1 className="mt-1 font-display text-3xl text-ink sm:text-4xl">Saved addresses</h1>
         </div>
         <Link
           href="/account"

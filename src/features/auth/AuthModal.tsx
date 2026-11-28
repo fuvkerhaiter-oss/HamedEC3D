@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowLeft, ChevronRight, CircleCheck, LoaderCircle, LogIn, MailCheck, ShoppingBag, TriangleAlert, UserPlus, X } from "lucide-react";
+import { IconTile } from "@/components/IconTile";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "./auth-store";
 import { useAuth } from "./useAuth";
@@ -208,6 +210,23 @@ export function AuthModal() {
     }
   }
 
+  const titles: Record<typeof mode, [string, React.ReactNode]> = {
+    welcome: ["Welcome to WEGO SHIIIP", "Sign in to track orders and reuse saved addresses, or keep shopping as a guest."],
+    signin: ["Sign in", "We'll email you a one-time code. No password needed."],
+    signup: ["Create your account", "We'll email you a one-time code to confirm your address."],
+    otp: ["Check your email", <>Enter the {expectedLength}-digit code we sent to <span className="font-medium text-ink">{email}</span>.</>],
+    success: ["You're signed in", "Syncing your cart and saved details…"],
+  };
+  const [title, subtitle] = titles[mode];
+  const field = "w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-soft/60 focus:border-ink focus:ring-4 focus:ring-amber/25";
+  const googleBtn = "flex w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-sand disabled:opacity-60";
+  const backBtn = "inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft transition hover:text-ink";
+  const options = [
+    { icon: ShoppingBag, label: "Continue as guest", hint: "Browse and check out without an account.", onClick: closeAuth },
+    { icon: LogIn, label: "Sign in", hint: "See your orders, addresses and rented shop.", onClick: () => { setError(null); setMode("signin"); } },
+    { icon: UserPlus, label: "Create an account", hint: "Save your details for faster checkout.", onClick: () => { setError(null); setMode("signup"); } },
+  ];
+
   return (
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
@@ -215,177 +234,94 @@ export function AuthModal() {
       aria-modal="true"
       aria-labelledby="auth-modal-title"
     >
-      {/* Backdrop */}
-      <div
-        className="vsw-fade-in absolute inset-0 bg-ink/60 backdrop-blur-sm"
-        onClick={closeAuth}
-        aria-hidden="true"
-      />
+      <div className="vsw-fade-in absolute inset-0 bg-ink/50 backdrop-blur-[2px]" onClick={closeAuth} aria-hidden="true" />
 
-      {/* Modal Container */}
       <div
-        className="vsw-cart-pop relative w-full max-w-md overflow-hidden rounded-[2.5rem] bg-cream shadow-[-10px_20px_50px_rgb(0_0_0/0.3)] ring-4 ring-amber"
+        className="vsw-cart-pop relative flex w-full max-w-[26rem] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_64px_-16px_rgb(13_15_14/0.35)] ring-1 ring-ink/5"
         style={{ maxHeight: "calc(100dvh - 2rem)" }}
       >
-        {/* Receipt Header Banner */}
-        <header className="relative flex items-center justify-between overflow-hidden bg-amber px-6 py-5 text-ink">
-          <span aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/20" />
-          <div className="flex items-center gap-3">
-            <span className="vsw-cart-bob grid h-10 w-10 place-items-center rounded-2xl bg-white text-2xl shadow-sm">
-              🛒
-            </span>
-            <div>
-              <h2 id="auth-modal-title" className="font-display text-2xl font-extrabold leading-none tracking-tight">
-                WEGO SHIIIP
-              </h2>
-              <p className="mt-0.5 text-xs font-semibold text-ink/75">
-                {mode === "welcome" && "Welcome to the aisles!"}
-                {mode === "signin" && "Welcome back!"}
-                {mode === "signup" && "Unlock your shopping identity"}
-                {mode === "otp" && "Verification Station"}
-                {mode === "success" && "VIP Passport Issued"}
-              </p>
-            </div>
-          </div>
-
+        <header className="flex items-center justify-between border-b border-line px-6 py-4">
+          <span className="font-display text-sm tracking-tight text-ink">WEGO SHIIIP</span>
           <button
             onClick={closeAuth}
-            className="grid h-8 w-8 place-items-center rounded-full bg-ink text-lg font-bold text-amber transition hover:scale-110 active:scale-95"
-            aria-label="Close authentication dialog"
+            className="-mr-2 grid h-9 w-9 place-items-center rounded-lg text-ink-soft transition hover:bg-sand hover:text-ink"
+            aria-label="Close"
           >
-            ×
+            <X aria-hidden className="h-5 w-5" strokeWidth={2} />
           </button>
         </header>
 
-        {/* Content Area */}
-        <div className="overflow-y-auto p-6 sm:p-7">
-          {error && (
-            <div className="mb-5 rounded-2xl bg-red-100/80 p-3.5 text-xs font-medium text-red-900 ring-1 ring-red-300">
-              ⚠️ {error}
-            </div>
-          )}
-
-          {/* MODE: WELCOME */}
-          {mode === "welcome" && (
-            <div className="space-y-4">
-              <div className="text-center pb-2">
-                <span className="inline-block rounded-full bg-sand px-3 py-1 text-xs font-bold text-ink">
-                  WHO ARE YOU TODAY?
-                </span>
-                <p className="mt-2 text-sm text-ink-soft">
-                  Choose how you want to experience the supermarket today.
-                </p>
-              </div>
-
-              {/* Continue as Guest */}
-              <button
-                onClick={closeAuth}
-                className="group flex w-full items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber hover:shadow-md"
-              >
-                <div className="text-left">
-                  <span className="font-display font-bold text-ink text-base block group-hover:text-amber-800">
-                    Continue as Guest
-                  </span>
-                  <span className="text-xs text-ink-soft block mt-0.5">
-                    No paperwork. No commitment. Just your trolley and the shelves.
-                  </span>
-                </div>
-                <span className="text-2xl transition group-hover:translate-x-1">🛒</span>
-              </button>
-
-              {/* Sign In */}
-              <button
-                onClick={() => { setError(null); setMode("signin"); }}
-                className="group flex w-full items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber hover:shadow-md"
-              >
-                <div className="text-left">
-                  <span className="font-display font-bold text-ink text-base block group-hover:text-amber-800">
-                    Sign In
-                  </span>
-                  <span className="text-xs text-ink-soft block mt-0.5">
-                    You are back! We kept your favorite snacks nicely stocked.
-                  </span>
-                </div>
-                <span className="text-2xl transition group-hover:translate-x-1">🔑</span>
-              </button>
-
-              {/* Create Account */}
-              <button
-                onClick={() => { setError(null); setMode("signup"); }}
-                className="group flex w-full items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber hover:shadow-md"
-              >
-                <div className="text-left">
-                  <span className="font-display font-bold text-ink text-base block group-hover:text-amber-800">
-                    Create Account
-                  </span>
-                  <span className="text-xs text-ink-soft block mt-0.5">
-                    Unlock your VIP shopping pass. Your cart has feelings too.
-                  </span>
-                </div>
-                <span className="text-2xl transition group-hover:translate-x-1">✨</span>
-              </button>
-
-              {/* Google OAuth Option */}
-              <div className="pt-2 border-t border-line">
-                <button
-                  onClick={handleGoogleClick}
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white py-3 px-4 text-sm font-semibold text-ink shadow-sm transition hover:bg-sand active:scale-[0.98] disabled:opacity-60"
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* MODE: SIGN IN / SIGN UP */}
+        <div className="overflow-y-auto px-6 pb-6 pt-5 sm:px-7">
           {(mode === "signin" || mode === "signup") && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <button type="button" onClick={() => setMode("welcome")} className={`${backBtn} mb-4`}>
+              <ArrowLeft aria-hidden className="h-3.5 w-3.5" strokeWidth={2} /> All options
+            </button>
+          )}
+          {mode === "otp" && (
+            <button type="button" onClick={() => setMode("signin")} className={`${backBtn} mb-4`}>
+              <ArrowLeft aria-hidden className="h-3.5 w-3.5" strokeWidth={2} /> Use a different email
+            </button>
+          )}
+
+          {mode === "otp" && <IconTile icon={MailCheck} className="mb-4" />}
+          {mode === "success" && <IconTile icon={CircleCheck} className="mb-4" />}
+
+          <h2 id="auth-modal-title" className="font-display text-2xl leading-tight text-ink">{title}</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{subtitle}</p>
+
+          {error && (
+            <div role="alert" className="mt-5 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">
+              <TriangleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {mode === "welcome" && (
+            <div className="mt-6 space-y-2.5">
+              {options.map(({ icon: Icon, label, hint, onClick }) => (
                 <button
-                  type="button"
-                  onClick={() => setMode("welcome")}
-                  className="text-xs font-semibold text-ink-soft hover:text-ink"
+                  key={label}
+                  onClick={onClick}
+                  className="group flex w-full items-center gap-3.5 rounded-xl border border-line bg-white p-3.5 text-left transition hover:border-ink/25 hover:bg-cream"
                 >
-                  ← Back to options
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-sand text-ink">
+                    <Icon aria-hidden className="h-5 w-5" strokeWidth={1.75} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-ink">{label}</span>
+                    <span className="mt-0.5 block text-xs text-ink-soft">{hint}</span>
+                  </span>
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-ink-soft transition group-hover:translate-x-0.5 group-hover:text-ink" strokeWidth={2} />
                 </button>
-                <span className="text-xs font-mono text-ink-soft">
-                  {mode === "signin" ? "Returning Shopper" : "New Shopper"}
-                </span>
-              </div>
+              ))}
 
-              <div className="text-center pb-1">
-                <h3 className="font-display text-2xl font-extrabold text-ink">
-                  {mode === "signin" ? "Sign in to your trolley" : "Create your shopping pass"}
-                </h3>
-                <p className="mt-1 text-xs text-ink-soft">
-                  Passwordless authentication with a one-time verification code.
-                </p>
+              <div className="relative py-3 text-center" aria-hidden>
+                <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+                <span className="relative bg-white px-3 text-xs text-ink-soft">or</span>
               </div>
+              <button onClick={handleGoogleClick} disabled={loading} className={googleBtn}>
+                <GoogleIcon />
+                Continue with Google
+              </button>
+            </div>
+          )}
 
-              {/* Google Button */}
-              <button
-                onClick={handleGoogleClick}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white py-3 px-4 text-sm font-semibold text-ink shadow-sm transition hover:bg-sand active:scale-[0.98] disabled:opacity-60"
-              >
+          {(mode === "signin" || mode === "signup") && (
+            <div className="mt-6">
+              <button onClick={handleGoogleClick} disabled={loading} className={googleBtn}>
                 <GoogleIcon />
                 Continue with Google
               </button>
 
-              <div className="relative my-4 text-center">
-                <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-line" />
-                <span className="relative bg-cream px-3 text-xs font-mono text-ink-soft">
-                  OR WITH EMAIL
-                </span>
+              <div className="relative my-5 text-center" aria-hidden>
+                <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+                <span className="relative bg-white px-3 text-xs text-ink-soft">or use your email</span>
               </div>
 
-              {/* Email Form */}
-              <form onSubmit={handleSendOtp} className="space-y-3">
+              <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label htmlFor="auth-email-input" className="block text-xs font-bold text-ink mb-1">
-                    Your Email Address
+                  <label htmlFor="auth-email-input" className="mb-1.5 block text-sm font-medium text-ink">
+                    Email address
                   </label>
                   <input
                     id="auth-email-input"
@@ -393,110 +329,52 @@ export function AuthModal() {
                     type="email"
                     required
                     autoFocus
-                    placeholder="e.g. snack.master@gmail.com"
+                    autoComplete="email"
+                    placeholder="you@example.com"
                     defaultValue={email}
-                    className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-amber/40"
+                    className={field}
                   />
-                  <span className="mt-1 block text-[11px] text-ink-soft">
-                    One tiny verification code. Zero suspicious vegetables.
-                  </span>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-amber py-3.5 font-bold text-ink shadow-[0_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
-                >
-                  {loading ? "Sending code…" : "Send Verification Code 📨"}
+                <button type="submit" disabled={loading} className="btn-yellow w-full py-3 text-sm disabled:opacity-60">
+                  {loading ? <><LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> Sending code…</> : "Email me a code"}
                 </button>
               </form>
-
-              <div className="pt-2 text-center">
-                <button
-                  onClick={closeAuth}
-                  className="text-xs text-ink-soft underline decoration-dashed hover:text-ink"
-                >
-                  Never mind, I&apos;ll shop as a guest for now
-                </button>
-              </div>
             </div>
           )}
 
-          {/* MODE: OTP */}
           {mode === "otp" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setMode("signin")}
-                  className="text-xs font-semibold text-ink-soft hover:text-ink"
-                >
-                  ← Wrong email?
-                </button>
-                <span className="text-xs font-mono text-ink-soft">Step 2 of 2</span>
-              </div>
-
-              <div className="text-center">
-                <span className="text-3xl">📬</span>
-                <h3 className="mt-2 font-display text-2xl font-extrabold text-ink">
-                  WE SENT A LITTLE SECRET
-                </h3>
-                <p className="mt-1 text-xs text-ink-soft leading-relaxed">
-                  We sent a {expectedLength}-digit verification code to <b className="text-ink font-mono">{email}</b>.
-                  Check your inbox. If it is hiding, check the spam aisle!
-                </p>
-              </div>
-
-              {/* Digit Input (supports 6 or 8 digits) */}
-              <div className="flex justify-center gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
+            <div className="mt-6 space-y-5">
+              <div className="flex justify-between gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
                 {otp.map((digit, idx) => (
                   <input
                     key={idx}
                     ref={(el) => { otpInputRefs.current[idx] = el; }}
                     type="text"
                     inputMode="numeric"
+                    autoComplete={idx === 0 ? "one-time-code" : "off"}
                     pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className={
-                      expectedLength === 8
-                        ? "h-11 w-8 sm:h-13 sm:w-10 rounded-xl sm:rounded-2xl border-2 border-line bg-white text-center font-mono text-lg sm:text-xl font-bold text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20"
-                        : "h-12 w-11 sm:h-14 sm:w-12 rounded-2xl border-2 border-line bg-white text-center font-mono text-xl sm:text-2xl font-bold text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20"
-                    }
-                    aria-label={`Digit ${idx + 1}`}
+                    className={`${expectedLength === 8 ? "h-12 text-lg" : "h-14 text-xl"} w-full min-w-0 rounded-xl border border-line bg-white text-center font-mono font-semibold text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-amber/25`}
+                    aria-label={`Digit ${idx + 1} of ${expectedLength}`}
                   />
                 ))}
-              </div>
-
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newLen = expectedLength === 6 ? 8 : 6;
-                    setExpectedLength(newLen);
-                    setOtp(new Array(newLen).fill(""));
-                  }}
-                  className="text-[11px] text-ink-soft hover:text-ink underline decoration-dotted"
-                >
-                  {expectedLength === 6 ? "Got an 8-digit code instead?" : "Got a 6-digit code instead?"}
-                </button>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleVerifyOtp()}
                 disabled={loading || otp.join("").length !== expectedLength}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-amber py-3.5 font-bold text-ink shadow-[0_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                className="btn-yellow w-full py-3 text-sm disabled:opacity-50"
               >
-                {loading ? "Verifying…" : "Verify & Enter Supermarket 🛒"}
+                {loading ? <><LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> Verifying…</> : "Verify and continue"}
               </button>
 
-              {/* Resend section */}
-              <div className="text-center text-xs text-ink-soft">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
                 {resendSeconds > 0 ? (
-                  <span>Resend code available in {resendSeconds}s</span>
+                  <span>Resend available in {resendSeconds}s</span>
                 ) : (
                   <button
                     onClick={() => {
@@ -504,25 +382,30 @@ export function AuthModal() {
                       pseudoForm.set("email", email);
                       void handleSendOtp({ preventDefault: () => {}, currentTarget: pseudoForm as unknown as HTMLFormElement } as React.FormEvent<HTMLFormElement>);
                     }}
-                    className="font-semibold text-ink underline hover:text-amber-800"
+                    className="font-medium text-ink underline underline-offset-2 hover:text-brand"
                   >
-                    Didn&apos;t receive it? Resend code now
+                    Resend code
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newLen = expectedLength === 6 ? 8 : 6;
+                    setExpectedLength(newLen);
+                    setOtp(new Array(newLen).fill(""));
+                  }}
+                  className="underline underline-offset-2 hover:text-ink"
+                >
+                  {expectedLength === 6 ? "Have an 8-digit code?" : "Have a 6-digit code?"}
+                </button>
               </div>
+              <p className="text-xs text-ink-soft">Can&apos;t find it? Check your spam folder.</p>
             </div>
           )}
 
-          {/* MODE: SUCCESS */}
           {mode === "success" && (
-            <div className="py-8 text-center space-y-3">
-              <span className="vsw-cart-bob inline-block text-6xl">🎉</span>
-              <h3 className="font-display text-2xl font-extrabold text-ink">
-                SHOPPING IDENTITY VERIFIED!
-              </h3>
-              <p className="text-sm text-ink-soft">
-                Your trolley has been granted VIP status. Merging your snacks and syncing shelves…
-              </p>
+            <div className="mt-6 h-1 overflow-hidden rounded-full bg-sand" aria-hidden>
+              <div className="vsw-shimmer h-full w-full" />
             </div>
           )}
         </div>

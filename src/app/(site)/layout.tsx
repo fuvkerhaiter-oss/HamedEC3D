@@ -42,9 +42,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <header className="sticky top-0 z-40 px-2 pt-2 sm:px-4">
         <nav className="vsw-nav-banner mx-auto flex max-w-6xl items-center justify-between gap-3 py-2 pl-7 pr-7 sm:gap-4 sm:pl-9 sm:pr-8" aria-label="Main">
           <Logo />
-          <div className="hidden items-center gap-1 text-sm font-medium sm:flex">
+          <div className="hidden items-center gap-0.5 text-sm font-medium lg:flex">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className="relative px-4 py-2 font-semibold text-ink/75 transition hover:text-ink after:absolute after:inset-x-4 after:bottom-1 after:h-[3px] after:origin-left after:scale-x-0 after:rounded-full after:bg-amber after:transition-transform after:duration-200 hover:after:scale-x-100">
+              <Link key={n.href} href={n.href} className="relative whitespace-nowrap px-3.5 py-2 font-semibold text-ink/75 transition hover:text-ink after:absolute after:inset-x-3.5 after:bottom-1 after:h-[3px] after:origin-left after:scale-x-0 after:rounded-full after:bg-amber after:transition-transform after:duration-200 hover:after:scale-x-100">
                 {n.label}
               </Link>
             ))}

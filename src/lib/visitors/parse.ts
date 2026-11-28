@@ -135,12 +135,6 @@ export function visitorKey(ip: string, ua: string | null | undefined): string {
   return createHash("sha256").update(`${ip}\n${ua ?? ""}`).digest("hex");
 }
 
-/** "🇮🇹" from "IT". */
-export function flagEmoji(code: string | null | undefined): string {
-  if (!code || !/^[A-Z]{2}$/.test(code)) return "🌐";
-  return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
-}
-
 /** "4 min 12 s" style duration. */
 export function fmtDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));

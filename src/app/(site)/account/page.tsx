@@ -1,3 +1,5 @@
+import { UserRound, PackageSearch, ShoppingCart } from "lucide-react";
+import { IconTile } from "@/components/IconTile";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuthUser, getCustomerProfile } from "@/lib/supabase/server";
@@ -39,25 +41,21 @@ export default async function AccountPage({
           </div>
         )}
         <div className="text-center">
-          <span className="inline-block rounded-full bg-amber/20 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-ink">
-            Shopping Identity
-          </span>
-          <h1 className="mt-3 font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Who are you today?
-          </h1>
+          <p className="eyebrow text-brand">Account</p>
+          <h1 className="mt-3 font-display text-4xl sm:text-5xl">Your account</h1>
           <p className="mx-auto mt-3 max-w-md text-base text-ink-soft">
-            Explore with zero commitment as a guest, or sign in to save your trolley, addresses, and order history across devices.
+            Sign in to see your orders, saved addresses and rented shop on any device. You can always shop as a guest.
           </p>
         </div>
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {/* Sign In / Create Account Card */}
-          <div className="rounded-3xl bg-white p-7 shadow-card ring-2 ring-amber/50 flex flex-col justify-between">
+          <div className="flex flex-col justify-between rounded-2xl bg-white p-7 ring-1 ring-line">
             <div>
-              <span className="text-3xl">🛒✨</span>
-              <h2 className="mt-3 font-display text-2xl font-bold">Sign In or Create Account</h2>
+              <IconTile icon={UserRound} />
+              <h2 className="mt-4 font-display text-xl">Sign in or create an account</h2>
               <p className="mt-2 text-sm text-ink-soft leading-relaxed">
-                Unlock your VIP shopping pass. One tiny verification code, zero passwords to forget, or one-click with Google.
+                No password to remember: we email you a one-time code, or you can continue with Google.
               </p>
             </div>
             <div className="mt-6">
@@ -66,12 +64,12 @@ export default async function AccountPage({
           </div>
 
           {/* Guest Order Lookup Card */}
-          <div className="rounded-3xl bg-white/70 p-7 shadow-card flex flex-col justify-between">
+          <div className="flex flex-col justify-between rounded-2xl bg-white p-7 ring-1 ring-line">
             <div>
-              <span className="text-3xl">📦🔍</span>
-              <h2 className="mt-3 font-display text-2xl font-bold">Looking for guest orders?</h2>
+              <IconTile icon={PackageSearch} />
+              <h2 className="mt-4 font-display text-xl">Find a guest order</h2>
               <p className="mt-2 text-sm text-ink-soft leading-relaxed">
-                Placed an order as a guest? Enter the email you ordered with. We will email you a private, secure link to all your orders.
+                Enter the email you used at checkout and we&apos;ll send you a private link to your orders.
               </p>
             </div>
             <div className="mt-6">
@@ -82,13 +80,13 @@ export default async function AccountPage({
 
         <div className="mt-10 text-center">
           <p className="text-sm text-ink-soft">
-            Just passing through?{" "}
-            <Link href="/catalog" className="font-semibold text-ink underline decoration-amber decoration-2 underline-offset-4 hover:text-amber">
-              Browse the catalog as a guest
+            Just browsing?{" "}
+            <Link href="/catalog" className="font-semibold text-ink underline underline-offset-4 hover:text-brand">
+              Browse the catalog
             </Link>{" "}
             or{" "}
-            <Link href="/store" className="font-semibold text-ink underline decoration-amber decoration-2 underline-offset-4 hover:text-amber">
-              walk the 3D supermarket
+            <Link href="/store" className="font-semibold text-ink underline underline-offset-4 hover:text-brand">
+              visit the 3D store
             </Link>.
           </p>
         </div>
@@ -112,17 +110,12 @@ export default async function AccountPage({
       {/* Top Welcome Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-8 border-b border-line">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block rounded-full bg-amber px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-ink">
-              VIP Customer
-            </span>
-            <span className="text-xs text-ink-soft font-mono">Trolley Pilot Tier 1</span>
-          </div>
-          <h1 className="mt-2 font-display text-4xl font-extrabold text-ink tracking-tight">
-            Welcome back, {displayName}!
+          <p className="eyebrow text-brand">Account</p>
+          <h1 className="mt-2 font-display text-3xl text-ink sm:text-4xl">
+            Welcome back, {displayName}
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Logged in as <b className="text-ink font-mono">{user.email}</b>. Your cart and orders are safe with us.
+            Signed in as <span className="font-medium text-ink">{user.email}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -130,14 +123,14 @@ export default async function AccountPage({
             href="/catalog"
             className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold transition hover:bg-sand"
           >
-            Start Shopping
+            Continue shopping
           </Link>
           <form action="/auth/signout" method="POST">
             <button
               type="submit"
-              className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream transition hover:bg-ink/80"
+              className="rounded-full px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:bg-sand hover:text-ink"
             >
-              Sign Out
+              Sign out
             </button>
           </form>
         </div>
@@ -152,7 +145,7 @@ export default async function AccountPage({
           Orders ({orders.length})
         </Link>
         <Link href="/account/addresses" className="rounded-full px-4 py-1.5 text-ink-soft transition hover:bg-sand hover:text-ink">
-          Saved Addresses ({addresses.length})
+          Addresses ({addresses.length})
         </Link>
         <Link href="/account/security" className="rounded-full px-4 py-1.5 text-ink-soft transition hover:bg-sand hover:text-ink">
           Security & Privacy
@@ -164,26 +157,23 @@ export default async function AccountPage({
         {/* Recent Orders */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl font-bold text-ink">Recent Orders</h2>
+            <h2 className="font-display text-xl text-ink">Recent orders</h2>
             {orders.length > 0 && (
-              <Link href="/account/orders" className="text-sm font-semibold text-ink underline decoration-amber decoration-2 underline-offset-4 hover:text-amber">
-                View all ({orders.length}) →
+              <Link href="/account/orders" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-brand">
+                View all ({orders.length})
               </Link>
             )}
           </div>
 
           {orders.length === 0 ? (
-            <div className="rounded-3xl bg-white/70 p-8 text-center shadow-card">
-              <span className="text-4xl">🛒</span>
-              <p className="mt-3 font-display text-lg font-bold">No orders yet</p>
+            <div className="rounded-2xl border border-dashed border-line bg-white p-10 text-center">
+              <IconTile icon={ShoppingCart} size="lg" />
+              <p className="mt-4 font-display text-lg">No orders yet</p>
               <p className="mt-1 text-sm text-ink-soft">
-                Your trolley is eager to make some questionable but excellent decisions.
+                When you place an order, it will appear here with its status and tracking.
               </p>
-              <Link
-                href="/store"
-                className="mt-5 inline-block rounded-full bg-amber px-6 py-2.5 font-bold text-ink shadow-[0_3px_0_var(--color-ink)] transition hover:-translate-y-0.5"
-              >
-                Enter the 3D Supermarket
+              <Link href="/store" className="btn-yellow mt-5 px-5 py-2.5 text-sm">
+                Visit the 3D store
               </Link>
             </div>
           ) : (
@@ -192,16 +182,16 @@ export default async function AccountPage({
                 <Link
                   key={o.id}
                   href={`/order?id=${o.id}&t=${o.token}`}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-card ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-5 ring-1 ring-line transition hover:ring-ink/25"
                 >
                   <div>
-                    <span className="font-display text-lg font-bold">Order #{o.orderNumber}</span>
-                    <span className="block text-xs text-ink-soft font-mono mt-0.5">
+                    <span className="font-semibold">Order #{o.orderNumber}</span>
+                    <span className="block text-xs text-ink-soft mt-0.5">
                       {new Date(o.createdAt).toLocaleDateString(o.total.currency === "USD" ? MARKETS.US.locale : MARKETS.EU.locale)} · {o.itemCount} item(s){o.trackingCount ? " · tracking active" : ""}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="block font-medium tabular-nums font-mono">
+                    <span className="block font-semibold tabular-nums">
                       {formatMoney(o.total, o.total.currency === "USD" ? MARKETS.US.locale : MARKETS.EU.locale)}
                     </span>
                     <span className="mt-1 inline-block rounded-full bg-amber/20 px-2.5 py-0.5 text-xs font-semibold text-ink">
@@ -217,10 +207,10 @@ export default async function AccountPage({
         {/* Sidebar Cards: Address & Profile summary */}
         <div className="space-y-6">
           {/* Default Address */}
-          <section className="rounded-3xl bg-white/80 p-6 shadow-card ring-1 ring-line">
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-line">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold">Delivery Address</h2>
-              <Link href="/account/addresses" className="text-xs font-semibold text-ink underline decoration-amber decoration-2 underline-offset-4">
+              <h2 className="font-semibold">Delivery address</h2>
+              <Link href="/account/addresses" className="text-xs font-semibold text-ink underline underline-offset-4 hover:text-brand">
                 Manage
               </Link>
             </div>
@@ -234,32 +224,32 @@ export default async function AccountPage({
               </div>
             ) : (
               <div className="mt-4 text-sm text-ink-soft">
-                <p>No address saved yet. Add one for 1-click checkout.</p>
+                <p>No address saved yet. Save one to check out faster.</p>
                 <Link
                   href="/account/addresses"
-                  className="mt-3 inline-block rounded-full bg-sand px-4 py-2 text-xs font-semibold text-ink transition hover:bg-amber/30"
+                  className="mt-3 inline-block rounded-full bg-sand px-4 py-2 text-xs font-semibold text-ink transition hover:bg-line"
                 >
-                  + Add Address
+                  Add an address
                 </Link>
               </div>
             )}
           </section>
 
           {/* Quick Account Info */}
-          <section className="rounded-3xl bg-white/80 p-6 shadow-card ring-1 ring-line">
-            <h2 className="font-display text-xl font-bold">Shopping Identity</h2>
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-line">
+            <h2 className="font-semibold">Profile</h2>
             <dl className="mt-4 space-y-2 text-sm">
               <div>
                 <dt className="text-xs text-ink-soft">Email address</dt>
-                <dd className="font-mono text-ink font-medium">{user.email}</dd>
+                <dd className="text-ink font-medium break-all">{user.email}</dd>
               </div>
               <div>
-                <dt className="text-xs text-ink-soft">Full Name</dt>
+                <dt className="text-xs text-ink-soft">Name</dt>
                 <dd className="text-ink font-medium">{displayName}</dd>
               </div>
               <div>
                 <dt className="text-xs text-ink-soft">Customer since</dt>
-                <dd className="font-mono text-xs text-ink-soft">
+                <dd className="text-ink font-medium">
                   {new Date(user.created_at).toLocaleDateString()}
                 </dd>
               </div>
@@ -268,8 +258,7 @@ export default async function AccountPage({
               <Link href="/account/security" className="text-ink-soft underline hover:text-ink">
                 Security settings
               </Link>
-              <span className="font-mono text-ink-soft">WEGO SHIIIP</span>
-            </div>
+                          </div>
           </section>
         </div>
       </div>

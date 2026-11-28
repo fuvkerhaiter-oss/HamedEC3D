@@ -1,5 +1,7 @@
 "use client";
 
+import { House, Phone } from "lucide-react";
+import { IconTile } from "@/components/IconTile";
 import { useState } from "react";
 import type { CustomerAddress } from "@/lib/account/addresses";
 import { EU_COUNTRIES } from "@/lib/markets";
@@ -92,17 +94,17 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
         {!showAdd && (
           <button
             onClick={() => setShowAdd(true)}
-            className="rounded-full bg-amber px-5 py-2 text-sm font-bold text-ink shadow-[0_3px_0_var(--color-ink)] transition hover:-translate-y-0.5 active:translate-y-0.5"
+            className="btn-yellow px-5 py-2 text-sm"
           >
-            + Add New Address
+            Add address
           </button>
         )}
       </div>
 
       {showAdd && (
-        <form onSubmit={handleAdd} className="rounded-3xl bg-white p-6 shadow-card ring-2 ring-amber space-y-4">
+        <form onSubmit={handleAdd} className="rounded-2xl bg-white p-6 ring-1 ring-line space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-line">
-            <h3 className="font-display text-lg font-bold">New Delivery Address</h3>
+            <h3 className="font-display text-lg">New Delivery Address</h3>
             <button
               type="button"
               onClick={() => setShowAdd(false)}
@@ -181,17 +183,17 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
       )}
 
       {addresses.length === 0 && !showAdd ? (
-        <div className="rounded-3xl bg-white/70 p-10 text-center shadow-card">
-          <span className="text-4xl">🏡</span>
-          <h3 className="mt-3 font-display text-lg font-bold">No saved addresses</h3>
+        <div className="rounded-2xl border border-dashed border-line bg-white p-10 text-center">
+          <IconTile icon={House} size="lg" />
+          <h3 className="mt-3 font-display text-lg">No saved addresses</h3>
           <p className="mt-1 text-sm text-ink-soft max-w-sm mx-auto">
             Save a delivery address to breeze through checkout without looking up your postal code every time.
           </p>
           <button
             onClick={() => setShowAdd(true)}
-            className="mt-5 rounded-full bg-amber px-6 py-2.5 font-bold text-ink shadow-[0_3px_0_var(--color-ink)] transition hover:-translate-y-0.5"
+            className="btn-yellow mt-5 px-5 py-2.5 text-sm"
           >
-            Add Your First Address
+            Add your first address
           </button>
         </div>
       ) : (
@@ -199,7 +201,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
           {addresses.map((a) => (
             <div
               key={a.id}
-              className={`rounded-3xl bg-white p-5 shadow-card ring-1 flex flex-col justify-between ${
+              className={`rounded-2xl bg-white p-5 ring-1 flex flex-col justify-between ${
                 a.isDefault ? "ring-2 ring-amber" : "ring-line"
               }`}
             >
@@ -224,7 +226,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                   {a.line2 && <p>{a.line2}</p>}
                   <p>{a.postalCode} {a.city}{a.region ? `, ${a.region}` : ""}</p>
                   <p className="text-xs font-mono text-ink-soft">{a.country}</p>
-                  {a.phone && <p className="text-xs text-ink-soft mt-1">📞 {a.phone}</p>}
+                  {a.phone && <p className="text-xs text-ink-soft mt-1 inline-flex items-center gap-1"><Phone aria-hidden className="h-3 w-3" /> {a.phone}</p>}
                 </div>
               </div>
 

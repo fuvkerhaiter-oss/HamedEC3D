@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -48,7 +49,7 @@ export function SellerNav({ brand, shopLabel, open }: { brand: string; shopLabel
   const foot = (
     <div className="flex flex-col gap-2 border-t border-white/10 pt-4 text-sm">
       <a href="/store" target="_blank" rel="noopener" className="btn-yellow px-4 py-2.5 text-sm">
-        Visit my shop in 3D ↗
+        Visit my shop in 3D<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
       </a>
       <Link href="/account" className="px-3 py-1.5 text-white/60 hover:text-white">
         My customer account

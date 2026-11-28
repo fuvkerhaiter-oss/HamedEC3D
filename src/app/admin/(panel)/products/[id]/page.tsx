@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/features/admin/ActionForm";
@@ -110,7 +111,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {p!.is_mock && <SampleBadge />}
               <span>Updated {fmtDate(p!.updated_at)}</span>
               {detail!.orderCount > 0 && <Badge tone="blue">Bought in {detail!.orderCount} order(s)</Badge>}
-              {p!.status === "published" && <Link className="text-brand underline" href={`/catalog`} target="_blank">See it in the shop ↗</Link>}
+              {p!.status === "published" && <Link className="text-brand underline" href={`/catalog`} target="_blank">See it in the shop<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" /></Link>}
             </span>
           )
         }

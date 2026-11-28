@@ -89,6 +89,11 @@ export function sellerAction<S extends z.ZodType, T>(
       if (e instanceof TenantError) return { ok: false, error: e.message };
       if (e && typeof e === "object" && "digest" in e) throw e; // redirect()/notFound()
       logError("[seller action]", e);
+      // 42703 undefined column / 42P01 undefined table: the code is newer than the database (a migration wasn't applied).
+      const code = (e as { code?: string } | null)?.code;
+      if (code === "42703" || code === "42P01") {
+        return { ok: false, error: "This feature isn't switched on yet: the store's database needs an update. Nothing was changed. Please tell the WEGO SHIIIP team." };
+      }
       return { ok: false, error: "Something went wrong. Nothing was changed." };
     }
   };

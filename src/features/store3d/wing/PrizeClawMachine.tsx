@@ -400,7 +400,7 @@ export function PrizeClawMachine() {
           g.held = -1;
           g.won = true;
           const def = PRIZES[ps.indexOf(p)]!;
-          useStoreUi.getState().showToast(`🎉 You won a ${def.name}! (just for fun)`);
+          useStoreUi.getState().showToast(`You won a ${def.name}! (just for fun)`);
           playWheelWin();
         }
         if (k >= 1) {

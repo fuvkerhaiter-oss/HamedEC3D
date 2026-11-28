@@ -65,14 +65,14 @@ export const GUIDES: Guide[] = [
       { type: "list", items: [
         "Left thumb: walk. Push the stick to the edge to run.",
         "Right thumb: drag to look around.",
-        "✋ button: see the product in front of you.",
+        "Hand button: see the product in front of you.",
         "Cart button: review your cart and pay.",
       ] },
       { type: "h2", text: "From shelf to checkout" },
       { type: "steps", items: [
         { title: "Enter", text: "Open the 3D store and click (or tap) into it." },
         { title: "Explore", text: "Walk the aisles. Shelf signs show each department; aim at a product to see its name and price." },
-        { title: "Inspect", text: "Press E (or tap ✋) for photos, options and stock, then add it to your trolley." },
+        { title: "Inspect", text: "Press E (or tap the hand button) for photos, options and stock, then add it to your trolley." },
         { title: "Pay", text: "Open the cart and check out on our secure payment page. Totals, shipping and taxes are calculated on our server before you pay." },
       ] },
       { type: "h2", text: "Tips" },

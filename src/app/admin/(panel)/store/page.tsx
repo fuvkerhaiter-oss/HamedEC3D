@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Badge, Card, Notice, PageHeader } from "@/features/admin/ui";
 import { buildStoreLayout } from "@/features/store3d/layout";
@@ -22,7 +23,7 @@ export default async function StoreAdminPage() {
       <PageHeader
         title="3D store shelves"
         description="A map of the 3D store: which product is on which shelf. To move or hide a product, open it and use the “3D shelf” section."
-        actions={<><Link className="btn-ghost" href="/admin/settings">Stock all aisles: {stockAll ? "on" : "off"}</Link><Link className="btn-primary" href="/store" target="_blank">Open 3D store ↗</Link></>}
+        actions={<><Link className="btn-ghost" href="/admin/settings">Stock all aisles: {stockAll ? "on" : "off"}</Link><Link className="btn-primary" href="/store" target="_blank">Open 3D store<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" /></Link></>}
       />
       <div className="mb-4"><Notice>{stockAll ? "Every gondola face is stocked." : `Only the benchmark aisle (${STORE_CONFIG.benchmarkFaces.join(", ")}) is stocked automatically; faces with pinned products are stocked too. Turn on “stock all aisles” in Settings once the benchmark aisle is approved.`} Storefront pages refresh within a minute of a change.</Notice></div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

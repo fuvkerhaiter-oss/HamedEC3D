@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useCart } from "@/features/cart/cart-store";
 import { fmtDay, fmtPrice, shopWhere, type PublicShop } from "@/features/rentals/format";
@@ -56,12 +57,12 @@ export function ShopRentPanel({ shopId, shops, onClose }: { shopId: string; shop
               <button onClick={() => onClose(true)} className="btn-yellow flex-1 justify-center py-3.5">Walk in</button>
               {store.website && (
                 <a href={store.website} target="_blank" rel="noopener noreferrer nofollow" className="rounded-full px-5 py-3.5 text-center text-sm font-semibold ring-1 ring-line hover:bg-sand">
-                  Website ↗
+                  Website<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
                 </a>
               )}
               {store.instagram && (
                 <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer nofollow" className="rounded-full px-5 py-3.5 text-center text-sm font-semibold ring-1 ring-line hover:bg-sand">
-                  Instagram ↗
+                  Instagram<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
                 </a>
               )}
             </div>

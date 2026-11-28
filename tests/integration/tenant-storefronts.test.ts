@@ -20,8 +20,11 @@ import {
   setSuspended,
   tenantStats,
   TenantError,
+  loadSignFonts,
   updateProduct,
+  updateProfile,
 } from "../../src/lib/tenants/service";
+import { ProfileInput } from "../../src/lib/tenants/schema";
 import type { Tx } from "../../src/lib/db/client";
 import { startTestDb, type TestDb } from "./helpers";
 
@@ -95,4 +98,24 @@ test("a lease booked signed-out is claimed by verified email; the tenant's shop 
   assert.equal(l.fee_amount, 1500);
   assert.equal(l.user_id, userId, "renewal stays on the tenant's account");
   assert.ok(l.amount >= 1500 && l.regular_amount >= l.amount);
+});
+
+test("sign font: the brand form saves the chosen typeface and the 3D store reads it", async () => {
+  const userId = randomUUID();
+  const r = await startRentalCheckout(t.sql, { kind: "new", booking: booking({ shopId: "shop-4", email: "font@test.local", brandName: "Fonty" }) }, opts);
+  await pay(r.leaseId, 2000);
+  const got = (await ensureTenant(t.sql, userId, "font@test.local"))!;
+  assert.equal(got.tenant.sign_font, "bricolage", "house style by default");
+  // Exactly what the seller form posts (hidden fields as empty strings), through the same validation.
+  const form = {
+    brandName: "Fonty", signName: "Fonty", tagline: "", about: "", accentColor: "#ff5b2e", signFont: "bangers",
+    website: "", instagram: "", tiktok: "", contactEmail: "", contactPhone: "", defaultPaymentUrl: "",
+  };
+  const parsed = ProfileInput([]).safeParse(form);
+  assert.ok(parsed.success, JSON.stringify(!parsed.success && parsed.error.issues));
+  await updateProfile(t.sql, got.tenant, parsed.data);
+  const [row] = await t.sql<{ sign_font: string }[]>`select sign_font from public.tenant_accounts where id = ${got.tenant.id}`;
+  assert.equal(row!.sign_font, "bangers");
+  assert.equal((await loadSignFonts(t.sql))["shop-4"], "bangers");
+  assert.ok(!ProfileInput([]).safeParse({ ...form, signFont: "comic-sans" }).success, "unknown fonts are refused");
 });

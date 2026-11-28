@@ -134,10 +134,8 @@ export function ShopTv({
 }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    if (slides.length <= 1) {
-      setIdx(0);
-      return;
-    }
+    // One slide or none: nothing to rotate (the index is always read modulo the slide count below).
+    if (slides.length <= 1) return;
     const id = setInterval(() => setIdx((i) => (i + 1) % slides.length), 4500);
     return () => clearInterval(id);
   }, [slides.length]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { PricedCart } from "@/lib/cart/pricing";
@@ -340,7 +341,7 @@ export function CheckoutForm({ unavailable, cancelled, shippable = null }: { una
         >
           {submitting ? "Opening secure payment…" : quote ? `Pay ${fmt(quote.cart.total)}` : "Pay"}
         </button>
-        <p className="text-center text-xs text-ink-soft">🔒 You&apos;ll pay on a secure payment page. Card details never touch our servers.</p>
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-ink-soft"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> You&apos;ll pay on a secure payment page. Card details never touch our servers.</p>
       </aside>
     </form>
   );

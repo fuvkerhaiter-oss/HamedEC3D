@@ -1,5 +1,6 @@
 "use client";
 
+import { LogIn } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "./auth-store";
 import { useAuth } from "./useAuth";
@@ -26,9 +27,9 @@ export function AccountAuthEntry({ next = "/account" }: { next?: string } = {}) 
     <div className="space-y-3">
       <button
         onClick={() => openAuth("welcome")}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-amber py-3 px-5 text-sm font-bold text-ink shadow-[0_3px_0_var(--color-ink)] transition hover:-translate-y-0.5 active:translate-y-0.5"
+        className="btn-yellow w-full px-5 py-3 text-sm"
       >
-        <span>🔑</span> Sign In or Create Account
+        <LogIn aria-hidden className="h-4 w-4" strokeWidth={2} /> Sign in or create account
       </button>
 
       <button

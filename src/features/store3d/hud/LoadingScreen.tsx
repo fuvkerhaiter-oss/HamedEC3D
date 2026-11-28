@@ -17,7 +17,7 @@ const DESKTOP_TIPS = [
 const TOUCH_TIPS = [
   "Left thumb walks · push to the edge to run",
   "Drag with your right thumb to look around",
-  "Tap ✋ to pick up the product in front of you",
+  "Tap the hand button to pick up the product in front of you",
   "Your cart is one tap away, bottom right",
 ];
 const noopSubscribe = () => () => {};

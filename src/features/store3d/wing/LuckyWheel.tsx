@@ -295,7 +295,7 @@ export function LuckyWheel({ wall, lowPower }: { wall?: SupportersWall; lowPower
         const name = names[segmentAtPointer(s.rot, count)] ?? "";
         setWinner(name);
         if (s.near < 16) playWheelWin();
-        if (s.near < 9) useStoreUi.getState().showToast(`🎉 ${name}!`);
+        if (s.near < 9) useStoreUi.getState().showToast(`${name}!`);
       }
     } else {
       s.seg = segmentAtPointer(s.rot, count);

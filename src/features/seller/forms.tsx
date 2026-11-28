@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -57,7 +58,7 @@ export function PaymentLinkField({ name, defaultValue, error, label = "Payment l
             <>
               <span className="font-semibold">✓ {check.provider ? check.provider.name : `Link to ${check.host}`}</span>
               <a href={check.url} target="_blank" rel="noopener noreferrer" className="underline">
-                Test it ↗
+                Test it<ArrowUpRight aria-hidden className="ml-1 inline h-3.5 w-3.5 align-[-3px]" />
               </a>
               {!check.provider && <span className="text-ink-soft">(not a provider we recognise: make sure it&apos;s your real checkout page)</span>}
             </>

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanPath, flagEmoji, fmtDuration, geoFromHeaders, isPrivateIp, isTrackedPath, parseUserAgent, referrerHost, visitorKey } from "../../src/lib/visitors/parse";
+import { cleanPath, fmtDuration, geoFromHeaders, isPrivateIp, isTrackedPath, parseUserAgent, referrerHost, visitorKey } from "../../src/lib/visitors/parse";
 
 const UA = {
   winChrome: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -84,8 +84,6 @@ test("misc helpers", () => {
   assert.equal(visitorKey("1.2.3.4", "ua"), visitorKey("1.2.3.4", "ua"));
   assert.notEqual(visitorKey("1.2.3.4", "ua"), visitorKey("1.2.3.5", "ua"));
   assert.equal(visitorKey("1.2.3.4", "ua").length, 64);
-  assert.equal(flagEmoji("IT"), "🇮🇹");
-  assert.equal(flagEmoji(null), "🌐");
   assert.equal(fmtDuration(42), "42 s");
   assert.equal(fmtDuration(125), "2 min 5 s");
   assert.equal(fmtDuration(3720), "1 h 2 min");

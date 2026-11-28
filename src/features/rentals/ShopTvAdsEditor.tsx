@@ -22,10 +22,8 @@ export function ShopTvAdsEditor({ slides, maxSlides, brandName }: { slides: AdSl
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    if (slides.length <= 1) {
-      setActive(0);
-      return;
-    }
+    // One slide or none: nothing to rotate (`active` is always read modulo the slide count).
+    if (slides.length <= 1) return;
     const id = setInterval(() => {
       setActive((i) => (i + 1) % slides.length);
     }, 3500);

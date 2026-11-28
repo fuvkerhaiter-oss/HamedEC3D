@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function MobileNav({ items }: { items: { href: string; label: string }[] }) {
   const path = usePathname() ?? "/";
   return (
-    <nav aria-label="Sections" className="mx-auto mt-1.5 max-w-6xl sm:hidden">
+    <nav aria-label="Sections" className="mx-auto mt-1.5 max-w-6xl lg:hidden">
       <ul className="flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
         {items.map((n) => {
           const active = path === n.href || path.startsWith(`${n.href}/`) || (n.href === "/catalog" && path.startsWith("/category/"));

@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -39,7 +40,7 @@ export default async function LeavingPage({ params }: { params: Promise<{ id: st
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
         <a href={`/api/shop-products/${id}/buy`} rel="noopener noreferrer nofollow" className="btn-yellow px-6 py-3">
-          Continue to {info.host} ↗
+          Continue to {info.host}<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" />
         </a>
         <Link href="/store" className="btn-ghost px-6 py-3">Back to the store</Link>
       </div>

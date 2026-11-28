@@ -157,7 +157,7 @@ export function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter:
             </div>
             <h1 id="pause-title" className="mt-4 font-display text-3xl leading-tight text-[#0d0f0e] sm:text-4xl short:mt-3 short:text-2xl">{title}</h1>
             <p className="mt-1.5 text-sm text-[#5b615d]">
-              {touchMode ? "Walk the aisles, look at a product and tap ✋ to see it." : "Walk the aisles, aim at a product and press E to see it."}
+              {touchMode ? "Walk the aisles, look at a product and tap the hand button to see it." : "Walk the aisles, aim at a product and press E to see it."}
             </p>
 
             <h2 className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#5b615d] short:mt-3">Controls</h2>
@@ -165,7 +165,7 @@ export function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter:
               <ul className="mt-1 grid divide-y divide-[#ecebe3] sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0 short:grid-cols-2 short:gap-x-4 short:divide-y-0">
                 <TouchRow icon={ICON.stick} title="Left thumb" label="Walk · push to the edge to run" />
                 <TouchRow icon={ICON.drag} title="Right thumb" label="Drag to look around" />
-                <TouchRow icon={ICON.hand} title="✋ button" label="See the product in front of you" />
+                <TouchRow icon={ICON.hand} title="Hand button" label="See the product in front of you" />
                 <TouchRow icon={ICON.cart} title="Cart button" label="Review your cart & pay" />
               </ul>
             ) : (

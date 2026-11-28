@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fmtPrice } from "@/features/rentals/format";
@@ -58,7 +59,7 @@ export default async function EditProductPage({ params, searchParams }: { params
                 <p className="text-xs font-bold uppercase tracking-wider" style={{ color: ctx.tenant.accent_color === "#ffffff" ? undefined : ctx.tenant.accent_color }}>{ctx.tenant.brand_name}</p>
                 <p className="font-semibold">{p.title}</p>
                 <p className="mt-1 font-display text-xl font-extrabold">{fmtPrice(p.price, p.currency)}</p>
-                <span className={`mt-3 flex w-full justify-center rounded-full py-2.5 text-sm font-semibold ${host ? "bg-amber text-ink" : "bg-sand text-ink-soft"}`}>{host ? `Buy on ${host} ↗` : "No payment link yet"}</span>
+                <span className={`mt-3 flex w-full justify-center rounded-full py-2.5 text-sm font-semibold ${host ? "bg-amber text-ink" : "bg-sand text-ink-soft"}`}>{host ? <>Buy on {host}<ArrowUpRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" /></> : "No payment link yet"}</span>
               </div>
             </div>
             <p className="mt-3 text-xs text-ink-soft">{p.views} views · {p.buy_clicks} buy clicks (all time)</p>

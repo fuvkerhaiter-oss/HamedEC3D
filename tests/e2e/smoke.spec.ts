@@ -51,7 +51,7 @@ test("catalog: add to cart is priced by the server (client sends ids + quantitie
   expect(Number.isInteger(cart.subtotal.amount)).toBe(true);
   expect(cart.subtotal.amount).toBeGreaterThan(0);
 
-  const dialog = page.getByRole("dialog", { name: "Your trolley" });
+  const dialog = page.getByRole("dialog", { name: "Your cart" });
   await expect(dialog.getByText("Subtotal")).toBeVisible();
   await expect(dialog.getByRole("link", { name: "Checkout" })).toHaveAttribute("href", "/checkout");
   expect(errors).toEqual([]);
@@ -117,8 +117,8 @@ test.describe("3D store on a phone (touch emulation)", () => {
     await expect(page.getByRole("button", { name: /Interact \(move closer/ })).toHaveAttribute("aria-disabled", "true");
 
     await page.getByRole("button", { name: /Open cart/ }).tap();
-    await expect(page.getByRole("dialog", { name: "Your trolley" })).toBeVisible();
-    await page.getByRole("dialog", { name: "Your trolley" }).getByRole("button", { name: "Close cart" }).last().tap();
+    await expect(page.getByRole("dialog", { name: "Your cart" })).toBeVisible();
+    await page.getByRole("dialog", { name: "Your cart" }).getByRole("button", { name: "Close cart" }).last().tap();
     // Touch: closing the cart returns straight to play.
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
 

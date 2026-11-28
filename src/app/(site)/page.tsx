@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import brandLogo from "@/assets/hero/wego-shiiip-logo.webp";
-import feature1 from "@/assets/home/feature-1.webp";
-import feature2 from "@/assets/home/feature-2.webp";
-import feature3 from "@/assets/home/feature-3.webp";
+import { Footprints, PackageCheck, ShoppingCart, type LucideIcon } from "lucide-react";
 import doorsOpenBanner from "@/assets/home/doors-open-banner.webp";
 import storeFirstView from "@/assets/hero/store-first-view.webp";
 import { EnterStoreButton, StorePortal } from "@/features/home/StorePortal";
@@ -26,10 +24,10 @@ const SOCIAL = (process.env.NEXT_PUBLIC_SOCIAL_URLS ?? "").split(",").map((s) =>
 // Hero copy is editable in Admin → Website Content (empty fields keep the defaults below).
 export const revalidate = 60;
 
-const FEATURES = [
-  { title: "Walk the aisles", image: feature1 },
-  { title: "Real products", image: feature2 },
-  { title: "Shop your way", image: feature3 },
+const FEATURES: { title: string; body: string; icon: LucideIcon; dark?: boolean }[] = [
+  { title: "Walk the aisles", icon: Footprints, dark: true, body: "Step into our 3D supermarket on a computer or phone and look at products on the shelf before you buy. Nothing to download." },
+  { title: "Real products", icon: PackageCheck, body: "Every item on the shelves is a real product with live stock, shipped to the EU and the United States." },
+  { title: "Shop your way", icon: ShoppingCart, body: "Walk the store or browse the catalog: same prices, same cart. Check out as a guest or with an account." },
 ];
 
 const STEPS: { title: string; body: string; keys: string[]; touchBody: string; touchKeys: string[] }[] = [
@@ -165,12 +163,12 @@ export default async function HomePage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Why WEGO SHIIIP</p>
               <h2 className="mt-4 max-w-xl font-display text-3xl leading-[1.04] sm:text-5xl">
-                Shopping, reimagined as a <span className="vsw-mark">place you visit</span>.
+                A real store you can <span className="vsw-mark">walk through</span>.
               </h2>
             </div>
-            <p className="max-w-md text-base leading-relaxed text-ink-soft sm:text-lg lg:justify-self-end">A real store with real stock, built for the browser. Wander or search; both lead to the same cart.</p>
+            <p className="max-w-md text-base leading-relaxed text-ink-soft sm:text-lg lg:justify-self-end">Built for the browser, stocked with real products. Wander the aisles or search the catalog: both lead to the same cart.</p>
           </div>
-          {/* 3D feature cards (artwork: src/assets/home/feature-*.webp, cut from "Modern Automation Feature Cards.webp"). */}
+          {/* Feature cards, built in code (the old feature-*.webp artwork carried template text). */}
           {/* Swipe row on phones: focusable so keyboard users can scroll it too (arrow keys). */}
           <div
             tabIndex={0}
@@ -179,13 +177,19 @@ export default async function HomePage() {
             className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0"
           >
             {FEATURES.map((f) => (
-              <Image
+              <article
                 key={f.title}
-                src={f.image}
-                alt={f.title}
-                sizes="(min-width: 1152px) 370px, (min-width: 640px) 32vw, 75vw"
-                className="h-auto w-[75%] shrink-0 snap-center sm:w-full drop-shadow-[0_14px_22px_rgb(17_21_19/0.16)] transition duration-300 hover:-translate-y-1.5 hover:rotate-[-0.6deg]"
-              />
+                className={`flex w-[78%] shrink-0 snap-center flex-col rounded-[1.75rem] p-7 ring-[3px] ring-amber shadow-[0_14px_28px_-12px_rgb(17_21_19/0.25)] transition duration-300 hover:-translate-y-1 sm:w-auto sm:p-8 ${f.dark ? "bg-brand text-white" : "bg-white text-ink"}`}
+              >
+                <span
+                  aria-hidden
+                  className={`grid h-14 w-14 place-items-center rounded-full shadow-[inset_0_-3px_0_rgb(0_0_0/0.12)] ${f.dark ? "bg-amber text-ink" : "bg-white text-ink ring-[3px] ring-amber"}`}
+                >
+                  <f.icon className="h-6 w-6" strokeWidth={2} />
+                </span>
+                <h3 className="mt-7 font-display text-2xl leading-tight sm:text-[1.75rem]">{f.title}</h3>
+                <p className={`mt-3 text-[15px] leading-relaxed ${f.dark ? "text-white/80" : "text-ink-soft"}`}>{f.body}</p>
+              </article>
             ))}
           </div>
         </div>
@@ -196,7 +200,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber">How it works</p>
-              <h2 className="mt-4 font-display text-3xl sm:text-5xl">Three steps to a full trolley.</h2>
+              <h2 className="mt-4 font-display text-3xl sm:text-5xl">Shopping in three steps.</h2>
             </div>
             <Link href="/store" className="group inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition hover:text-amber">
               Try it now <span aria-hidden className="transition group-hover:translate-x-1">→</span>

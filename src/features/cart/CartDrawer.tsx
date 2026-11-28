@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock, Minus, Plus, RotateCcw, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect } from "react";
 import { track } from "@/features/analytics/track";
 import Image from "next/image";
@@ -12,20 +13,13 @@ import { usePricedCart } from "./usePricedCart";
 import { useAuthStore } from "@/features/auth/auth-store";
 
 const STEP_BTN =
-  "flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold transition hover:bg-white active:scale-75 disabled:opacity-30 disabled:hover:bg-transparent";
+  "flex h-9 w-9 items-center justify-center rounded-lg text-ink transition hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent";
 
-/** A little personality that grows with the trolley. */
-function mood(count: number): string {
-  if (count === 0) return "Empty trolley, endless possibilities.";
-  if (count <= 2) return "A fine start. The aisles are calling.";
-  if (count <= 5) return "Now we're shopping!";
-  if (count <= 10) return "Look at you go, trolley pro.";
-  return "Legendary haul. The shelves salute you.";
+function summary(count: number): string {
+  return count === 0 ? "No items yet" : `${count} ${count === 1 ? "item" : "items"}`;
 }
 
-/** Warm tile colors for products without a photo (stable per product name). */
-const TILE = ["from-amber to-[#ffdf6b]", "from-[#9be0c0] to-[#d7f5e6]", "from-[#ffb4a2] to-[#ffe1d6]", "from-[#b9c6ff] to-[#e3e8ff]", "from-[#f7a8d8] to-[#fde1f1]"];
-const tileFor = (name: string) => TILE[([...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0) >>> 0) % TILE.length] ?? TILE[0];
+
 
 export function CartDrawer() {
   const open = useCart((s) => s.open);
@@ -52,43 +46,36 @@ export function CartDrawer() {
   // z-[80]: above the homepage-embedded 3D store (z-[70]) so C / the checkout counter can open it from there.
   return (
     <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-      <button className="vsw-fade-in absolute inset-0 bg-ink/55 backdrop-blur-sm" aria-label="Close cart" onClick={() => setOpen(false)} />
+      <button className="vsw-fade-in absolute inset-0 bg-ink/45 backdrop-blur-[2px]" aria-label="Close cart" onClick={() => setOpen(false)} />
       <aside
-        className="vsw-drawer-in vsw-cart-bg relative flex h-full w-full max-w-md flex-col bg-cream shadow-[-24px_0_60px_rgb(0_0_0/0.3)] sm:my-3 sm:mr-3 sm:h-[calc(100%-1.5rem)] sm:overflow-hidden sm:rounded-[2rem] sm:ring-4 sm:ring-amber"
+        className="vsw-drawer-in relative flex h-full w-full max-w-md flex-col bg-white shadow-[-24px_0_64px_-24px_rgb(13_15_14/0.35)] sm:my-3 sm:mr-3 sm:h-[calc(100%-1.5rem)] sm:overflow-hidden sm:rounded-2xl sm:ring-1 sm:ring-ink/5"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)", paddingRight: "env(safe-area-inset-right, 0px)" }}
       >
-        {/* Header: bouncing trolley + count bubble that wiggles whenever the count changes. */}
-        <header className="relative flex items-center gap-4 overflow-hidden bg-amber px-5 py-4 text-ink short:py-3 sm:px-6 sm:py-5">
-          <span aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/25" />
-          <span aria-hidden className="pointer-events-none absolute right-16 -bottom-10 h-20 w-20 rounded-full bg-white/15" />
-          <span aria-hidden className="vsw-cart-bob relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl shadow-[0_4px_0_rgb(13_15_14/0.15)]">
-            🛒
-            <span key={count} className="vsw-cart-wiggle absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-ink px-1.5 font-mono text-xs font-bold text-amber ring-2 ring-amber">
-              {count}
-            </span>
+        <header className="flex items-center gap-3 border-b border-line px-5 py-4 short:py-3 sm:px-6">
+          <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber text-ink">
+            <ShoppingCart className="h-5 w-5" strokeWidth={2} />
           </span>
-          <div className="relative min-w-0 flex-1">
-            <h2 id="cart-title" className="font-display text-3xl font-extrabold leading-none tracking-tight short:text-2xl">Your trolley</h2>
-            <p className="mt-1 truncate text-sm font-medium text-ink/75">{mood(count)}</p>
+          <div className="min-w-0 flex-1">
+            <h2 id="cart-title" className="font-display text-xl leading-tight">Your cart</h2>
+            <p key={count} className="text-sm text-ink-soft">{summary(count)}</p>
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink text-xl text-amber shadow-[0_3px_0_rgb(0_0_0/0.25)] transition hover:rotate-90 hover:scale-110 active:translate-y-0.5 active:shadow-none"
+            className="-mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink-soft transition hover:bg-sand hover:text-ink"
             aria-label="Close cart"
           >
-            ×
+            <X aria-hidden className="h-5 w-5" strokeWidth={2} />
           </button>
         </header>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
           {lines.length === 0 && (
             <div className="flex flex-col items-center px-4 py-14 text-center">
-              <span aria-hidden className="vsw-cart-roll text-7xl">🛒</span>
-              <span aria-hidden className="mt-1 h-2 w-24 rounded-full bg-ink/10 blur-[2px]" />
-              <p className="mt-6 font-display text-2xl font-bold">Your trolley is feeling lonely</p>
-              <p className="mt-2 max-w-xs text-sm text-ink-soft">It rolled all the way here with nothing inside. Grab something from the shelves and give it a purpose.</p>
-              <button onClick={() => setOpen(false)} className="mt-6 rounded-full bg-ink px-6 py-3 font-semibold text-amber shadow-[0_4px_0_var(--color-amber)] transition hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none">
-                Back to the aisles
+              <span aria-hidden className="grid h-16 w-16 place-items-center rounded-2xl bg-sand text-ink-soft"><ShoppingCart className="h-7 w-7" strokeWidth={1.75} /></span>
+              <p className="mt-5 font-display text-xl">Your cart is empty</p>
+              <p className="mt-1.5 max-w-xs text-sm text-ink-soft">Browse the aisles or the catalog and add products to see them here.</p>
+              <button onClick={() => setOpen(false)} className="btn-dark mt-6 px-5 py-2.5 text-sm">
+                Continue shopping
               </button>
             </div>
           )}
@@ -96,8 +83,8 @@ export function CartDrawer() {
           {lines.length > 0 && status === "loading" && !cart && (
             <ul aria-label="Checking prices and stock" className="space-y-3">
               {Array.from({ length: Math.min(3, lines.length) }, (_, i) => (
-                <li key={i} className="flex gap-3 rounded-3xl bg-white p-3 ring-1 ring-line">
-                  <span className="vsw-shimmer h-16 w-16 shrink-0 rounded-2xl" />
+                <li key={i} className="flex gap-3 rounded-xl p-3 ring-1 ring-line">
+                  <span className="vsw-shimmer h-16 w-16 shrink-0 rounded-lg" />
                   <span className="flex-1 space-y-2 py-1">
                     <span className="vsw-shimmer block h-4 w-3/4 rounded-full" />
                     <span className="vsw-shimmer block h-3 w-1/2 rounded-full" />
@@ -105,11 +92,11 @@ export function CartDrawer() {
                   </span>
                 </li>
               ))}
-              <li className="eyebrow pt-1 text-center text-ink-soft">Counting your goodies…</li>
+              <li className="pt-1 text-center text-xs text-ink-soft">Checking prices and stock…</li>
             </ul>
           )}
           {status === "error" && (
-            <p className="rounded-2xl bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">Oops, the price scanner hiccuped. Please try again.</p>
+            <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">We couldn&apos;t load current prices. Please try again.</p>
           )}
 
           <ul className="space-y-3">
@@ -117,43 +104,43 @@ export function CartDrawer() {
               <li
                 key={l.variantId}
                 style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
-                className="vsw-cart-pop group flex gap-3 rounded-3xl bg-white p-3 ring-1 ring-line transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgb(13_15_14/0.08)] hover:ring-amber"
+                className="vsw-cart-pop flex gap-3.5 border-b border-line pb-4 last:border-b-0"
               >
                 {l.imageUrl ? (
                   // 64 px thumbnail: optimized WebP instead of the full-size original
-                  <Image src={l.imageUrl} unoptimized={!canOptimize(l.imageUrl)} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-2xl bg-sand object-cover transition group-hover:rotate-[-4deg]" />
+                  <Image src={l.imageUrl} unoptimized={!canOptimize(l.imageUrl)} alt="" width={64} height={64} className="h-20 w-20 shrink-0 rounded-lg bg-sand object-cover ring-1 ring-line" />
                 ) : (
-                  <span aria-hidden className={`grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br font-display text-2xl font-extrabold text-ink/80 transition group-hover:rotate-[-4deg] ${tileFor(l.productName)}`}>
+                  <span aria-hidden className={`grid h-20 w-20 shrink-0 place-items-center rounded-lg font-display text-2xl text-ink-soft bg-sand ring-1 ring-line`}>
                     {l.productName.slice(0, 1)}
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="font-semibold leading-snug">{l.productName}</p>
-                    <p className="shrink-0 font-display text-lg font-bold tabular-nums leading-none">{fmt(l.lineTotal)}</p>
+                    <p className="text-sm font-semibold leading-snug">{l.productName}</p>
+                    <p className="shrink-0 text-sm font-semibold tabular-nums">{fmt(l.lineTotal)}</p>
                   </div>
-                  <p className="mt-0.5 font-mono text-xs text-ink-soft">{l.variantName} · {fmt(l.unitPrice)} each</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">{l.variantName} · {fmt(l.unitPrice)} each</p>
                   <div className="mt-2.5 flex items-center justify-between gap-3">
-                    <div className="flex items-center rounded-full bg-sand p-0.5 ring-1 ring-line">
+                    <div className="flex items-center rounded-lg bg-sand p-0.5 ring-1 ring-line">
                       <button className={STEP_BTN} aria-label="Decrease quantity"
-                        disabled={l.quantity <= 1} onClick={() => setQuantity(l.variantId, l.quantity - 1)}>−</button>
-                      <span key={l.quantity} className="vsw-cart-wiggle w-7 text-center font-mono text-sm font-bold tabular-nums" aria-live="polite">{l.quantity}</span>
+                        disabled={l.quantity <= 1} onClick={() => setQuantity(l.variantId, l.quantity - 1)}><Minus aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} /></button>
+                      <span key={l.quantity} className="w-8 text-center text-sm font-semibold tabular-nums" aria-live="polite">{l.quantity}</span>
                       <button className={STEP_BTN} aria-label="Increase quantity"
-                        disabled={l.quantity >= MAX_LINE_QUANTITY} onClick={() => setQuantity(l.variantId, l.quantity + 1)}>+</button>
+                        disabled={l.quantity >= MAX_LINE_QUANTITY} onClick={() => setQuantity(l.variantId, l.quantity + 1)}><Plus aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} /></button>
                     </div>
                     <button
-                      className="min-h-10 rounded-full px-3 py-2 text-xs font-semibold text-ink-soft transition hover:bg-red-50 hover:text-red-700"
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-700"
                       onClick={() => remove(l.variantId)}
                       aria-label={`Remove ${l.productName}`}
                     >
-                      Put back on shelf
+                      <Trash2 aria-hidden className="h-3.5 w-3.5" strokeWidth={2} /> Remove
                     </button>
                   </div>
                 </div>
               </li>
             ))}
             {cart?.issues.map((i) => (
-              <li key={i.variantId} className="flex items-center justify-between gap-4 rounded-3xl bg-red-50 p-4 text-sm ring-1 ring-red-200">
+              <li key={i.variantId} className="flex items-center justify-between gap-4 rounded-xl bg-red-50 p-3.5 text-sm ring-1 ring-red-200">
                 <span className="text-red-800">{i.message}</span>
                 <button className="shrink-0 font-semibold underline underline-offset-4" onClick={() => remove(i.variantId)}>Remove</button>
               </li>
@@ -162,25 +149,23 @@ export function CartDrawer() {
         </div>
 
         {cart && cart.lines.length > 0 && (
-          <footer className="relative border-t-2 border-dashed border-line bg-white px-5 pb-4 pt-5 short:py-3 sm:px-6 sm:pb-6">
-            {/* Receipt notch */}
-            <span aria-hidden className="absolute -top-3 left-1/2 h-6 w-6 -translate-x-1/2 rounded-full bg-cream" />
-            <div className="flex items-end justify-between">
-              <span className="eyebrow text-ink-soft">Subtotal</span>
-              <span className="font-display text-4xl font-extrabold tabular-nums leading-none short:text-3xl">{fmt(cart.subtotal)}</span>
+          <footer className="border-t border-line bg-cream px-5 pb-4 pt-4 short:py-3 sm:px-6 sm:pb-6">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium text-ink">Subtotal</span>
+              <span className="font-display text-2xl tabular-nums">{fmt(cart.subtotal)}</span>
             </div>
-            <p className="mt-2 text-xs text-ink-soft">
+            <p className="mt-1 text-xs text-ink-soft">
               {market.taxMode === "inclusive" ? "Prices include VAT. Shipping calculated at checkout." : "Sales tax and shipping calculated at checkout."}
             </p>
             {!useAuthStore.getState().user && (
-              <div className="mt-3 flex items-center justify-between rounded-2xl bg-sand px-3.5 py-2 text-xs">
-                <span className="text-ink-soft">Shopping as guest?</span>
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs ring-1 ring-line">
+                <span className="text-ink-soft">Have an account?</span>
                 <button
                   type="button"
                   onClick={() => { setOpen(false); useAuthStore.getState().openAuth("welcome"); }}
-                  className="font-bold text-ink underline decoration-amber decoration-2 underline-offset-2 hover:text-amber"
+                  className="font-semibold text-ink underline underline-offset-2 hover:text-brand"
                 >
-                  Sign in to save trolley
+                  Sign in to save your cart
                 </button>
               </div>
             )}
@@ -188,18 +173,18 @@ export function CartDrawer() {
               href="/checkout"
               onClick={() => setOpen(false)}
               aria-disabled={!cart.purchasable}
-              className={`group mt-4 flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-extrabold transition short:mt-3 short:py-3 ${
+              className={`mt-4 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-semibold transition short:mt-3 short:py-3 ${
                 cart.purchasable
-                  ? "bg-amber text-ink shadow-[0_5px_0_var(--color-ink)] hover:-translate-y-0.5 hover:shadow-[0_7px_0_var(--color-ink)] active:translate-y-1 active:shadow-[0_1px_0_var(--color-ink)]"
+                  ? "bg-amber text-ink hover:bg-amber-deep active:translate-y-px"
                   : "pointer-events-none bg-ink/15 text-ink/40"
               }`}
             >
-              Checkout
-              <span aria-hidden className="inline-block transition group-hover:translate-x-1.5">🛒</span>
+              <Lock aria-hidden className="h-4 w-4" strokeWidth={2} />
+              Go to checkout
             </a>
             <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] font-medium text-ink-soft">
-              <li>🔒 Secure payment</li>
-              <li>↩ 14-day returns in the EU</li>
+              <li className="inline-flex items-center gap-1"><Lock aria-hidden className="h-3 w-3" strokeWidth={2} /> Secure payment</li>
+              <li className="inline-flex items-center gap-1"><RotateCcw aria-hidden className="h-3 w-3" strokeWidth={2} /> 14-day returns in the EU</li>
             </ul>
           </footer>
         )}

@@ -1,3 +1,5 @@
+import { KeyRound, Mail, Package, Truck } from "lucide-react";
+import { IconTile } from "@/components/IconTile";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuthUser } from "@/lib/supabase/server";
@@ -35,7 +37,7 @@ export default async function AccountOrdersPage({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="eyebrow text-ink-soft">Your account</p>
-          <h1 className="mt-1 font-display text-4xl font-extrabold text-ink">Your orders</h1>
+          <h1 className="mt-1 font-display text-3xl text-ink sm:text-4xl">Your orders</h1>
         </div>
         {authUser && (
           <Link
@@ -67,10 +69,10 @@ export default async function AccountOrdersPage({
       {!email ? (
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {/* Sign In option */}
-          <section className="rounded-3xl bg-white p-6 shadow-card ring-2 ring-amber/50 flex flex-col justify-between">
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-line flex flex-col justify-between">
             <div>
-              <span className="text-3xl">🔑</span>
-              <h2 className="mt-2 font-display text-xl font-bold">Have an account?</h2>
+              <IconTile icon={KeyRound} />
+              <h2 className="mt-2 font-display text-xl">Have an account?</h2>
               <p className="mt-1 text-sm text-ink-soft">
                 Sign in to view your complete order history, track shipments, and request returns instantly.
               </p>
@@ -81,10 +83,10 @@ export default async function AccountOrdersPage({
           </section>
 
           {/* Guest email lookup */}
-          <section className="rounded-3xl bg-white/70 p-6 shadow-card flex flex-col justify-between">
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-line flex flex-col justify-between">
             <div>
-              <span className="text-3xl">✉️</span>
-              <h2 className="mt-2 font-display text-xl font-bold">Ordered as guest?</h2>
+              <IconTile icon={Mail} />
+              <h2 className="mt-2 font-display text-xl">Ordered as guest?</h2>
               <p className="mt-1 text-sm text-ink-soft">
                 {t
                   ? "This link has expired or is not valid. Request a fresh one below."
@@ -104,9 +106,9 @@ export default async function AccountOrdersPage({
           </p>
 
           {orders.length === 0 ? (
-            <div className="mt-8 rounded-3xl bg-white/70 p-10 text-center shadow-card">
-              <span className="text-4xl">📦</span>
-              <p className="mt-3 font-display text-xl font-bold">No orders found</p>
+            <div className="mt-8 rounded-2xl border border-dashed border-line bg-white p-10 text-center">
+              <IconTile icon={Package} size="lg" />
+              <p className="mt-3 font-display text-xl">No orders found</p>
               <p className="mt-1 text-sm text-ink-soft">
                 No purchases yet for this address. Hungry for snacks or gadgets?
               </p>
@@ -125,13 +127,13 @@ export default async function AccountOrdersPage({
                 <li key={o.id}>
                   <Link
                     href={`/order?id=${o.id}&t=${o.token}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/90 p-5 shadow-card ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber hover:bg-white"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/90 p-5 ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-amber hover:bg-white"
                   >
                     <span>
-                      <span className="font-display text-lg font-bold">Order #{o.orderNumber}</span>
+                      <span className="font-display text-lg">Order #{o.orderNumber}</span>
                       <span className="block text-xs font-mono text-ink-soft mt-0.5">
                         {new Date(o.createdAt).toLocaleDateString(o.total.currency === "USD" ? MARKETS.US.locale : MARKETS.EU.locale)} · {o.itemCount} item(s)
-                        {o.trackingCount ? " · 🚚 Tracking available" : ""}
+                        {o.trackingCount ? <> · <Truck aria-hidden className="inline h-3.5 w-3.5 align-[-2px]" /> Tracking available</> : ""}
                       </span>
                     </span>
                     <span className="text-right">

@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/features/admin/ActionForm";
@@ -86,7 +87,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
                       <td className="text-xs">
                         {(() => {
                           const url = p.payment_url ?? t.default_payment_url;
-                          return url ? <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="underline">{linkHost(url)} ↗</a> : <span className="text-ink-soft">no link</span>;
+                          return url ? <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="underline">{linkHost(url)}<ArrowUpRight aria-hidden className="ml-1 inline h-3.5 w-3.5 align-[-3px]" /></a> : <span className="text-ink-soft">no link</span>;
                         })()}
                       </td>
                       <td className="tabular-nums">{p.views} / {p.buy_clicks}</td>

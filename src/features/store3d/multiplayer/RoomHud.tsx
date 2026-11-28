@@ -41,7 +41,7 @@ export function RoomHud() {
       if (em) {
         triggerEmote(em.id);
         if (useNet.getState().myEmote === em.id) {
-          useStoreUi.getState().showToast(`${em.emoji} ${em.label}!`);
+          useStoreUi.getState().showToast(`${em.label}!`);
         }
       }
     };
@@ -61,7 +61,7 @@ export function RoomHud() {
     known.current = status === "online" ? ids : null;
     if (!prev) return;
     const joined = members.find((m) => !prev.has(m.id));
-    if (joined) useStoreUi.getState().showToast(`👋 ${joined.name} walked into the store`);
+    if (joined) useStoreUi.getState().showToast(`${joined.name} walked into the store`);
   }, [members, status]);
 
   // Release pointer lock if the voice consent dialog opens while walking (e.g. pressing V) so the shopper can click it.

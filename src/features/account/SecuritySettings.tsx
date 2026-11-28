@@ -45,8 +45,8 @@ export function SecuritySettings({
   return (
     <div className="space-y-8">
       {/* Account Identity Card */}
-      <section className="rounded-3xl bg-white p-6 shadow-card ring-1 ring-line">
-        <h2 className="font-display text-xl font-bold">Authentication & Identity</h2>
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-line">
+        <h2 className="font-display text-xl">Authentication & Identity</h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 text-sm">
           <div className="rounded-2xl bg-cream/60 p-4">
             <dt className="text-xs text-ink-soft">Verified Email</dt>
@@ -84,10 +84,10 @@ export function SecuritySettings({
       </section>
 
       {/* Privacy & Account Deletion */}
-      <section className="rounded-3xl bg-red-50/50 p-6 shadow-card ring-1 ring-red-200">
+      <section className="rounded-2xl bg-red-50/50 p-6 ring-1 ring-red-200">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="font-display text-xl font-bold text-red-900">Privacy & Danger Zone</h2>
+            <h2 className="font-display text-xl text-red-900">Privacy & Danger Zone</h2>
             <p className="mt-1 text-sm text-red-800/80 max-w-xl leading-relaxed">
               You can request complete deletion of your account. In accordance with GDPR and EU consumer rights,
               your saved addresses, carts, and customer profile will be permanently wiped.

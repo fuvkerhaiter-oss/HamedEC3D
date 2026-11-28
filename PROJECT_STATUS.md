@@ -1,5 +1,23 @@
 # Project Status
 
+## Demo rental shops for local testing (2026-11-28)
+- `npm run db:seed-demo-shops` (`tools/db/seed-demo-shops.ts`, LOCAL DB + local media only, refuses otherwise): opens SHOP 01–03 as DEMO tenants (Paws & Co / Green Leaf / Sweet Tooth, "(DEMO)" in brand) with complimentary `is_test` leases (3 months), approved sign names, logos, door styles, open storefronts and 15 published products with generated "DEMO" images; buy links go to example.com (placeholder). SHOP 04 stays free. Re-run replaces them; `-- --clear` removes them. Skips a shop with a real lease.
+- Checked: /store + /rent-a-shop on :3000 list the shops and all 15 products; the media route returns the images when run in a normal shell. The :3000 dev server that was running (another session) returned 404 for ALL local media (old images too), so restart `npm run dev` from your own terminal to see images.
+
+## Pro UI/UX polish pass (2026-11-28)
+- Auth modal rebuilt (clean white dialog, sentence case, icon option rows, `one-time-code` autocomplete); logic unchanged.
+- Cart drawer: neutral panel, "Your cart", +/- and remove icons, plain copy (e2e smoke updated to "Your cart").
+- Account pages: no "VIP / Trolley Pilot" gimmicks; flat cards (rounded-2xl, ring-1 ring-line), standard buttons.
+- Removed chunky offset shadows and infinite wobble animations (`vsw-cart-bob/roll` now static, pop is a calm ease-out).
+- Header: desktop links from `lg`, MobileNav below `lg` (fixes wrapped "Rent a shop" / "Sign in" at tablet widths).
+- Homepage "Why WEGO SHIIIP" cards rebuilt in code (same look: green/white, yellow frame, icon badge) with real copy; old `src/assets/home/feature-*.webp` no longer used (kept on disk).
+
+## No emoji anywhere: lucide-react icons (2026-11-28)
+- Every UI emoji replaced with `lucide-react` line icons; card/empty-state icons use `src/components/IconTile.tsx`.
+- Rule: no emoji in UI text, toasts or alerts. Use lucide icons (external links: `ArrowUpRight`). Touch hint reads "hand button".
+- Admin visitors: device icons are lucide; countries show as "Italy (IT)" (`flagEmoji` helper removed). Emote defs no longer carry emoji.
+- Verified: typecheck, lint (0 errors), 274 unit tests, build, visual check of /account, /rent-a-shop, cart drawer.
+
 ## Playful 3D shop fronts + logo signs (2026-11-28)
 - New `store3d/wing/ShopSign.tsx` replaces the black lightbox fascia + slim canopy of every rental unit: bevelled "bubble" sign board in the shop colour (near-black/default colours → house orange #ff5b2e) with cream outline, cartoon drop shadow and 44 chasing marquee bulbs (one InstancedMesh per shop, colours updated 8×/s); brand name as fat cartoon lettering (stacked extrusion, ink outline, glossy gradient) drawn into a CanvasTexture with the site font (Bricolage, loaded via document.fonts); big round logo medallion popping out of the left end (logo, else brand initial, else a smiling shopping bag for free shops) that wobbles/bounces with twinkling stars; striped scalloped awning over the door. Fits under the 6.07 m wall top.
 - Logo on the sign from day one: `PublicShop.logoUrl` (`loadShopLogos` in lib/tenants/service.ts, any running non-suspended lease with an uploaded logo), not only once the shop is opened.

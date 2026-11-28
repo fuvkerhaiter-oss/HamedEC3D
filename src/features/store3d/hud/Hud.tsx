@@ -1,5 +1,6 @@
 "use client";
 
+import { Hand } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { CartButton } from "@/components/CartButton";
 import { MarketSwitch } from "@/components/MarketSwitch";
@@ -92,7 +93,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
         >
           <div className="flex max-w-full items-center gap-3 rounded-full bg-ink/80 px-5 py-2.5 text-cream backdrop-blur">
             {touchMode ? (
-              <span className="shrink-0 whitespace-nowrap rounded-md bg-amber px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-ink">Tap ✋</span>
+              <span className="shrink-0 whitespace-nowrap rounded-md bg-amber px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-ink inline-flex items-center gap-1">Tap <Hand aria-hidden className="h-3.5 w-3.5" strokeWidth={2} /></span>
             ) : (
               <kbd className="rounded-md bg-cream px-2 py-0.5 font-mono text-sm text-ink">E</kbd>
             )}

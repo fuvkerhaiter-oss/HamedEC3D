@@ -8,7 +8,7 @@
  * Per-frame work (`stepBots`) allocates nothing; paths are (re)planned only when a bot picks a new goal.
  */
 import { resolve, step, type Motion, type Rect, type ShopperShape } from "../collision";
-import { GATE_X } from "../env/extension";
+import { GATE_X, PLAZA_PROPS } from "../env/extension";
 import type { EnvLayout } from "../env/types";
 import type { AvatarKind } from "../multiplayer/rooms";
 import { TROLLEY } from "../trolley/geometry";
@@ -305,6 +305,21 @@ export function buildBotWorld(env: EnvLayout, rects: readonly Rect[], seed: [num
       for (let x = run.box.min[0] + 0.8; x <= run.box.max[0] - 0.8; x += 1.6) {
         if (isFree(grid, x, z)) shelfSpots.push({ x, z, faceYaw: yawOf(0, -side) });
       }
+    }
+  }
+  // The main store's centre gondolas were replaced by the plaza: bots also stop to look at its attractions (centre
+  // island, claw machine, duck), from all around each one, facing it.
+  const { center, claw, ducky } = PLAZA_PROPS;
+  for (const p of [
+    { x: center.x, z: center.z, r: center.radius },
+    { x: claw.x, z: claw.z, r: Math.max(claw.halfX, claw.halfZ) },
+    { x: ducky.x, z: ducky.z, r: ducky.radius },
+  ]) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const x = p.x + Math.cos(a) * (p.r + 1.0);
+      const z = p.z + Math.sin(a) * (p.r + 1.0);
+      if (isFree(grid, x, z)) shelfSpots.push({ x, z, faceYaw: yawOf(p.x - x, p.z - z) });
     }
   }
   const danceSpots: Spot[] = [];
