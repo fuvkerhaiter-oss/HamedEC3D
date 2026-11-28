@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Billboard, Text, useGLTF } from "@react-three/drei";
@@ -9,6 +9,7 @@ import { basketSlot, TROLLEY, unitJitter } from "../trolley/geometry";
 import { ITEM_BOX, itemMaterial, useBasketUnits, type TrolleyCatalog } from "../trolley/visuals";
 import { EMOTE_DURATION_MS, emoteDef, type EmoteId } from "./emotes";
 import { remoteEmotes, remotePoses, sendPose, setListener, setMyBasket, setVoicePosition, useNet, voiceLevel, type Member } from "./net";
+import type { AvatarKind } from "./rooms";
 
 const EYE_HEIGHT = 1.6; // poses are camera positions; feet are this far below
 /** Same place as my own trolley: in front of the shopper, origin on the floor (avatar-local, front = -Z). */
@@ -32,10 +33,36 @@ export const GEO = {
   eye: new THREE.SphereGeometry(0.03, 8, 6),
   ring: new THREE.TorusGeometry(0.34, 0.025, 6, 32),
   arm: new THREE.CapsuleGeometry(0.055, 1, 3, 8),
+  // Tailored character parts (Woman & Man)
+  leg: new THREE.CapsuleGeometry(0.068, 0.34, 4, 10),
+  shoe: new THREE.CapsuleGeometry(0.062, 0.09, 4, 8),
+  womanTorso: new THREE.CylinderGeometry(0.19, 0.16, 0.44, 16),
+  womanChest: new THREE.SphereGeometry(0.185, 16, 12),
+  womanSkirt: new THREE.CylinderGeometry(0.175, 0.30, 0.42, 20),
+  womanBelt: new THREE.CylinderGeometry(0.178, 0.178, 0.055, 18),
+  womanCollar: new THREE.TorusGeometry(0.11, 0.022, 8, 18),
+  manTorso: new THREE.CylinderGeometry(0.24, 0.21, 0.50, 16),
+  manTrousers: new THREE.CylinderGeometry(0.20, 0.17, 0.22, 16),
+  hairCap: new THREE.SphereGeometry(0.215, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62),
+  hairBack: new THREE.CapsuleGeometry(0.145, 0.24, 6, 12),
+  hairLock: new THREE.CapsuleGeometry(0.055, 0.20, 4, 8),
+  hairBun: new THREE.SphereGeometry(0.095, 14, 10),
+  hairQuiff: new THREE.CapsuleGeometry(0.075, 0.16, 4, 10),
+  hand: new THREE.SphereGeometry(0.055, 10, 8),
+  earring: new THREE.SphereGeometry(0.022, 8, 6),
+  blush: new THREE.SphereGeometry(0.032, 8, 6),
+  smile: new THREE.TorusGeometry(0.045, 0.011, 6, 12, Math.PI),
 };
 export const SKIN = new THREE.MeshStandardMaterial({ color: "#f1c9a5", roughness: 0.7 });
 export const EYE = new THREE.MeshBasicMaterial({ color: "#111513" });
 const MIC = new THREE.MeshBasicMaterial({ color: "#3bdc7a" });
+const WOMAN_HAIR = new THREE.MeshStandardMaterial({ color: "#3d2317", roughness: 0.55 });
+const MAN_HAIR = new THREE.MeshStandardMaterial({ color: "#231b16", roughness: 0.65 });
+const SLATE_DARK = new THREE.MeshStandardMaterial({ color: "#1e2432", roughness: 0.65 });
+const SHOE_MAT = new THREE.MeshStandardMaterial({ color: "#14161c", roughness: 0.45 });
+const COLLAR_MAT = new THREE.MeshStandardMaterial({ color: "#f7f4ec", roughness: 0.5 });
+const GOLD_ACCENT = new THREE.MeshStandardMaterial({ color: "#f5c451", roughness: 0.3, metalness: 0.6 });
+const BLUSH_MAT = new THREE.MeshBasicMaterial({ color: "#e58493", transparent: true, opacity: 0.55 });
 
 /** Other shoppers in my room (each pushing a trolley with what they picked) + sends my own pose and basket. */
 export function RemotePlayers({ tc }: { tc: TrolleyCatalog }) {
@@ -51,6 +78,91 @@ export function RemotePlayers({ tc }: { tc: TrolleyCatalog }) {
     setListener(x, y, z, dir.x, dir.z);
   });
   return <>{members.map((m) => <Avatar key={m.id} member={m} trolley={scene} tc={tc} />)}</>;
+}
+
+/** Shared Woman/Man lower body + torso meshes (reused by multiplayer avatars and demo bots). */
+export function AvatarTorso({ avatar, body, castShadow = true }: { avatar: AvatarKind; body: THREE.Material; castShadow?: boolean }) {
+  if (avatar === "woman") {
+    return (
+      <>
+        <mesh geometry={GEO.leg} material={SKIN} position={[-0.095, 0.25, 0]} castShadow={castShadow} />
+        <mesh geometry={GEO.leg} material={SKIN} position={[0.095, 0.25, 0]} castShadow={castShadow} />
+        <mesh geometry={GEO.shoe} material={SHOE_MAT} position={[-0.095, 0.06, -0.03]} rotation-x={Math.PI / 2} castShadow={castShadow} />
+        <mesh geometry={GEO.shoe} material={SHOE_MAT} position={[0.095, 0.06, -0.03]} rotation-x={Math.PI / 2} castShadow={castShadow} />
+        <mesh geometry={GEO.womanSkirt} material={SLATE_DARK} position={[0, 0.62, 0]} castShadow={castShadow} />
+        <mesh geometry={GEO.womanBelt} material={SHOE_MAT} position={[0, 0.83, 0]} />
+        <mesh position={[0, 0.83, -0.178]} material={GOLD_ACCENT}>
+          <boxGeometry args={[0.065, 0.045, 0.02]} />
+        </mesh>
+        <mesh geometry={GEO.womanTorso} material={body} position={[0, 1.04, 0]} castShadow={castShadow} />
+        <mesh geometry={GEO.womanChest} material={body} position={[0, 1.13, -0.02]} scale={[1.02, 0.72, 0.92]} castShadow={castShadow} />
+        <mesh geometry={GEO.womanCollar} material={COLLAR_MAT} position={[0, 1.24, -0.02]} rotation-x={Math.PI / 2} />
+      </>
+    );
+  }
+  return (
+    <>
+      <mesh geometry={GEO.leg} material={SLATE_DARK} position={[-0.105, 0.25, 0]} castShadow={castShadow} />
+      <mesh geometry={GEO.leg} material={SLATE_DARK} position={[0.105, 0.25, 0]} castShadow={castShadow} />
+      <mesh geometry={GEO.shoe} material={SHOE_MAT} position={[-0.105, 0.06, -0.03]} rotation-x={Math.PI / 2} castShadow={castShadow} />
+      <mesh geometry={GEO.shoe} material={SHOE_MAT} position={[0.105, 0.06, -0.03]} rotation-x={Math.PI / 2} castShadow={castShadow} />
+      <mesh geometry={GEO.manTrousers} material={SLATE_DARK} position={[0, 0.56, 0]} castShadow={castShadow} />
+      <mesh geometry={GEO.manTorso} material={body} position={[0, 0.92, 0]} castShadow={castShadow} />
+      <mesh geometry={GEO.womanChest} material={body} position={[0, 1.12, 0]} scale={[1.26, 0.65, 1.05]} castShadow={castShadow} />
+      <mesh geometry={GEO.womanCollar} material={COLLAR_MAT} position={[0, 1.23, -0.02]} rotation-x={Math.PI / 2} scale={[1.15, 1.15, 1]} />
+    </>
+  );
+}
+
+/** Shared Woman/Man head + hair + face meshes (children can add e.g. bot antenna). */
+export function AvatarHead({ avatar, castShadow = true, children }: { avatar: AvatarKind; castShadow?: boolean; children?: ReactNode }) {
+  if (avatar === "woman") {
+    return (
+      <>
+        <mesh geometry={GEO.head} material={SKIN} castShadow={castShadow} />
+        <mesh geometry={GEO.eye} material={EYE} position={[-0.068, 0.03, -0.18]} />
+        <mesh geometry={GEO.eye} material={EYE} position={[0.068, 0.03, -0.18]} />
+        <mesh geometry={GEO.blush} material={BLUSH_MAT} position={[-0.105, -0.015, -0.16]} scale={[1, 0.65, 0.5]} />
+        <mesh geometry={GEO.blush} material={BLUSH_MAT} position={[0.105, -0.015, -0.16]} scale={[1, 0.65, 0.5]} />
+        <mesh geometry={GEO.smile} material={EYE} position={[0, -0.035, -0.186]} rotation-z={Math.PI} />
+        <mesh geometry={GEO.earring} material={GOLD_ACCENT} position={[-0.195, -0.01, -0.02]} />
+        <mesh geometry={GEO.earring} material={GOLD_ACCENT} position={[0.195, -0.01, -0.02]} />
+        <mesh geometry={GEO.hairCap} material={WOMAN_HAIR} position={[0, 0.02, 0.015]} rotation-x={0.18} castShadow={castShadow} />
+        <mesh geometry={GEO.hairBack} material={WOMAN_HAIR} position={[0, -0.08, 0.13]} rotation-x={0.16} castShadow={castShadow} />
+        <mesh geometry={GEO.hairLock} material={WOMAN_HAIR} position={[-0.145, -0.05, -0.07]} rotation-z={0.12} castShadow={castShadow} />
+        <mesh geometry={GEO.hairLock} material={WOMAN_HAIR} position={[0.145, -0.05, -0.07]} rotation-z={-0.12} castShadow={castShadow} />
+        <mesh geometry={GEO.hairBun} material={WOMAN_HAIR} position={[0, 0.13, 0.19]} castShadow={castShadow} />
+        <mesh position={[0, 0.11, 0.155]} rotation-x={0.5} material={GOLD_ACCENT}>
+          <torusGeometry args={[0.065, 0.012, 8, 16]} />
+        </mesh>
+        {children}
+      </>
+    );
+  }
+  return (
+    <>
+      <mesh geometry={GEO.head} material={SKIN} castShadow={castShadow} />
+      <mesh geometry={GEO.eye} material={EYE} position={[-0.07, 0.03, -0.18]} />
+      <mesh geometry={GEO.eye} material={EYE} position={[0.07, 0.03, -0.18]} />
+      <mesh geometry={GEO.smile} material={EYE} position={[0, -0.04, -0.186]} rotation-z={Math.PI} />
+      <mesh geometry={GEO.hairCap} material={MAN_HAIR} position={[0, 0.025, 0.015]} rotation-x={0.14} castShadow={castShadow} />
+      <mesh geometry={GEO.hairQuiff} material={MAN_HAIR} position={[0, 0.16, -0.09]} rotation-z={Math.PI / 2} castShadow={castShadow} />
+      {children}
+    </>
+  );
+}
+
+/** Shared Woman/Man arm + hand meshes. */
+export function AvatarArm({ avatar, body }: { avatar: AvatarKind; body: THREE.Material }) {
+  const w = avatar === "woman" ? 0.85 : 1;
+  const trim = avatar === "woman" ? 0.14 : 0.12;
+  const handOffset = avatar === "woman" ? 0.08 : 0.06;
+  return (
+    <>
+      <mesh geometry={GEO.arm} material={body} position={[0, (ARM.len - trim) / 2, 0]} scale={[w, ARM.len - trim, w]} />
+      <mesh geometry={GEO.hand} material={SKIN} position={[0, ARM.len - handOffset, 0]} />
+    </>
+  );
 }
 
 function Avatar({ member, trolley, tc }: { member: Member; trolley: THREE.Object3D; tc: TrolleyCatalog }) {
@@ -212,20 +324,21 @@ function Avatar({ member, trolley, tc }: { member: Member; trolley: THREE.Object
     }
   });
 
+  const avatar = member.avatar;
+  const armX = avatar === "woman" ? 0.21 : 0.24;
+
   return (
     <group ref={root} visible={false}>
       <group ref={char}>
-        <mesh geometry={GEO.body} material={body} position={[0, 0.66, 0]} castShadow />
-        <group ref={head} position={[0, 1.42, 0]}>
-          <mesh geometry={GEO.head} material={SKIN} castShadow />
-          <mesh geometry={GEO.eye} material={EYE} position={[-0.07, 0.03, -0.18]} />
-          <mesh geometry={GEO.eye} material={EYE} position={[0.07, 0.03, -0.18]} />
+        <AvatarTorso avatar={avatar} body={body} />
+        <group ref={head} position={[0, 1.43, 0]}>
+          <AvatarHead avatar={avatar} />
         </group>
-        <group ref={leftArm} position={[-0.22, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
-          <mesh geometry={GEO.arm} material={body} position={[0, (ARM.len - 0.11) / 2, 0]} scale={[1, ARM.len - 0.11, 1]} />
+        <group ref={leftArm} position={[-armX, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
+          <AvatarArm avatar={avatar} body={body} />
         </group>
-        <group ref={rightArm} position={[0.22, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
-          <mesh geometry={GEO.arm} material={body} position={[0, (ARM.len - 0.11) / 2, 0]} scale={[1, ARM.len - 0.11, 1]} />
+        <group ref={rightArm} position={[armX, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
+          <AvatarArm avatar={avatar} body={body} />
         </group>
       </group>
       <group ref={cart} position={[0, 0, TROLLEY_Z]}>

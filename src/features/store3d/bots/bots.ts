@@ -10,6 +10,7 @@
 import { resolve, step, type Motion, type Rect, type ShopperShape } from "../collision";
 import { GATE_X } from "../env/extension";
 import type { EnvLayout } from "../env/types";
+import type { AvatarKind } from "../multiplayer/rooms";
 import { TROLLEY } from "../trolley/geometry";
 
 export const BOT_COUNT = 5;
@@ -34,6 +35,7 @@ export const BOT_SHAPE: ShopperShape = {
 export interface Persona {
   name: string; // shown as "Bot · <name>"
   color: string;
+  avatar: AvatarKind;
   speed: number; // m/s cruising
   wobble: number; // 0..1 how drunkenly they waddle
   trick: Trick; // favourite silly move
@@ -44,11 +46,11 @@ export interface Persona {
 export type Trick = "spin" | "hop" | "dance" | "wobble";
 
 export const PERSONAS: readonly Persona[] = [
-  { name: "Lulu", color: "#ff7eb6", speed: 1.25, wobble: 0.5, trick: "spin", dash: 0.12 },
-  { name: "Bobo", color: "#4fb3ff", speed: 1.05, wobble: 1, trick: "wobble", dash: 0.06 },
-  { name: "Pip", color: "#ffd23f", speed: 1.7, wobble: 0.25, trick: "hop", dash: 0.35 }, // the sprinter
-  { name: "Zaza", color: "#8be37a", speed: 1.15, wobble: 0.4, trick: "dance", dash: 0 },
-  { name: "Momo", color: "#b48cff", speed: 0.95, wobble: 0.7, trick: "spin", dash: 0 },
+  { name: "Lulu", color: "#ff7eb6", avatar: "woman", speed: 1.25, wobble: 0.5, trick: "spin", dash: 0.12 },
+  { name: "Bobo", color: "#4fb3ff", avatar: "man", speed: 1.05, wobble: 1, trick: "wobble", dash: 0.06 },
+  { name: "Pip", color: "#ffd23f", avatar: "man", speed: 1.7, wobble: 0.25, trick: "hop", dash: 0.35 }, // the sprinter
+  { name: "Zaza", color: "#8be37a", avatar: "woman", speed: 1.15, wobble: 0.4, trick: "dance", dash: 0 },
+  { name: "Momo", color: "#b48cff", avatar: "woman", speed: 0.95, wobble: 0.7, trick: "spin", dash: 0 },
 ];
 
 export const botLabel = (p: Persona) => `Bot · ${p.name}`;

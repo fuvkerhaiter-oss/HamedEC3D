@@ -14,7 +14,7 @@ import { Billboard, Text, useGLTF } from "@react-three/drei";
 import { ASSETS } from "../assets/registry";
 import type { Rect } from "../collision";
 import type { EnvLayout } from "../env/types";
-import { ARM, EYE, GEO, SHOULDER, SKIN, TROLLEY_Z } from "../multiplayer/RemotePlayers";
+import { ARM, AvatarArm, AvatarHead, AvatarTorso, SHOULDER, TROLLEY_Z } from "../multiplayer/RemotePlayers";
 import { BOT_COUNT, PERSONAS, botLabel, botPose, buildBotWorld, createBots, newPose, stepBots, type Bot, type BotPose, type BotWorld, type PlayerSpot } from "./bots";
 
 const ANTENNA = {
@@ -120,20 +120,20 @@ export function BotShoppers({ env, obstacles, spawn, lowPower = false }: { env: 
     <>
       {looks.map((look, i) => {
         const persona = PERSONAS[i]!;
+        const armX = persona.avatar === "woman" ? 0.21 : 0.24;
         return (
           <group key={persona.name} ref={bind(i, "root")} visible={false}>
             <group ref={bind(i, "body")}>
-              <mesh geometry={GEO.body} material={look.body} position={[0, 0.66, 0]} castShadow={!lowPower} />
+              <AvatarTorso avatar={persona.avatar} body={look.body} castShadow={!lowPower} />
               <group position={[0, HEAD_Y, 0]}>
-                <mesh geometry={GEO.head} material={SKIN} castShadow={!lowPower} />
-                <mesh geometry={GEO.eye} material={EYE} position={[-0.07, 0.03, -0.18]} scale={1.5} />
-                <mesh geometry={GEO.eye} material={EYE} position={[0.07, 0.03, -0.18]} scale={1.5} />
-                <mesh geometry={ANTENNA.stick} material={ANTENNA.stickMat} position={[0, 0.26, 0]} />
-                <mesh ref={bind(i, "bulb")} geometry={ANTENNA.ball} material={look.bulb} position={[0, 0.36, 0]} />
+                <AvatarHead avatar={persona.avatar} castShadow={!lowPower}>
+                  <mesh geometry={ANTENNA.stick} material={ANTENNA.stickMat} position={[0, 0.26, 0]} />
+                  <mesh ref={bind(i, "bulb")} geometry={ANTENNA.ball} material={look.bulb} position={[0, 0.36, 0]} />
+                </AvatarHead>
               </group>
-              {[-0.2, 0.2].map((ax) => (
+              {[-armX, armX].map((ax) => (
                 <group key={ax} ref={bind(i, ax < 0 ? "armL" : "armR")} position={[ax, SHOULDER.y, SHOULDER.z]} rotation-x={ARM.tilt}>
-                  <mesh geometry={GEO.arm} material={look.body} position={[0, (ARM.len - 0.11) / 2, 0]} scale={[1, ARM.len - 0.11, 1]} />
+                  <AvatarArm avatar={persona.avatar} body={look.body} />
                 </group>
               ))}
               <Billboard position={[0, 2.08, 0]}>

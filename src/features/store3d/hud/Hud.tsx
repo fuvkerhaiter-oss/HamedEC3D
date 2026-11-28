@@ -13,6 +13,7 @@ import { ProductPanel } from "./ProductPanel";
 import { ShopRentPanel } from "./ShopRentPanel";
 import { TenantProductPanel } from "./TenantProductPanel";
 import { PauseMenu } from "./PauseMenu";
+import { AvatarPickerModal } from "../multiplayer/AvatarPickerModal";
 import { ProductPeek } from "./ProductPeek";
 import { TouchControls } from "./TouchControls";
 import { SupportersScrollButtons } from "./SupportersScrollButtons";
@@ -30,6 +31,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
   const product = openProductId ? catalog.products.find((p) => p.id === openProductId) ?? null : null;
   const openShopId = useStoreUi((s) => s.openShopId);
   const openTenantProduct = useStoreUi((s) => s.openTenantProduct);
+  const avatarPickerOpen = useStoreUi((s) => s.avatarPickerOpen);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,8 +69,8 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
     [],
   );
 
-  const showPause = ready && !locked && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
-  const showTouchControls = touchMode && ready && locked && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
+  const showPause = ready && !locked && !avatarPickerOpen && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
+  const showTouchControls = touchMode && ready && locked && !avatarPickerOpen && !product && !openShopId && !openTenantProduct && !cartOpen && !inspect;
 
   return (
     <>
@@ -127,6 +129,7 @@ export function Hud({ catalog }: { catalog: StoreCatalog }) {
       )}
 
       {showPause && <PauseMenu touchMode={touchMode} onEnter={requestLock} />}
+      <AvatarPickerModal />
 
       {openTenantProduct && (
         <TenantProductPanel

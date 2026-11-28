@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { unlockVoiceAudio } from "../multiplayer/net";
+import { unlockVoiceAudio, useNet } from "../multiplayer/net";
 import { markEntered3d, track } from "@/features/analytics/track";
 import { isMusicMuted, startStoreMusic, subscribeMusicMuted, toggleMusicMuted } from "../music";
 import { getSensitivity, resetTouchInput, SENSITIVITY_LEVELS, setSensitivity, type SensitivityId } from "../input/touch-input";
@@ -84,6 +84,27 @@ function MusicSwitch() {
   );
 }
 
+function AvatarRow() {
+  const avatar = useNet((s) => s.me.avatar);
+  return (
+    <button
+      type="button"
+      onClick={() => useStoreUi.getState().openAvatarPicker(true)}
+      className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-1.5 text-left transition hover:bg-[#f7f6f1]"
+    >
+      <span className="flex items-center gap-3">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#f2f1ea] text-sm font-bold text-[#12392b]">
+          {avatar === "woman" ? "W" : "M"}
+        </span>
+        <span className="text-sm font-medium text-[#0d0f0e]">Avatar</span>
+      </span>
+      <span className="rounded-full bg-[#f2f1ea] px-3 py-1 text-xs font-semibold text-[#12392b]">
+        {avatar === "woman" ? "Woman" : "Man"} · Change
+      </span>
+    </button>
+  );
+}
+
 /**
  * Start / pause screen of the 3D store. Desktop: keycap legend + Click to enter (pointer lock). Touch: thumb
  * controls, look sensitivity, Tap to enter (fullscreen + landscape where allowed). Landscape phones get two
@@ -113,6 +134,10 @@ export function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter:
     if (!resumed) {
       markEntered3d();
       track("store3d_enter");
+    }
+    if (!useStoreUi.getState().avatarChosen) {
+      useStoreUi.getState().openAvatarPicker(true);
+      return;
     }
     onEnter();
   };
@@ -178,6 +203,7 @@ export function PauseMenu({ touchMode, onEnter }: { touchMode: boolean; onEnter:
             <h2 className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#5b615d] short:mt-4">Settings</h2>
             <div className="mt-2 space-y-2 rounded-2xl bg-white p-2 ring-1 ring-[#ecebe3]">
               <MusicSwitch />
+              <AvatarRow />
               {touchMode && (
                 <fieldset className="px-1 pb-1">
                   <legend className="mb-2 text-sm font-medium text-[#0d0f0e]">Look sensitivity</legend>

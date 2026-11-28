@@ -47,6 +47,12 @@ export function cleanName(raw: unknown): string {
   return s || "Shopper";
 }
 
+export type AvatarKind = "woman" | "man";
+
+export function cleanAvatar(raw: unknown): AvatarKind {
+  return raw === "woman" ? "woman" : "man";
+}
+
 export function cleanColor(raw: unknown): string {
   return typeof raw === "string" && /^#[0-9a-f]{6}$/i.test(raw) ? raw : AVATAR_COLORS[0]!;
 }

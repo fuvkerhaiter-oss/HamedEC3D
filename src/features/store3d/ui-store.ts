@@ -38,6 +38,10 @@ interface StoreUiState {
   stage: "preview" | "entering" | "play";
   /** Set by the homepage embed: "Leave store" returns to the hero instead of navigating. */
   onLeave: (() => void) | null;
+  /** Shopper is choosing their avatar (Woman / Man) right after entering or from pause menu. */
+  avatarPickerOpen: boolean;
+  /** True once the shopper has picked their avatar this visit. */
+  avatarChosen: boolean;
   setStage: (stage: "preview" | "entering" | "play") => void;
   showToast: (text: string) => void;
   /** Enter play: pointer lock on desktop; in touch mode simply activates the touch controls. */
@@ -52,10 +56,12 @@ interface StoreUiState {
   openProduct: (id: string | null) => void;
   openShop: (id: string | null) => void;
   openTenantProductPanel: (p: { shopId: string; productId: string } | null) => void;
+  openAvatarPicker: (open: boolean) => void;
+  confirmAvatarChoice: () => void;
   reset: () => void;
 }
 
-const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, openShopId: null, openTenantProduct: null, toast: null, lockError: null, inspect: false, contextLost: false, stage: "play" as const, onLeave: null };
+const initial = { locked: false, touchMode: false, ready: false, target: null, openProductId: null, openShopId: null, openTenantProduct: null, toast: null, lockError: null, inspect: false, contextLost: false, stage: "play" as const, onLeave: null, avatarPickerOpen: false, avatarChosen: false };
 
 export const LOCK_ERROR_MESSAGE =
   "Your browser didn't allow mouse capture. Wait a second and click again, or shop from the list view.";
@@ -77,6 +83,8 @@ export const useStoreUi = create<StoreUiState>()((set, get) => ({
   openProduct: (openProductId) => set({ openProductId, target: null }),
   openShop: (openShopId) => set({ openShopId, target: null }),
   openTenantProductPanel: (openTenantProduct) => set({ openTenantProduct, target: null }),
+  openAvatarPicker: (avatarPickerOpen) => set({ avatarPickerOpen }),
+  confirmAvatarChoice: () => set({ avatarPickerOpen: false, avatarChosen: true }),
   showToast: (text) => {
     const id = ++toastSeq;
     set({ toast: { id, text } });

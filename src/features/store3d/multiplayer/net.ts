@@ -15,7 +15,7 @@ import { create } from "zustand";
 import { localChannel } from "./local-channel";
 import { cleanEmote, EMOTE_DURATION_MS, type EmoteId } from "./emotes";
 import { multiplayerEnabled, VOICE_CONSENT_KEY } from "./rooms";
-import { BASKET_MAX, cleanBasket, cleanColor, cleanName, cleanPose, MAX_ROOMS, packBasket, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type MemberMeta, type Pose } from "./rooms";
+import { BASKET_MAX, cleanAvatar, cleanBasket, cleanColor, cleanName, cleanPose, MAX_ROOMS, packBasket, mustMoveOn, packPose, randomColor, randomName, ROOM_CAPACITY, type AvatarKind, type MemberMeta, type Pose } from "./rooms";
 
 export type NetStatus = "off" | "connecting" | "online" | "unavailable";
 
@@ -28,7 +28,7 @@ export interface Chan {
   send(msg: { type: "broadcast"; event: string; payload: unknown }): Promise<unknown>;
   remove(): void;
 }
-export interface Member { id: string; name: string; color: string; mic: boolean; /** Product ids in their trolley (display only). */ basket: string[] }
+export interface Member { id: string; name: string; color: string; avatar: AvatarKind; mic: boolean; /** Product ids in their trolley (display only). */ basket: string[] }
 
 interface NetState {
   status: NetStatus;
@@ -57,7 +57,7 @@ export const useNet = create<NetState>()(() => ({
   status: "off",
   message: null,
   room: null,
-  me: { id: ID, name: "Shopper", color: "#2e86ab", mic: false, basket: [] },
+  me: { id: ID, name: "Shopper", color: "#2e86ab", avatar: cleanAvatar(typeof window !== "undefined" ? stored("mm-avatar") : null), mic: false, basket: [] },
   members: [],
   local: false,
   micOn: false,
@@ -87,6 +87,7 @@ let roomNo = 0;
 let joinedAt = 0;
 let running = false;
 let micTrack: MediaStreamTrack | null = null;
+let voiceConsentAccepted = false;
 let audioCtx: AudioContext | null = null;
 let myBasket: string[] = [];
 let basketTimer: ReturnType<typeof setTimeout> | null = null;
@@ -105,9 +106,10 @@ export function startMultiplayer(): void {
   running = true;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const me = { id: ID, name: cleanName(stored("mm-name") ?? randomName()), color: cleanColor(stored("mm-color") ?? randomColor()), mic: false, basket: myBasket };
+  const me = { id: ID, name: cleanName(stored("mm-name") ?? randomName()), color: cleanColor(stored("mm-color") ?? randomColor()), avatar: cleanAvatar(stored("mm-avatar")), mic: false, basket: myBasket };
   store("mm-name", me.name);
   store("mm-color", me.color);
+  store("mm-avatar", me.avatar);
   useNet.setState({ me });
   localMode = (!url || !key) && process.env.NODE_ENV !== "production" && typeof BroadcastChannel !== "undefined";
   if (((!url || !key) && !localMode) || typeof RTCPeerConnection === "undefined") {
@@ -149,7 +151,7 @@ function leaveRoom() {
 
 function myMeta(): Record<string, unknown> {
   const { me, micOn } = useNet.getState();
-  return { id: ID, name: me.name, color: me.color, joinedAt, mic: micOn, basket: packBasket(myBasket) };
+  return { id: ID, name: me.name, color: me.color, avatar: me.avatar, joinedAt, mic: micOn, basket: packBasket(myBasket) };
 }
 
 function joinRoom(n: number) {
@@ -185,15 +187,15 @@ function joinRoom(n: number) {
 }
 
 function onSync(ch: Chan) {
-  const state = ch.presenceState() as Record<string, Partial<MemberMeta & { mic: boolean; basket: unknown }>[]>;
+  const state = ch.presenceState() as Record<string, Partial<MemberMeta & { avatar: unknown; mic: boolean; basket: unknown }>[]>;
   const all = Object.entries(state).map(([key, metas]) => {
     const m = metas[0]!;
-    return { id: key, name: cleanName(m.name), color: cleanColor(m.color), joinedAt: Number(m.joinedAt) || 0, mic: !!m.mic, basket: cleanBasket(m.basket) };
+    return { id: key, name: cleanName(m.name), color: cleanColor(m.color), avatar: cleanAvatar(m.avatar), joinedAt: Number(m.joinedAt) || 0, mic: !!m.mic, basket: cleanBasket(m.basket) };
   });
   if (!all.some((m) => m.id === ID)) return; // my own track hasn't landed yet
   if (mustMoveOn(all, ID, ROOM_CAPACITY)) return joinRoom(roomNo + 1);
   const others = all.filter((m) => m.id !== ID).sort((a, b) => a.joinedAt - b.joinedAt);
-  useNet.setState({ status: "online", message: null, room: roomNo, members: others.map(({ id, name, color, mic, basket }) => ({ id, name, color, mic, basket })) });
+  useNet.setState({ status: "online", message: null, room: roomNo, members: others.map(({ id, name, color, avatar, mic, basket }) => ({ id, name, color, avatar, mic, basket })) });
   const ids = new Set(others.map((m) => m.id));
   for (const id of [...peers.keys()]) if (!ids.has(id)) dropPeer(id);
   for (const id of ids) if (!peers.has(id) && ID < id) void callPeer(id); // lower id makes the offer
@@ -204,6 +206,14 @@ export function setMyName(raw: string): void {
   const name = cleanName(raw);
   store("mm-name", name);
   useNet.setState((s) => ({ me: { ...s.me, name } }));
+  channel?.track(myMeta()).catch(() => {});
+}
+
+/** Switch my 3D avatar ("woman" | "man", persisted & synced). */
+export function setMyAvatar(avatar: AvatarKind): void {
+  const clean = cleanAvatar(avatar);
+  store("mm-avatar", clean);
+  useNet.setState((s) => ({ me: { ...s.me, avatar: clean } }));
   channel?.track(myMeta()).catch(() => {});
 }
 
@@ -269,7 +279,7 @@ async function onSignal(sig: Signal) {
     if (sig.kind === "offer") {
       const peer = newPeer(sig.from); // a fresh offer always means a fresh connection
       await peer.pc.setRemoteDescription(sig.data as RTCSessionDescriptionInit);
-      peer.tx = peer.pc.getTransceivers()[0];
+      peer.tx = peer.pc.getTransceivers().find((t) => t.receiver.track?.kind === "audio") ?? peer.pc.getTransceivers()[0];
       if (peer.tx) {
         peer.tx.direction = "sendrecv"; // lets the mic start later with replaceTrack, no renegotiation
         if (micTrack) await peer.tx.sender.replaceTrack(micTrack);
@@ -470,15 +480,47 @@ export function voiceLevel(id: string): number {
   return Math.min(1, Math.sqrt(sum / a.buf.length) * 6);
 }
 
+function micErrorMessage(err: unknown): string {
+  const name = err instanceof Error ? err.name : "";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return "No microphone found. Connect a mic and try again.";
+  }
+  if (name === "NotReadableError" || name === "TrackStartError") {
+    return "Your microphone is busy or unavailable in another app.";
+  }
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "Microphone blocked. Allow it in your browser's site settings to talk.";
+  }
+  return "Couldn't start microphone. Check your browser settings and try again.";
+}
+
+async function openMicTrack(): Promise<MediaStreamTrack> {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const track = stream.getAudioTracks()[0];
+    if (!track) throw new Error("no track");
+    return track;
+  } catch (err) {
+    if (err instanceof Error && (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError")) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = stream.getAudioTracks()[0];
+      if (!track) throw new Error("no track");
+      return track;
+    }
+    throw err;
+  }
+}
+
 export async function toggleMic(): Promise<void> {
   unlockVoiceAudio();
   if (micTrack) {
+    micTrack.onended = null;
     micTrack.stop();
     micTrack = null;
     for (const p of peers.values()) await p.tx?.sender.replaceTrack(null).catch(() => {});
-    useNet.setState({ micOn: false });
+    useNet.setState({ micOn: false, micError: null });
   } else {
-    if (stored(VOICE_CONSENT_KEY) !== "yes") {
+    if (!voiceConsentAccepted && stored(VOICE_CONSENT_KEY) !== "yes") {
       useNet.setState({ voiceConsentNeeded: true });
       return;
     }
@@ -486,14 +528,21 @@ export async function toggleMic(): Promise<void> {
       useNet.setState({ micError: "This browser can't use a microphone here (HTTPS is required)." });
       return;
     }
+    useNet.setState({ micError: null });
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      micTrack = stream.getAudioTracks()[0] ?? null;
-      if (!micTrack) throw new Error("no track");
-      for (const p of peers.values()) await p.tx?.sender.replaceTrack(micTrack).catch(() => {});
+      const track = await openMicTrack();
+      micTrack = track;
+      track.onended = () => {
+        if (micTrack !== track) return;
+        micTrack = null;
+        for (const p of peers.values()) void p.tx?.sender.replaceTrack(null).catch(() => {});
+        useNet.setState({ micOn: false });
+        channel?.track(myMeta()).catch(() => {});
+      };
+      for (const p of peers.values()) await p.tx?.sender.replaceTrack(track).catch(() => {});
       useNet.setState({ micOn: true, micError: null });
-    } catch {
-      useNet.setState({ micError: "Microphone blocked. Allow it in your browser's site settings to talk." });
+    } catch (err) {
+      useNet.setState({ micError: micErrorMessage(err) });
       return;
     }
   }
@@ -502,6 +551,7 @@ export async function toggleMic(): Promise<void> {
 
 /** The shopper accepted the voice notice: remember it and open the microphone. */
 export async function acceptVoiceNotice(): Promise<void> {
+  voiceConsentAccepted = true;
   store(VOICE_CONSENT_KEY, "yes");
   useNet.setState({ voiceConsentNeeded: false });
   await toggleMic();

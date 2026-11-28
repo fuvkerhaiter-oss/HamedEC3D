@@ -6,7 +6,7 @@ import { useStoreUi } from "../ui-store";
 import { EMOTES } from "./emotes";
 import { EmoteWheel } from "./EmoteWheel";
 import { ROOM_CAPACITY } from "./rooms";
-import { acceptVoiceNotice, declineVoiceNotice, setAllMuted, setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, triggerEmote, useNet } from "./net";
+import { acceptVoiceNotice, declineVoiceNotice, setAllMuted, setMyAvatar, setMyName, setPeerMuted, startMultiplayer, stopMultiplayer, toggleMic, triggerEmote, useNet } from "./net";
 
 function MicIcon({ off }: { off: boolean }) {
   return (
@@ -63,6 +63,13 @@ export function RoomHud() {
     const joined = members.find((m) => !prev.has(m.id));
     if (joined) useStoreUi.getState().showToast(`👋 ${joined.name} walked into the store`);
   }, [members, status]);
+
+  // Release pointer lock if the voice consent dialog opens while walking (e.g. pressing V) so the shopper can click it.
+  useEffect(() => {
+    if (voiceConsentNeeded && document.pointerLockElement) {
+      document.exitPointerLock?.();
+    }
+  }, [voiceConsentNeeded]);
 
   if (inspect) return null;
   if (status === "off") return <EmoteWheel />;
@@ -128,6 +135,24 @@ export function RoomHud() {
             />
             <span className="shrink-0 text-cream/60">you</span>
           </label>
+          <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+            <span className="text-cream/70">Avatar</span>
+            <div className="inline-flex rounded-full bg-cream/10 p-0.5">
+              {(["woman", "man"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setMyAvatar(kind)}
+                  aria-pressed={me.avatar === kind}
+                  className={`rounded-full px-2.5 py-0.5 font-semibold capitalize transition ${
+                    me.avatar === kind ? "bg-amber text-ink" : "text-cream/75 hover:text-cream"
+                  }`}
+                >
+                  {kind}
+                </button>
+              ))}
+            </div>
+          </div>
           {members.length > 0 ? (
             <ul className="mt-2 space-y-1">
               {members.map((m) => (
